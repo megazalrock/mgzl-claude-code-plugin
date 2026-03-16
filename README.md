@@ -1,32 +1,43 @@
 # mgzl-claude-code-plugin
 
-個人用の Claude Code プラグインパッケージ。
-自作の Skills・Agents・Commands・Hooks を一元管理し、`~/.claude` への導入を容易にする。
+個人用の Claude Code プラグイン。
+自作の Skills・Agents・Commands を一元管理する。
 
 ## 構成
 
 ```
 .
-├── skills/                  # Claude Code スキル
-│   ├── commiting-to-git/    # Git コミット自動化
-│   ├── refactoring-skill/   # スキルのリファクタリング支援
-│   └── web-search-with-codex/ # OpenAI Codex による Web 検索
-├── agents/                  # Claude Code エージェント
-│   └── web-research-collector.md  # Web 調査・情報収集
-├── commands/                # Claude Code コマンド（スラッシュコマンド）
+├── .claude-plugin/
+│   └── plugin.json              # プラグインメタデータ（必須）
+├── skills/                      # スキル定義
+│   ├── commiting-to-git/
+│   │   └── SKILL.md
+│   ├── refactoring-skill/
+│   │   ├── SKILL.md
+│   │   └── references/
+│   │       └── skill-authoring-best-practices.md
+│   └── web-search-with-codex/
+│       ├── SKILL.md
+│       └── scripts/
+│           └── codex_search.sh
+├── agents/                      # エージェント定義
+│   └── web-research-collector.md
+├── commands/                    # スラッシュコマンド定義
 │   └── load-ai-instructions.md
-└── scripts/                 # セットアップ・管理用スクリプト
-    └── install.ts           # ~/.claude へのシンボリックリンク設置
+└── README.md
 ```
 
-## セットアップ
+## インストール
 
 ```bash
-bun run scripts/install.ts
+/plugin install mgzl-claude-code-plugin
 ```
 
-`~/.claude` 配下の対応ディレクトリにシンボリックリンクを作成する。
-既存ファイルがある場合はバックアップを取った上で置き換える。
+または、ローカルパスを指定してインストール：
+
+```bash
+/plugin install /path/to/mgzl-claude-code-plugin
+```
 
 ## スキル一覧
 
@@ -50,40 +61,23 @@ bun run scripts/install.ts
 
 ## 新しいスキルの追加方法
 
-1. `skills/<skill-name>/` ディレクトリを作成
-2. `skills/<skill-name>/SKILL.md` を作成（フロントマター必須）
-3. 必要に応じて `scripts/` や `references/` サブディレクトリを追加
-4. `bun run scripts/install.ts` を実行してリンクを更新
+1. `skills/<skill-name>/SKILL.md` を作成（フロントマター必須）
+2. 必要に応じて `references/` や `scripts/` サブディレクトリを追加
 
-### SKILL.md テンプレート
-
-```markdown
+```yaml
 ---
 name: skill-name
-description: スキルの説明（トリガーワード含む）
-allowed_tools:
-  - Bash(git status)
-  - Read
-  - Edit
+description: >
+  トリガー条件を記載。"具体的なフレーズ" や "キーワード" を含める。
+version: 1.0.0
 ---
-
-# スキル名
-
-## ワークフロー
-
-1. ステップ1
-2. ステップ2
-3. ステップ3
 ```
 
 ## 新しいエージェントの追加方法
 
-1. `agents/<agent-name>.md` を作成（フロントマター必須）
-2. `bun run scripts/install.ts` を実行してリンクを更新
+`agents/<agent-name>.md` を作成（フロントマター必須）。
 
-### Agent テンプレート
-
-```markdown
+```yaml
 ---
 name: agent-name
 description: エージェントの説明
@@ -92,11 +86,13 @@ tools:
   - Read
   - WebSearch
 ---
-
-# 指示内容
 ```
 
 ## 依存関係
 
-- [bun](https://bun.sh/) - スクリプト実行
 - [OpenAI Codex CLI](https://github.com/openai/codex) - `web-search-with-codex` スキルで使用（任意）
+
+## 参考
+
+- [Claude Code Plugins 公式ドキュメント](https://code.claude.com/docs/en/plugins)
+- [claude-plugins-official](https://github.com/anthropics/claude-plugins-official) - 公式プラグインリポジトリ
