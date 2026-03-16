@@ -40,3 +40,18 @@ mgzl-claude-code-plugin/           # プラグイン本体
 ### 共通
 - コミットは Conventional Commits 形式 (`feat:`, `fix:`, `refactor:`, `chore:`)
 - スクリプトは TypeScript + bun。シェルスクリプトは既存のもの以外新規作成しない
+
+## マーケットプレイス構造
+
+- `.claude-plugin/marketplace.json` — リポジトリ全体のマーケットプレイス定義。プラグイン一覧を持つ
+- `mgzl-claude-code-plugin/.claude-plugin/plugin.json` — 個別プラグインのメタデータ
+- スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
+- 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
+
+## フロントマター必須フィールド
+
+| 種別 | 必須 | 任意 |
+|------|------|------|
+| Skill | `name`, `description` | `argument-hint`, `allowed-tools`, `model`, `context`, `disable-model-invocation`, `version` |
+| Agent | `name`, `description`, `model`, `tools` | `skills` |
+| Command | `description` | `argument-hint`, `allowed-tools`, `model` |
