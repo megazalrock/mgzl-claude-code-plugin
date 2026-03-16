@@ -8,35 +8,51 @@
 ```
 .
 ├── .claude-plugin/
-│   └── plugin.json              # プラグインメタデータ（必須）
-├── skills/                      # スキル定義
-│   ├── commiting-to-git/
-│   │   └── SKILL.md
-│   ├── refactoring-skill/
-│   │   ├── SKILL.md
-│   │   └── references/
-│   │       └── skill-authoring-best-practices.md
-│   └── web-search-with-codex/
-│       ├── SKILL.md
-│       └── scripts/
-│           └── codex_search.sh
-├── agents/                      # エージェント定義
-│   └── web-research-collector.md
-├── commands/                    # スラッシュコマンド定義
-│   └── load-ai-instructions.md
+│   └── marketplace.json             # マーケットプレイス定義
+├── mgzl-claude-code-plugin/         # プラグイン本体
+│   ├── .claude-plugin/
+│   │   └── plugin.json              # プラグインメタデータ
+│   ├── skills/
+│   │   ├── commiting-to-git/
+│   │   │   └── SKILL.md
+│   │   ├── refactoring-skill/
+│   │   │   ├── SKILL.md
+│   │   │   └── references/
+│   │   │       └── skill-authoring-best-practices.md
+│   │   └── web-search-with-codex/
+│   │       ├── SKILL.md
+│   │       └── scripts/
+│   │           └── codex_search.sh
+│   ├── agents/
+│   │   └── web-research-collector.md
+│   └── commands/
+│       └── load-ai-instructions.md
 └── README.md
 ```
 
 ## インストール
 
-```bash
-/plugin install mgzl-claude-code-plugin
+### 1. マーケットプレイスを登録
+
+`~/.claude/settings.json` の `extraKnownMarketplaces` にこのリポジトリを追加する：
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "mgzl-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "<owner>/mgzl-claude-code-plugin"
+      }
+    }
+  }
+}
 ```
 
-または、ローカルパスを指定してインストール：
+### 2. プラグインをインストール
 
 ```bash
-/plugin install /path/to/mgzl-claude-code-plugin
+/plugin install mgzl-claude-code-plugin@mgzl-marketplace
 ```
 
 ## スキル一覧
@@ -61,7 +77,7 @@
 
 ## 新しいスキルの追加方法
 
-1. `skills/<skill-name>/SKILL.md` を作成（フロントマター必須）
+1. `mgzl-claude-code-plugin/skills/<skill-name>/SKILL.md` を作成（フロントマター必須）
 2. 必要に応じて `references/` や `scripts/` サブディレクトリを追加
 
 ```yaml
@@ -75,7 +91,7 @@ version: 1.0.0
 
 ## 新しいエージェントの追加方法
 
-`agents/<agent-name>.md` を作成（フロントマター必須）。
+`mgzl-claude-code-plugin/agents/<agent-name>.md` を作成（フロントマター必須）。
 
 ```yaml
 ---

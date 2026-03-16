@@ -11,27 +11,29 @@
 ## ディレクトリ構成
 
 ```
-.claude-plugin/   # plugin.json（プラグインメタデータ）
-skills/           # SKILL.md を含むスキルディレクトリ
-agents/           # エージェント定義 (.md)
-commands/         # スラッシュコマンド定義 (.md)
+.claude-plugin/                    # marketplace.json（マーケットプレイス定義）
+mgzl-claude-code-plugin/           # プラグイン本体
+  .claude-plugin/                  # plugin.json（プラグインメタデータ）
+  skills/                          # SKILL.md を含むスキルディレクトリ
+  agents/                          # エージェント定義 (.md)
+  commands/                        # スラッシュコマンド定義 (.md)
 ```
 
 ## 開発ルール
 
 ### スキル作成
-- `skills/<skill-name>/SKILL.md` にフロントマター (`name`, `description`) を必ず記載
+- `mgzl-claude-code-plugin/skills/<skill-name>/SKILL.md` にフロントマター (`name`, `description`) を必ず記載
 - SKILL.md は 500 行以内を目標とする
 - 補足情報は `references/` サブディレクトリに分離
 - スクリプトが必要な場合は `scripts/` サブディレクトリに TypeScript で作成し `bun` で実行
 - `description` にはトリガーとなるフレーズ・キーワードを具体的に含める
 
 ### エージェント作成
-- `agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
+- `mgzl-claude-code-plugin/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
 - 使用するスキルがある場合は `skills` フロントマターで指定
 
 ### コマンド作成
-- `commands/<command-name>.md` にフロントマター (`description`) を記載
+- `mgzl-claude-code-plugin/commands/<command-name>.md` にフロントマター (`description`) を記載
 - ネストは 1 階層まで（`commands/<namespace>/<command-name>.md` → `/namespace:command`）
 - コマンド本文は Claude への指示として記述する（ユーザー向けメッセージではない）
 
