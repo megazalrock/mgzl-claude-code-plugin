@@ -1,0 +1,43 @@
+---
+name: codex-review
+description: Codexにコードレビューを依頼する。「Codexでレビューして」「Codexにレビュー依頼」「Codexでコードレビュー」「Codexにレビューさせて」など、Codexによるレビューを明示的に指定した場合にのみ使用する。ファイル・ブランチ差分・コミット・ディレクトリなど、レビュー対象を自然言語で引数に指定可能。
+argument-hint: [-m model] <レビュー対象>
+allowed-tools:
+  - Bash(bun run .claude/skills/codex-review/scripts/codex_review.ts:*)
+---
+
+# Codex Code Review
+
+OpenAI Codex CLI を使ってコードレビューを実行するスキル。
+
+## 実行手順
+
+1. ユーザーの引数（`-m model` を含む場合もある）をそのままスクリプトに渡して実行する:
+
+```bash
+bun run .claude/skills/codex-review/scripts/codex_review.ts <ユーザーの引数>
+```
+
+2. スクリプトの実行完了を待つ（Codexが差分取得・レビューを自律的に実行する）
+
+3. 出力されたレビュー結果を日本語に整形して表示する
+
+## 結果の整形ルール
+
+スクリプト出力（Codexのレビュー結果）を受け取ったら、以下のルールで日本語に整形する:
+
+- レビュー結果の構造（Summary / Findings / Good Points）はそのまま維持する
+- 本文を日本語に翻訳して表示する
+- コード片・ファイルパス・行番号はそのまま維持する（翻訳しない）
+- 重要度ラベル（🔴 Critical / 🟡 Warning / 🔵 Info）はそのまま使用する
+- 内容の精査や追加分析は行わない — Codexの出力を忠実に日本語化するだけ
+
+## 引数の例
+
+| 引数 | Codexが行うこと |
+|------|----------------|
+| `fooBar.ts` | ファイルを読み取ってレビュー |
+| `developブランチとの差分` | `git diff develop` を実行してレビュー |
+| `最新のコミット` | `git show HEAD` で最新コミットの差分をレビュー |
+| `hogeディレクトリ以下のファイル` | ディレクトリ内のファイルを読み取ってレビュー |
+| `src/components の変更` | 該当ディレクトリの変更差分をレビュー |
