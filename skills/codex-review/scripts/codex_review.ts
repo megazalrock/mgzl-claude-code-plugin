@@ -8,15 +8,18 @@
  * 差分の取得やファイルの読み込みは Codex が自律的に行う。
  */
 
+export {};
+
 const args = process.argv.slice(2);
 let model = "";
 const positionals: string[] = [];
 
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "-m" && i + 1 < args.length) {
-    model = args[++i];
-  } else {
-    positionals.push(args[i]);
+  const arg = args[i];
+  if (arg === "-m" && i + 1 < args.length) {
+    model = args[++i] ?? "";
+  } else if (arg) {
+    positionals.push(arg);
   }
 }
 
@@ -33,7 +36,7 @@ if (!reviewTarget) {
   process.exit(1);
 }
 
-const prompt = `You are an expert code reviewer. Review the specified target thoroughly.
+const reviewPrompt = `You are an expert code reviewer. Review the specified target thoroughly.
 
 ## Review Target
 ${reviewTarget}
@@ -77,7 +80,7 @@ if (model) {
   codexArgs.push("-m", model);
 }
 
-codexArgs.push("--json", prompt);
+codexArgs.push("--json", reviewPrompt);
 
 const proc = Bun.spawn(["codex", ...codexArgs], {
   stdout: "pipe",
@@ -126,7 +129,7 @@ if (lastMessage) {
     "--sandbox",
     "read-only",
     ...(model ? ["-m", model] : []),
-    prompt,
+    reviewPrompt,
   ];
 
   const fallback = Bun.spawn(["codex", ...fallbackArgs], {
