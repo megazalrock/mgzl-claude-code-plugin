@@ -32,11 +32,6 @@ mgzl-claude-code-plugin/           # プラグイン本体
 - `mgzl-claude-code-plugin/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
 - 使用するスキルがある場合は `skills` フロントマターで指定
 
-### コマンド作成
-- `mgzl-claude-code-plugin/commands/<command-name>.md` にフロントマター (`description`) を記載
-- ネストは 1 階層まで（`commands/<namespace>/<command-name>.md` → `/namespace:command`）
-- コマンド本文は Claude への指示として記述する（ユーザー向けメッセージではない）
-
 ### 共通
 - コミットは Conventional Commits 形式 (`feat:`, `fix:`, `refactor:`, `chore:`)
 - スクリプトは TypeScript + bun。シェルスクリプトは既存のもの以外新規作成しない
@@ -54,4 +49,3 @@ mgzl-claude-code-plugin/           # プラグイン本体
 |------|------|------|
 | Skill | `name`, `description` | `argument-hint`, `allowed-tools`, `model`, `context`, `disable-model-invocation`, `version` |
 | Agent | `name`, `description`, `model`, `tools` | `skills` |
-| Command | `description` | `argument-hint`, `allowed-tools`, `model` |
