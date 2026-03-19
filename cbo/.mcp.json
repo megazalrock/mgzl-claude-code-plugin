@@ -32,10 +32,6 @@
       "env": {
         "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "U3UlNmkY-MLpoc_SZTV6TlHHyxBRA_qYf_TKgnMAOkc"
       }
-    },
-    "jetbrains": {
-      "url": "http://localhost:64342/sse",
-      "type": "sse"
     }
   }
 }
