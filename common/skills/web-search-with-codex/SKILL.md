@@ -2,7 +2,7 @@
 name: web-search-with-codex
 description: Search the internet for information using OpenAI Codex. Use this skill when you need to find current information, documentation, or answers from the web. The skill uses Codex to perform searches and returns formatted results.
 allowed-tools:
-  - Bash(.claude/skills/web-search-with-codex/scripts/codex_search.sh:*)
+  - Bash(*/scripts/codex_search.sh:*)
 context: fork
 disable-model-invocation: true
 ---
@@ -16,7 +16,7 @@ This skill enables internet searches using OpenAI Codex to gather up-to-date inf
 Execute the search script with your query:
 
 ```bash
-.claude/skills/web-search-with-codex/scripts/codex_search.sh "your search query here"
+scripts/codex_search.sh "your search query here"
 ```
 
 ### Options
@@ -28,7 +28,7 @@ Execute the search script with your query:
 Example with custom model:
 
 ```bash
-.claude/skills/web-search-with-codex/scripts/codex_search.sh -m gpt-5.2-codex "your search query"
+scripts/codex_search.sh -m gpt-5.2-codex "your search query"
 ```
 
 ## How It Works
@@ -43,19 +43,19 @@ Example with custom model:
 ### Search for documentation
 
 ```bash
-.claude/skills/web-search-with-codex/scripts/codex_search.sh "Vue 3 Composition API best practices"
+scripts/codex_search.sh "Vue 3 Composition API best practices"
 ```
 
 ### Search for current events
 
 ```bash
-.claude/skills/web-search-with-codex/scripts/codex_search.sh "latest TypeScript 5.x features"
+scripts/codex_search.sh "latest TypeScript 5.x features"
 ```
 
 ### Search for technical solutions
 
 ```bash
-.claude/skills/web-search-with-codex/scripts/codex_search.sh "how to handle async errors in JavaScript"
+scripts/codex_search.sh "how to handle async errors in JavaScript"
 ```
 
 ## Notes

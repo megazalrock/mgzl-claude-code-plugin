@@ -3,7 +3,7 @@ name: codex-review
 description: Codexにコードレビューを依頼する。「Codexでレビューして」「Codexにレビュー依頼」「Codexでコードレビュー」「Codexにレビューさせて」など、Codexによるレビューを明示的に指定した場合にのみ使用する。ファイル・ブランチ差分・コミット・ディレクトリなど、レビュー対象を自然言語で引数に指定可能。
 argument-hint: [-m model] <レビュー対象>
 allowed-tools:
-  - Bash(bun run .claude/skills/codex-review/scripts/codex_review.ts:*)
+  - Bash(bun run */scripts/codex_review.ts:*)
 ---
 
 # Codex Code Review
@@ -15,7 +15,7 @@ OpenAI Codex CLI を使ってコードレビューを実行するスキル。
 1. ユーザーの引数（`-m model` を含む場合もある）をそのままスクリプトに渡して実行する:
 
 ```bash
-bun run .claude/skills/codex-review/scripts/codex_review.ts <ユーザーの引数>
+bun run scripts/codex_review.ts <ユーザーの引数>
 ```
 
 2. スクリプトの実行完了を待つ（Codexが差分取得・レビューを自律的に実行する）
