@@ -1,0 +1,41 @@
+{
+  "mcpServers": {
+    "eslint": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@eslint/mcp@latest"
+      ],
+      "env": {}
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude-code",
+        "--project",
+        "/Users/otto/workspace/craftbank/arrangement-env/front"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--extension"
+      ],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "U3UlNmkY-MLpoc_SZTV6TlHHyxBRA_qYf_TKgnMAOkc"
+      }
+    },
+    "jetbrains": {
+      "url": "http://localhost:64342/sse",
+      "type": "sse"
+    }
+  }
+}
