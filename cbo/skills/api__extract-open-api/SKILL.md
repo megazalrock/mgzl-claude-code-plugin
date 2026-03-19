@@ -13,7 +13,7 @@ model: sonnet
 ## 抽出スクリプト
 
 `scripts/extract-schedule-api.ts` を `bun` で実行して、OpenAPIファイルからスケジュール関連の情報を抽出する。
-オプション一覧は `bun .claude/skills/api__extract-open-api/scripts/extract-schedule-api.ts --help` で確認する。
+オプション一覧は `bun scripts/extract-schedule-api.ts --help` で確認する。
 
 ## ワークフロー
 
@@ -22,7 +22,7 @@ model: sonnet
 まず `--summary` オプションでスケジュールAPIの全体像を把握する:
 
 ```bash
-bun .claude/skills/api__extract-open-api/scripts/extract-schedule-api.ts --summary
+bun scripts/extract-schedule-api.ts --summary
 ```
 
 ### ステップ2: 必要な詳細情報の抽出
@@ -37,8 +37,8 @@ bun .claude/skills/api__extract-open-api/scripts/extract-schedule-api.ts --summa
 | すべての仕様を確認したい | `--all` |
 
 ```bash
-bun .claude/skills/api__extract-open-api/scripts/extract-schedule-api.ts --paths
-bun .claude/skills/api__extract-open-api/scripts/extract-schedule-api.ts --schemas
+bun scripts/extract-schedule-api.ts --paths
+bun scripts/extract-schedule-api.ts --schemas
 ```
 
 ## 注意事項

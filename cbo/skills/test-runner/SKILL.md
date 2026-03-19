@@ -2,7 +2,7 @@
 name: test-runner
 description: テストを実行する場合に利用するスキルです。「テストを実行して」「<ファイル名>のテストを実行」などの要求があった場合、`vitest`を実行したいとき、コマンドの実行の代わりとしてこのスキルを利用します。
 argument-hint: [test path]
-allowed-tools: Bash(bun .claude/skills/test-runner/scripts/run-test.ts *)
+allowed-tools: Bash(bun */scripts/run-test.ts *)
 model: sonnet
 ---
 # test-runner
@@ -25,7 +25,7 @@ model: sonnet
 ## `run-test.ts` の実行方法
 
 ```bash
-bun .claude/skills/test-runner/scripts/run-test.ts <テストパス>
+bun scripts/run-test.ts <テストパス>
 ```
 
 - `<テストパス>` (必須): テスト対象のファイルまたはディレクトリのパス

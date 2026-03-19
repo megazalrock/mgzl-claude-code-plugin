@@ -101,7 +101,7 @@ async ({ page }) => {
 
 #### ユニークID生成
 ```
-bun .claude/skills/playwright_procedures_runner/scripts/generate_id.ts
+bun scripts/generate_id.ts
 ```
 
 ## エラーハンドリング

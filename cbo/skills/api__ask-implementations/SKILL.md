@@ -29,7 +29,7 @@ APIリポジトリの実装を `claude` CLI の非対話モードで調査する
 以下のコマンドを Bash ツールで実行する。タイムアウトは10分（600000ms）に設定する。
 
 ```bash
-bun .claude/skills/api__ask-implementations/scripts/ask-api.ts "$ARGUMENTS"
+bun scripts/ask-api.ts "$ARGUMENTS"
 ```
 
 **コマンドオプションの説明:**

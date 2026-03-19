@@ -19,7 +19,7 @@ allowed-tools: Bash(bun run:*)
 2. 以下のスクリプトを実行してCopilotの未解決コメントを取得
 
 ```bash
-bun run .claude/skills/pr__copilot-comments/scripts/fetch-copilot-comments.ts $ARGUMENTS
+bun run scripts/fetch-copilot-comments.ts $ARGUMENTS
 ```
 
 3. スクリプトの出力はJSON形式。結果に応じて以下のように対応する:

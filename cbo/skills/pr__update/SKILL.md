@@ -19,7 +19,7 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(
 
 3. 対象PRの現在の内容を確認
    - `gh pr view <PR番号> --json title,body`
-4. `.claude/skills/pr__update/reference/pr_template.md` を読み込み、PRのフォーマット（セクション構成）を把握
+4. `reference/pr_template.md` を読み込み、PRのフォーマット（セクション構成）を把握
 5. 過去PRから書き方・文体を把握
    - `gh pr list --author @me --state merged --limit 5 --json number,title`
    - いくつかのPRの詳細を確認（`gh pr view <PR番号> --json title,body`）
