@@ -31,21 +31,6 @@ APIリポジトリの実装を `claude` CLI の非対話モードで調査する
 ```bash
 bun scripts/ask-api.ts "$ARGUMENTS"
 ```
-
-**コマンドオプションの説明:**
-
-| オプション | 説明 |
-|---|---|
-| `-p` | 非対話モードで実行し、結果をそのまま出力 |
-| `--model sonnet` | コスト効率の良い Sonnet を使用 |
-| `--allowed-tools` | 読み込み系ツールのみ許可（編集・Bash 不可） |
-| `--add-dir` | APIリポジトリを作業対象ディレクトリに追加 |
-
-**許可ツール一覧:**
-
-- 基本ツール: `Read`, `Glob`, `Grep`
-- Serena MCP（読み込み系）: `list_dir`, `find_file`, `search_for_pattern`, `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `read_memory`, `list_memories`, `think_about_collected_information`
-
 ### Step 3: 結果の報告
 
 `claude` CLI の出力結果をそのままユーザーに報告する。
