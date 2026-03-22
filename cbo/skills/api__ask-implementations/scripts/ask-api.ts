@@ -40,6 +40,7 @@ const proc = Bun.spawn(
     "claude",
     "-p",
     "--model", "opus",
+    "--effort", "high",
     "--allowed-tools", ALLOWED_TOOLS.join(","),
     "--disable-slash-commands",
     "--no-session-persistence",
