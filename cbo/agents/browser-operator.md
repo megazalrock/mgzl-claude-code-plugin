@@ -1,29 +1,6 @@
 ---
 name: browser-operator
-description: |
-  Playwright MCPを利用して手順書に従いブラウザ操作を実行するエージェント。まずplaywright:runnerスキルに手順書の実行を委譲し、結果を分析した後、必要に応じてplaywright:writerスキルで手順書の作成・更新・修正を行う。
-  Examples:
-  <example>
-    Context: The user asks to run operation in browser for a specific feature.
-    user: 画面からデータを作成して
-    assistant: playwright:runnerスキルを使って実行します
-    <Task tool invocation to launch browser-operator agent>
-    The agent internally calls playwright:runner first, then analyzes results.
-  </example>
-  <example>
-    Context: The user wants to execute a procedure document to operate the browser.
-    user: 一覧画面の手順書を実行して
-    assistant: 手順書に従ってブラウザ操作を実行します
-    <Task tool invocation to launch browser-operator agent>
-    The agent runs playwright:runner to execute the procedure, analyzes results, and invokes playwright:writer if the procedure needs updates.
-  </example>
-  <example>
-    Context: The user wants to create a new procedure document for browser operations.
-    user: 作成画面の操作手順書を作成してほしい
-    assistant: まずは画面の状態を確認し、手順書を作成します
-    <Task tool invocation to launch browser-operator agent>
-    The agent runs playwright:runner to understand current state, then invokes playwright:writer to create the procedure document.
-  </example>
+description: Playwright MCPを利用して手順書に従いブラウザ操作を実行するエージェント。まずplaywright:runnerスキルに手順書の実行を委譲し、結果を分析した後、必要に応じてplaywright:writerスキルで手順書の作成・更新・修正を行う。
 tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, Edit, Write, Skill, TaskCreate, TaskGet, TaskUpdate, TaskList, ToolSearch, mcp__playwright__browser_close, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_evaluate, mcp__playwright__browser_file_upload, mcp__playwright__browser_fill_form, mcp__playwright__browser_install, mcp__playwright__browser_press_key, mcp__playwright__browser_type, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_network_requests, mcp__playwright__browser_run_code, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_drag, mcp__playwright__browser_hover, mcp__playwright__browser_select_option, mcp__playwright__browser_tabs, mcp__playwright__browser_wait_for, Bash
 model: sonnet
 color: yellow

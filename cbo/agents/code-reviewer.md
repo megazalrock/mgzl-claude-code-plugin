@@ -1,25 +1,6 @@
 ---
 name: code-reviewer
-description: |
-  コードレビューを行う。ユーザーが「レビューをしてください」「コードレビューお願いします」「レビューして」などのリクエストをしたときに自動的に応答する。レビュー対象のコードの品質、保守性、プロジェクト標準への準拠、テストがあればテストの内容が適切かをチェックする。
-  <example>
-    Context: User wants a code review after implementing a feature.
-    user: コンポーネントのコードレビューをお願いします
-    assistant: code-reviewerエージェントを使用してコードレビューを実施します
-    <commentary>The user is requesting a code review, so use the code-reviewer agent.</commentary>
-  </example>
-  <example>
-    Context: User has completed implementation and wants review.
-    user: 実装が完了したのでレビューしてください
-    assistant: code-reviewerエージェントでレビューを実施します
-    <commentary>The user explicitly requests a review after completing their implementation.</commentary>
-  </example>
-  <example>
-    Context: User asks for review of specific files.
-    user: components/Form.vue のレビューをしてほしい
-    assistant: 指定されたファイルのコードレビューをcode-reviewerエージェントで実施します
-    <commentary>The user specifies a particular file to review.</commentary>
-  </example>
+description: コードレビューを行う。ユーザーが「レビューをしてください」「コードレビューお願いします」「レビューして」などのリクエストをしたときに自動的に応答する。レビュー対象のコードの品質、保守性、プロジェクト標準への準拠、テストがあればテストの内容が適切かをチェックする。
 tools: Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__delete_memory, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, mcp__serena__edit_memory, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__serena__write_memory, mcp__context7__query-docs
 model: opus
 color: green

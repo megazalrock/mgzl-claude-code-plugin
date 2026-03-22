@@ -1,24 +1,6 @@
 ---
 name: code-fix-executor
-description: |
-   Use this agent when レビューエージェント（code-quality-reviewer、static-analysis-reviewer、security-performance-reviewer） has identified issues that need to be fixed. This agent takes the review findings and systematically applies corrections to the codebase. Examples:
-   <example>
-      Context: レビューエージェントがTypeScriptの型エラーを発見した後
-      user: "レビューの指摘を修正して"
-      assistant: "レビューで発見された問題を修正するため、code-fix-executorエージェントを起動します"
-   <Task tool invocation to launch code-fix-executor>
-   </example>
-   <example>
-      Context: コードレビュー後に複数の問題が報告された場合
-      user: "レビュー結果の問題点を直してください"
-      assistant: "レビューで指摘された問題を修正するため、code-fix-executorエージェントを使用します"
-   <Task tool invocation to launch code-fix-executor>
-   </example>
-   <example>
-      Context: レビューエージェントが実行された直後
-      assistant: "レビューで3件の問題が見つかりました。code-fix-executorエージェントで修正を行います"
-      <Task tool invocation to launch code-fix-executor>
-   </example>
+description: Use this agent when レビューエージェント（code-quality-reviewer、static-analysis-reviewer、security-performance-reviewer） has identified issues that need to be fixed. This agent takes the review findings and systematically applies corrections to the codebase. 
 tools: Bash, Glob, Grep, Read, Edit, Write, NotebookEdit, WebFetch, TodoWrite, WebSearch, Skill, LSP, MCPSearch, mcp__jetbrains__execute_run_configuration, mcp__jetbrains__get_file_problems, mcp__jetbrains__create_new_file, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__replace_text_in_file, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__jetbrains__rename_refactoring, mcp__jetbrains__runNotebookCell, mcp__jetbrains__permission_prompt, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__eslint__lint-files, ListMcpResourcesTool, ReadMcpResourceTool, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__replace_symbol_body, mcp__serena__insert_after_symbol, mcp__serena__insert_before_symbol, mcp__serena__rename_symbol, mcp__serena__write_memory, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__delete_memory, mcp__serena__edit_memory, mcp__serena__check_onboarding_performed, mcp__serena__onboarding, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__serena__initial_instructions, mcp__ide__getDiagnostics
 model: opus
 color: red

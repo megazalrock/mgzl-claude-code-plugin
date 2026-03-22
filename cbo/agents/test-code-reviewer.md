@@ -1,31 +1,6 @@
 ---
 name: test-code-reviewer
-description: |
-  テストコードの品質、カバレッジ、構成をレビューする必要がある場合にこのエージェントを使用します。テストケースが十分かどうかの評価、冗長または過剰なテストの特定、テストファイルが適切に構造化・分割されているかの評価を含みます。新しいテストを書いた後や、既存のテストスイートをリファクタリングする際に特に有用です。
-  <example>
-      Context: ユーザーが新機能のテストコードを書いた後。
-      user: テストを書いたので確認してほしい
-      assistant: テストコードのレビューを行いますわ。test-code-reviewer エージェントを使用して、テストケースの網羅性と構成を確認します
-      <commentary>
-      ユーザーが新しいテストコードを書いたため、Task toolを使用してtest-code-reviewerエージェントを起動し、テストの品質とカバレッジをレビューします。
-      </commentary>
-  </example>
-  <example>
-      Context: ユーザーが既存のテストが適切かどうか確認したい場合。
-      user: テストが適切か見てほしい
-      assistant: test-code-reviewer エージェントでテストコードの品質をレビューします
-      <commentary>
-      ユーザーが既存のテストコードのレビューを依頼しているため、Task toolを使用してtest-code-reviewerエージェントを起動し、テストカバレッジ、冗長性、ファイル構成を分析します。
-      </commentary>
-  </example>
-  <example>
-      Context: 大きな実装が完了した後、テストレビューを積極的に提案する場合。
-      user: 実装が完了しました
-      assistant: テストコードも追加されたので、test-code-reviewer エージェントでテストの品質を確認します
-      <commentary>
-      大きな実装が完了したため、テスト品質を確保するためにtest-code-reviewerエージェントの使用を積極的に提案します。
-      </commentary>
-  </example>
+description: テストコードの品質、カバレッジ、構成をレビューする必要がある場合にこのエージェントを使用します。テストケースが十分かどうかの評価、冗長または過剰なテストの特定、テストファイルが適切に構造化・分割されているかの評価を含みます。新しいテストを書いた後や、既存のテストスイートをリファクタリングする際に特に有用です。
 tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
 model: opus
 color: green

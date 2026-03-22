@@ -1,32 +1,6 @@
 ---
 name: implementation-plan-reviewer
-description: |
-  Use this agent when you need to review an implementation plan document (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md) for quality, consistency, and feasibility. This includes checking overall design appropriateness, step-by-step consistency, workload per step, and proper task decomposition.
-  Examples:
-    <example>
-    Context: User has just created or received an implementation plan and wants it reviewed before execution.
-    user: この実装計画書をレビューしてほしい
-    assistant: 実装計画書のレビューを行います。Task toolを使用してimplementation-plan-reviewerエージェントを起動いたします
-    <commentary>
-    Since the user is requesting a review of an implementation plan, use the Task tool to launch the implementation-plan-reviewer agent.
-    </commentary>
-  </example>
-  <example>
-    Context: User has finished drafting an implementation plan using the implementation-plan-creator skill.
-    user: 実装計画書を作成しました。確認をお願いします
-    assistant: それではimplementation-plan-reviewerエージェントでレビューを実施いたします
-    <commentary>
-    After an implementation plan is created, use the Task tool to launch the implementation-plan-reviewer agent to ensure quality before execution.
-    </commentary>
-  </example>
-  <example>
-    Context: Before starting implementation work on a plan.
-    user: 実装計画書の実装を始めたい
-    assistant: 実装を開始する前に、まずimplementation-plan-reviewerエージェントで計画書のレビューを行います。
-    <commentary>
-    Before executing an implementation plan, proactively use the Task tool to launch the implementation-plan-reviewer agent to verify the plan's quality.
-    </commentary>
-  </example>
+description: Use this agent when you need to review an implementation plan document (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md) for quality, consistency, and feasibility. This includes checking overall design appropriateness, step-by-step consistency, workload per step, and proper task decomposition.
 tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
 model: opus
 color: green

@@ -6,31 +6,6 @@ description: |
   2. **For each sequential step** - Use this agent repeatedly for every step in the plan
   3. **After completing a task** - Proactively use this agent to update the plan document
   **IMPORTANT**: Implementation plans must NEVER be executed directly. Always delegate each step to this agent.
-  Examples:
-  <example>
-    Context: User has an implementation plan with multiple steps.
-    user: 実装計画書の最初のステップを実装してください
-    assistant: 実装計画書を確認して、implementation-step-executorエージェントを使用して最初のステップを実装します
-    <commentary>CRITICAL: Since the user is requesting implementation of a step from an implementation plan, use the Task tool to launch the implementation-step-executor agent. NEVER implement steps directly.</commentary>
-  </example>
-  <example>
-    Context: User asks to execute an entire implementation plan.
-    user: 実装計画を実行してください
-    assistant: 実装計画書を確認します。この計画には5つのステップがあります。最初のステップからimplementation-step-executorエージェントを使用して順番に実装していきます
-    <commentary>CRITICAL: When executing an implementation plan, ALWAYS use the implementation-step-executor agent for EACH step. Launch the agent for step 1, wait for completion, then launch again for step 2, and so on. NEVER implement multiple steps directly.</commentary>
-  </example>
-  <example>
-    Context: User just finished writing a new component.
-    user: コンポーネントの実装が完了しました
-    assistant: 実装が完了したので、implementation-step-executorエージェントを使用して実装計画書に完了の記録を追記します
-    <commentary>Since implementation is complete, proactively use the implementation-step-executor agent to update the implementation plan document.</commentary>
-  </example>
-  <example>
-    Context: User is working through an implementation plan step by step.
-    user: 次のステップに進んでください
-    assistant: implementation-step-executorエージェントを使用して、実装計画書の次のステップを実装します
-    <commentary>Use the implementation-step-executor agent to execute the next step in the implementation plan. NEVER skip using this agent.</commentary>
-  </example>
 tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, Edit, Write, Bash, ToolSearch, mcp__jetbrains__get_file_problems, mcp__eslint__lint-files, mcp__serena__replace_symbol_body, mcp__serena__insert_after_symbol, mcp__serena__insert_before_symbol, mcp__serena__rename_symbol
 model: sonnet
 color: red

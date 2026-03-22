@@ -1,26 +1,6 @@
 ---
 name: implementation-plan-investigator
-description: |
-  Use this agent when you need to investigate unclear points in implementation plan documents (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md). This agent should be launched for each individual unclear item that requires investigation. Examples:
-  <example>
-    Context: User is reviewing an implementation plan and encounters an unclear technical specification.
-    user: 実装計画書の『API設計』の部分が不明確です。既存のAPI構造との整合性を調査してください
-    assistant: implementation-plan-investigator エージェントを使用して、API設計について既存構造との整合性を調査します
-    <commentary>The user has identified an unclear point in the implementation plan regarding API design. Use the Task tool to launch the implementation-plan-investigator agent to investigate the existing API structure and provide clarification.</commentary>
-  </example>
-  <example>
-    Context: User is creating a new implementation plan and needs to verify technical feasibility.
-    user: Storeの永続化設定について、実装計画書に記載する前に既存の実装パターンを確認したい
-    assistant: implementation-plan-investigator エージェントを起動して、既存のStore永続化パターンを調査します
-    <commentary>Before writing the implementation plan, the user needs to investigate existing patterns. Use the implementation-plan-investigator agent to research the current store persistence implementation.</commentary>
-  </example>
-  <example>
-    Context: User is implementing a feature and the plan has ambiguous requirements.
-    user: 実装計画の『フォームバリデーション』セクションで、バリデーションライブラリの具体的な使用方法が不明です
-    assistant: implementation-plan-investigator エージェントで、プロジェクト内のバリデーションライブラリ使用例を調査して明確化します
-    <commentary>The implementation plan has unclear validation requirements. Launch the implementation-plan-investigator agent to find concrete examples of validation library usage in the codebase.</commentary>
-  </example>
-
+description: Use this agent when you need to investigate unclear points in implementation plan documents (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md). This agent should be launched for each individual unclear item that requires investigation.
 tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
 model: opus
 color: blue

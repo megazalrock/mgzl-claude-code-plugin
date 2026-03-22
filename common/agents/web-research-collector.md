@@ -1,26 +1,6 @@
 ---
 name: web-research-collector
-description: |
-  Use this agent when the user needs to search the web for information on a specific topic. This agent is ideal for gathering current information, researching technical topics, finding documentation, or collecting data that requires web searches. The agent will search in English for better results but provide summaries in Japanese.
-  Examples:
-  <example>
-    Context: User wants to research a new technology or library
-    user: "Vue 3.5の新機能について調べてください"
-    assistant: "web-research-collectorエージェントを使用して、Vue 3.5の新機能について調査いたします"
-    <Task tool call to web-research-collector>
-  </example>
-  <example>
-    Context: User needs information about best practices or patterns
-    user: "TypeScriptのジェネリクスのベストプラクティスを調べて"
-    assistant: "TypeScriptのジェネリクスについてお調べします。web-research-collectorエージェントに依頼いたします"
-    <Task tool call to web-research-collector>
-  </example>
-  <example>
-    Context: User needs to find recent news or updates
-    user: "最近のNuxt 4のアップデート情報を集めてほしい"
-    assistant: "Nuxt 4の最新情報ですね。web-research-collectorエージェントを使って情報収集します✨"
-    <Task tool call to web-research-collector>
-  </example>
+description: Use this agent when the user needs to search the web for information on a specific topic. This agent is ideal for gathering current information, researching technical topics, finding documentation, or collecting data that requires web searches. The agent will search in English for better results but provide summaries in Japanese.
 tools: Read, WebFetch, WebSearch, Bash, MCPSearch, mcp__context7__resolve-library-id, mcp__context7__query-docs, ListMcpResourcesTool, ReadMcpResourceTool
 model: opus
 skills: web-search-with-codex

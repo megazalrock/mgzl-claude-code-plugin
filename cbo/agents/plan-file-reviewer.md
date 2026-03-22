@@ -1,32 +1,6 @@
 ---
 name: plan-file-reviewer
-description: |
-  Use this agent when you need to review a Claude Code Plan mode plan file (~/.claude/plans/*.md) for quality, completeness, and feasibility. This includes checking context clarity, implementation approach concreteness, file reference accuracy, and verification plan adequacy.
-  Examples:
-    <example>
-    Context: User has just created a plan file in Plan mode and wants it reviewed before implementation.
-    user: このプランファイルをレビューしてほしい
-    assistant: プランファイルのレビューを行います。Task toolを使用してplan-file-reviewerエージェントを起動いたします
-    <commentary>
-    Since the user is requesting a review of a plan file, use the Task tool to launch the plan-file-reviewer agent.
-    </commentary>
-  </example>
-  <example>
-    Context: User has finished planning in Plan mode and wants to verify the plan quality.
-    user: Plan modeで計画を立てました。確認をお願いします
-    assistant: それではplan-file-reviewerエージェントでプランファイルのレビューを実施いたします
-    <commentary>
-    After a plan is created in Plan mode, use the Task tool to launch the plan-file-reviewer agent to ensure quality before execution.
-    </commentary>
-  </example>
-  <example>
-    Context: Before starting implementation based on a plan file.
-    user: プランファイルの内容で実装を始めたい
-    assistant: 実装を開始する前に、まずplan-file-reviewerエージェントでプランファイルのレビューを行います。
-    <commentary>
-    Before executing based on a plan file, proactively use the Task tool to launch the plan-file-reviewer agent to verify the plan's quality.
-    </commentary>
-  </example>
+description: Use this agent when you need to review a Claude Code Plan mode plan file (~/.claude/plans/*.md) for quality, completeness, and feasibility. This includes checking context clarity, implementation approach concreteness, file reference accuracy, and verification plan adequacy.
 tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
 model: opus
 color: green

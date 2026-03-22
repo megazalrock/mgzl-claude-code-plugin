@@ -1,19 +1,6 @@
 ---
 name: security-performance-reviewer
-description: |
-  セキュリティとパフォーマンスの専門レビューを行うエージェント。ハードコードされた認証情報、XSS脆弱性、CSRF、メモリリーク、不要な再レンダリングなどを検出する。
-  <example>
-    Context: User wants a security review.
-    user: セキュリティの観点でレビューしてほしい
-    assistant: security-performance-reviewerエージェントを使用してセキュリティ・パフォーマンスのレビューを実施します
-    <commentary>The user is requesting a security review, so use the security-performance-reviewer agent.</commentary>
-  </example>
-  <example>
-    Context: User wants to check for performance issues.
-    user: パフォーマンスの問題がないか確認してください
-    assistant: security-performance-reviewerエージェントでパフォーマンスレビューを実施します
-    <commentary>The user wants performance review.</commentary>
-  </example>
+description: セキュリティとパフォーマンスの専門レビューを行うエージェント。ハードコードされた認証情報、XSS脆弱性、CSRF、メモリリーク、不要な再レンダリングなどを検出する。
 tools: Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__delete_memory, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, mcp__serena__edit_memory, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__serena__write_memory, mcp__context7__query-docs
 model: opus
 color: green
