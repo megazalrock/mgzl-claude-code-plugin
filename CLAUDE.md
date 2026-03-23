@@ -12,24 +12,27 @@
 
 ```
 .claude-plugin/                    # marketplace.json（マーケットプレイス定義）
-mgzl-claude-code-plugin/           # プラグイン本体
-  .claude-plugin/                  # plugin.json（プラグインメタデータ）
-  skills/                          # SKILL.md を含むスキルディレクトリ
-  agents/                          # エージェント定義 (.md)
-  commands/                        # スラッシュコマンド定義 (.md)
+common/                            # "mgzl" プラグイン（汎用ツール）
+cbo/                               # "cbo" プラグイン（開発ワークフロー支援）
+```
+
+## 開発コマンド
+
+```bash
+bun install          # 依存関係のインストール
 ```
 
 ## 開発ルール
 
 ### スキル作成
-- `mgzl-claude-code-plugin/skills/<skill-name>/SKILL.md` にフロントマター (`name`, `description`) を必ず記載
+- `<plugin>/skills/<skill-name>/SKILL.md` にフロントマター (`name`, `description`) を必ず記載
 - SKILL.md は 500 行以内を目標とする
 - 補足情報は `references/` サブディレクトリに分離
 - スクリプトが必要な場合は `scripts/` サブディレクトリに TypeScript で作成し `bun` で実行
 - `description` にはトリガーとなるフレーズ・キーワードを具体的に含める
 
 ### エージェント作成
-- `mgzl-claude-code-plugin/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
+- `<plugin>/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
 - 使用するスキルがある場合は `skills` フロントマターで指定
 
 ### 共通
@@ -39,7 +42,8 @@ mgzl-claude-code-plugin/           # プラグイン本体
 ## マーケットプレイス構造
 
 - `.claude-plugin/marketplace.json` — リポジトリ全体のマーケットプレイス定義。プラグイン一覧を持つ
-- `mgzl-claude-code-plugin/.claude-plugin/plugin.json` — 個別プラグインのメタデータ
+- `common/.claude-plugin/plugin.json` — mgzl プラグインのメタデータ
+- `cbo/.claude-plugin/plugin.json` — cbo プラグインのメタデータ
 - スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
 - 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
 
