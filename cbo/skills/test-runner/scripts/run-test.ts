@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { $ } from "bun";
 
 const testPath = process.argv[2];
 
@@ -16,6 +15,11 @@ if (!testPath) {
 
 const testCommand = process.env.TEST_COMMAND ?? "pnpm exec vitest run";
 const [cmd, ...args] = testCommand.split(" ");
+
+if (!cmd) {
+  console.error("エラー: テストコマンドが空です。TEST_COMMAND を確認してください。");
+  process.exit(1);
+}
 
 const proc = Bun.spawn([cmd, ...args, testPath], {
   stdout: "inherit",
