@@ -17,7 +17,7 @@ model: sonnet
 - **議論まとめ**: 会話で決定した内容や要件のまとめ
 - **その他**: 上記に当てはまらない一般的なドキュメント
 
-**保存先**: デフォルトは `!`echo ${MGZL_DIR:-.mgzl}`/tmp/`（ユーザー指定があればそちらを優先）
+**保存先**: デフォルトは !`echo ${MGZL_DIR:-.mgzl}`/tmp/ （ユーザー指定があればそちらを優先）
 
 **ファイル名**: `yyyyMMdd-hhmmss-document-name.md`
 - タイムスタンプは `get-timestamp.ts` で取得
