@@ -37,7 +37,7 @@ $ARGUMENTS
 #### CIと同等（デフォルト: 引数なし）
 
 ```bash
-bun scripts/run-vue-tsc-ci.ts
+bun "${CLAUDE_PLUGIN_ROOT}/skills/vue-tsc-runner/scripts/run-vue-tsc-ci.ts"
 ```
 
 #### 全ファイル（`--all <パス>` 指定時）
@@ -45,7 +45,7 @@ bun scripts/run-vue-tsc-ci.ts
 無関係なファイルも検知されるため `grep` で引数のパスを指定して実行する。
 
 ```bash
-bun scripts/run-vue-tsc-special-config.ts | grep '<引数で指定されたパス>'
+bun "${CLAUDE_PLUGIN_ROOT}/skills/vue-tsc-runner/scripts/run-vue-tsc-special-config.ts" | grep '<引数で指定されたパス>'
 ```
 
 ### Step 3: 結果の通知

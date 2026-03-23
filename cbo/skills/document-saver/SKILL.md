@@ -20,9 +20,9 @@ model: sonnet
 **保存先**: デフォルトは `!`echo ${MGZL_DIR:-.mgzl}`/tmp/`（ユーザー指定があればそちらを優先）
 
 **ファイル名**: `yyyyMMdd-hhmmss-document-name.md`
-- タイムスタンプは `scripts/get-timestamp.ts` で取得
+- タイムスタンプは `get-timestamp.ts` で取得
   ```bash
-  bun scripts/get-timestamp.ts
+  bun "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"
   ```
 - `document-name` は内容を表す簡潔な英語名（ケバブケース）
 

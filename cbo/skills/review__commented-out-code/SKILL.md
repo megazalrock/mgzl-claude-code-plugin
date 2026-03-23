@@ -29,7 +29,7 @@ model: sonnet
 以下のコマンドで検出スクリプトを実行する:
 
 ```bash
-bun scripts/detect-diff.ts $ARGUMENTS
+bun "${CLAUDE_PLUGIN_ROOT}/skills/review__commented-out-code/scripts/detect-diff.ts" $ARGUMENTS
 ```
 
 スクリプトが以下のメッセージを出力した場合はそのまま報告して終了:
@@ -49,7 +49,7 @@ bun scripts/detect-diff.ts $ARGUMENTS
 以下のコマンドで検出スクリプトを実行する:
 
 ```bash
-bun scripts/detect-file.ts $ARGUMENTS
+bun "${CLAUDE_PLUGIN_ROOT}/skills/review__commented-out-code/scripts/detect-file.ts" $ARGUMENTS
 ```
 
 スクリプトが以下のメッセージを出力した場合はそのまま報告して終了:
@@ -106,4 +106,4 @@ bun scripts/detect-file.ts $ARGUMENTS
 
 ## 検出パターンリファレンス
 
-検出・除外パターンの詳細は `scripts/patterns.ts` を参照。
+検出・除外パターンの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/review__commented-out-code/scripts/patterns.ts` を参照。

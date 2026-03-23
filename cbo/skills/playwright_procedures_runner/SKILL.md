@@ -101,7 +101,7 @@ async ({ page }) => {
 
 #### ユニークID生成
 ```
-bun scripts/generate_id.ts
+bun "${CLAUDE_PLUGIN_ROOT}/skills/playwright_procedures_runner/scripts/generate_id.ts"
 ```
 
 ## エラーハンドリング

@@ -25,7 +25,7 @@ model: sonnet
 ## `run-test.ts` の実行方法
 
 ```bash
-bun scripts/run-test.ts <テストパス>
+bun "${CLAUDE_PLUGIN_ROOT}/skills/test-runner/scripts/run-test.ts" <テストパス>
 ```
 
 - `<テストパス>` (必須): テスト対象のファイルまたはディレクトリのパス
