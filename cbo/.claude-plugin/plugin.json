@@ -1,6 +1,6 @@
 {
   "name": "cbo",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "開発ワークフロー支援プラグイン。コードレビュー、実装計画、Playwright自動化、PR管理、静的解析などの拡張機能を提供する",
   "author": {
     "name": "otto"
