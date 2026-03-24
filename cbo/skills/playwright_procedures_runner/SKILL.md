@@ -7,9 +7,9 @@ allowed-tools: Read, Glob, Grep, mcp__playwright
 
 ## コンテキスト
 - 操作内容: $ARGUMENTS
-- 手順書ディレクトリ: !`echo ${MGZL_DIR:-.mgzl}`/playwright_procedures/
-- ホスト: !`echo ${APP_HOST:-localhost:3000}`
-- スクリーンショット保存先: !`echo ${MGZL_DIR:-.mgzl}`/tmp/playwright_ss
+- 手順書ディレクトリ: !`echo $MGZL_DIR`/playwright_procedures/
+- ホスト: !`echo $APP_HOST`
+- スクリーンショット保存先: !`echo $MGZL_DIR`/tmp/playwright_ss
 
 ## タスク
 
@@ -37,7 +37,7 @@ Playwright MCPを利用してブラウザを操作します。
 ### 操作の基本フロー
 
 1. `mcp__playwright__browser_navigate` でページに遷移する
-   - ベースURLは `http://!`echo ${APP_HOST:-localhost:3000}`` を使用する
+   - ベースURLは `http://!`echo $APP_HOST`` を使用する
    - まだブラウザが開いていない場合、URLをユーザーに確認する
 2. `mcp__playwright__browser_snapshot` でページ構造を取得し、操作対象を特定する
 3. 操作を実行する（`mcp__playwright__browser_click`, `mcp__playwright__browser_fill_form` 等）
@@ -93,7 +93,7 @@ async ({ page }) => {
 
 - **操作対象の特定**: 必ず `mcp__playwright__browser_snapshot` を先に実行してから操作する
 - **結果の確認**: 操作後は `mcp__playwright__browser_snapshot` で状態変化を確認する
-- **スクリーンショット**: ユーザーへの報告時や、視覚的な確認が必要な場合に使用する。保存先は !`echo ${MGZL_DIR:-.mgzl}`/tmp/playwright_ss を指定する
+- **スクリーンショット**: ユーザーへの報告時や、視覚的な確認が必要な場合に使用する。保存先は !`echo $MGZL_DIR`/tmp/playwright_ss を指定する
 - **スナップショット削減（手順書実行時）**: `mcp__playwright__browser_snapshot` は初回の構造把握と最終確認の2回のみに限定する。中間ステップでは `mcp__playwright__browser_run_code` 内の `page.waitForSelector` 等で結果を確認する
 - **一括実行**: 連続する操作は `mcp__playwright__browser_run_code` でまとめ、API呼び出し回数を削減する
 

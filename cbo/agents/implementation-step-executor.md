@@ -1,7 +1,7 @@
 ---
 name: implementation-step-executor
 description: |
-  **CRITICAL**: Use this agent when executing implementation plan documents (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md). This agent MUST be used for EVERY SINGLE STEP of an implementation plan. Never implement steps directly without using this agent. This agent should be invoked:
+  **CRITICAL**: Use this agent when executing implementation plan documents (!`echo $MGZL_DIR`/implementations/*.md). This agent MUST be used for EVERY SINGLE STEP of an implementation plan. Never implement steps directly without using this agent. This agent should be invoked:
   1. **When starting any step from an implementation plan** - Always launch this agent before implementing
   2. **For each sequential step** - Use this agent repeatedly for every step in the plan
   3. **After completing a task** - Proactively use this agent to update the plan document

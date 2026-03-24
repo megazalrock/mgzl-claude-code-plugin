@@ -22,7 +22,7 @@ argument-hint: [ file path ]
     - @static-analysis-reviewer（TypeScript品質・コメント品質）
     - @security-performance-reviewer（セキュリティ・パフォーマンス）
 4. 全サブエージェントのレビュー結果を統合する
-5. レビュー結果を document-saver スキルで !`echo ${MGZL_DIR:-.mgzl}`/reviews/ ディレクトリに保存する
+5. レビュー結果を document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
 6. 実装計画書を作成するかどうか、 1. でユーザーに尋ねた結果を元に分岐する
   - 実装計画書を作成する場合は 7. に進む
   - 実装計画書を作成しない場合は、作成したレビュー報告書を開くかどうか AskUserQuestion でユーザーに尋ねる

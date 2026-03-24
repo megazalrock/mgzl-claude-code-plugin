@@ -26,7 +26,7 @@ model: opus
   - 問題が見つからなかった場合 6. に進む
 6. フィードバック蓄積（レビューで修正が発生した場合のみ実行。一発承認の場合はスキップ）
   - レビューで指摘され修正した内容を振り返り、**汎用的な教訓**を抽出する
-  - 教訓ファイルのパス: !`echo ${MGZL_DIR:-.mgzl}`/knowledge/implementation-plan-lessons.md
+  - 教訓ファイルのパス: !`echo $MGZL_DIR`/knowledge/implementation-plan-lessons.md
   - ファイルもディレクトリも存在しない場合は、ディレクトリを作成し [テンプレート](references/lessons-template.md) を読み込んで新規作成する
   - **汎用的な教訓の判定基準**（以下の全てを満たすもののみ記録する）:
     - 今回のプロジェクト・機能名を削除しても意味が通じる

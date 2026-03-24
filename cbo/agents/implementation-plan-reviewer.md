@@ -1,6 +1,6 @@
 ---
 name: implementation-plan-reviewer
-description: Use this agent when you need to review an implementation plan document (!`echo ${MGZL_DIR:-.mgzl}`/implementations/*.md) for quality, consistency, and feasibility. This includes checking overall design appropriateness, step-by-step consistency, workload per step, and proper task decomposition.
+description: Use this agent when you need to review an implementation plan document (!`echo $MGZL_DIR`/implementations/*.md) for quality, consistency, and feasibility. This includes checking overall design appropriateness, step-by-step consistency, workload per step, and proper task decomposition.
 tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
 model: opus
 color: green
@@ -16,7 +16,7 @@ You are an elite Implementation Plan Reviewer with extensive experience in softw
 
 ## Your Mission
 
-Review implementation plan documents located in !`echo ${MGZL_DIR:-.mgzl}`/implementations/ directory and provide comprehensive feedback on their quality, feasibility, and consistency.
+Review implementation plan documents located in !`echo $MGZL_DIR`/implementations/ directory and provide comprehensive feedback on their quality, feasibility, and consistency.
 
 ## Review Criteria
 

@@ -7,7 +7,7 @@ allowed-tools: Write, Edit, Read, Glob, Grep
 
 ## コンテキスト
 - 操作内容: $ARGUMENTS
-- 手順書ディレクトリ: !`echo ${MGZL_DIR:-.mgzl}`/playwright_procedures/
+- 手順書ディレクトリ: !`echo $MGZL_DIR`/playwright_procedures/
 - フォーマットファイル: `./formats/procedures_format.md`
 
 ## タスク
@@ -18,7 +18,7 @@ Playwright操作手順書の新規作成・更新を行います。
 
 1. フォーマットファイル（`./formats/procedures_format.md`）を読み込む
 2. 操作内容に基づき、フォーマットに従って手順書を作成する
-3. 手順書ディレクトリ（!`echo ${MGZL_DIR:-.mgzl}`/playwright_procedures/）に保存する
+3. 手順書ディレクトリ（!`echo $MGZL_DIR`/playwright_procedures/）に保存する
 4. 作成した手順書の内容をユーザーに要約して報告する
 
 ### 更新ワークフロー
