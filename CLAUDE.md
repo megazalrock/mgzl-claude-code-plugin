@@ -29,6 +29,7 @@ bun install          # 依存関係のインストール
 - SKILL.md は 500 行以内を目標とする
 - 補足情報は `references/` サブディレクトリに分離
 - スクリプトが必要な場合は `scripts/` サブディレクトリに TypeScript で作成し `bun` で実行
+- スクリプトへのパス参照は `${CLAUDE_SKILL_DIR}/scripts/<script>` を使用する
 - `description` にはトリガーとなるフレーズ・キーワードを具体的に含める
 
 ### エージェント作成

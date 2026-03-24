@@ -22,7 +22,7 @@ model: sonnet
 **ファイル名**: `yyyyMMdd-hhmmss-document-name.md`
 - タイムスタンプは `get-timestamp.ts` で取得
   ```bash
-  bun "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"
+  bun "${CLAUDE_SKILL_DIR}/scripts/get-timestamp.ts"
   ```
 - `document-name` は内容を表す簡潔な英語名（ケバブケース）
 

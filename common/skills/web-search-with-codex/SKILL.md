@@ -16,7 +16,7 @@ This skill enables internet searches using OpenAI Codex to gather up-to-date inf
 Execute the search script with your query:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/web-search-with-codex/scripts/codex_search.sh" "your search query here"
+"${CLAUDE_SKILL_DIR}/scripts/codex_search.sh" "your search query here"
 ```
 
 ### Options
@@ -28,7 +28,7 @@ Execute the search script with your query:
 Example with custom model:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/web-search-with-codex/scripts/codex_search.sh" -m gpt-5.2-codex "your search query"
+"${CLAUDE_SKILL_DIR}/scripts/codex_search.sh" -m gpt-5.2-codex "your search query"
 ```
 
 ## How It Works
@@ -43,19 +43,19 @@ Example with custom model:
 ### Search for documentation
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/web-search-with-codex/scripts/codex_search.sh" "Vue 3 Composition API best practices"
+"${CLAUDE_SKILL_DIR}/scripts/codex_search.sh" "Vue 3 Composition API best practices"
 ```
 
 ### Search for current events
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/web-search-with-codex/scripts/codex_search.sh" "latest TypeScript 5.x features"
+"${CLAUDE_SKILL_DIR}/scripts/codex_search.sh" "latest TypeScript 5.x features"
 ```
 
 ### Search for technical solutions
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/web-search-with-codex/scripts/codex_search.sh" "how to handle async errors in JavaScript"
+"${CLAUDE_SKILL_DIR}/scripts/codex_search.sh" "how to handle async errors in JavaScript"
 ```
 
 ## Notes

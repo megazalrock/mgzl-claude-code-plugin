@@ -15,7 +15,7 @@ OpenAI Codex CLI を使ってコードレビューを実行するスキル。
 1. ユーザーの引数（`-m model` を含む場合もある）をそのままスクリプトに渡して実行する:
 
 ```bash
-bun run "${CLAUDE_PLUGIN_ROOT}/skills/codex-review/scripts/codex_review.ts" <ユーザーの引数>
+bun run "${CLAUDE_SKILL_DIR}/scripts/codex_review.ts" <ユーザーの引数>
 ```
 
 2. スクリプトの実行完了を待つ（Codexが差分取得・レビューを自律的に実行する）
