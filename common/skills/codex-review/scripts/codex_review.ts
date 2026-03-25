@@ -8,6 +8,10 @@
  * 差分の取得やファイルの読み込みは Codex が自律的に行う。
  */
 
+import { tmpdir } from "os";
+import { join } from "path";
+import { unlink } from "fs/promises";
+
 export {};
 
 const args = process.argv.slice(2);
@@ -70,8 +74,6 @@ If no issues found, state the code looks good.`;
 const codexArgs = [
   "exec",
   "--skip-git-repo-check",
-  "-a",
-  "never",
   "--sandbox",
   "read-only",
 ];
@@ -80,14 +82,16 @@ if (model) {
   codexArgs.push("-m", model);
 }
 
-codexArgs.push("--json", reviewPrompt);
+const outputFile = join(tmpdir(), `codex-review-${crypto.randomUUID()}.md`);
+codexArgs.push("-o", outputFile, reviewPrompt);
 
 const proc = Bun.spawn(["codex", ...codexArgs], {
   stdout: "pipe",
   stderr: "pipe",
 });
 
-const stdout = await new Response(proc.stdout).text();
+// stdout は読み捨て（-o でファイル出力されるため不要）
+await new Response(proc.stdout).text();
 const exitCode = await proc.exited;
 
 if (exitCode !== 0) {
@@ -99,51 +103,17 @@ if (exitCode !== 0) {
   process.exit(1);
 }
 
-// Parse JSON Lines output to extract the final agent message
-const lines = stdout.trim().split("\n");
-let lastMessage = "";
-
-for (const line of lines) {
-  try {
-    const event = JSON.parse(line);
-    if (
-      event.type === "item.completed" &&
-      event.item?.type === "agent_message"
-    ) {
-      lastMessage = event.item.text;
-    }
-  } catch {
-    // Skip non-JSON lines
-  }
-}
-
-if (lastMessage) {
-  console.log(lastMessage);
-} else {
-  // Fallback: retry without --json
-  const fallbackArgs = [
-    "exec",
-    "--skip-git-repo-check",
-    "-a",
-    "never",
-    "--sandbox",
-    "read-only",
-    ...(model ? ["-m", model] : []),
-    reviewPrompt,
-  ];
-
-  const fallback = Bun.spawn(["codex", ...fallbackArgs], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const fallbackOutput = await new Response(fallback.stdout).text();
-  await fallback.exited;
-
-  if (fallbackOutput.trim()) {
-    console.log(fallbackOutput.trim());
+try {
+  const result = await Bun.file(outputFile).text();
+  if (result.trim()) {
+    console.log(result.trim());
   } else {
     console.error("Error: No review output received from Codex");
     process.exit(1);
   }
+} catch {
+  console.error("Error: Could not read Codex output file");
+  process.exit(1);
+} finally {
+  await unlink(outputFile).catch(() => {});
 }
