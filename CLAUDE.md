@@ -32,6 +32,13 @@ bun install          # 依存関係のインストール
 - スクリプトへのパス参照は `${CLAUDE_SKILL_DIR}/scripts/<script>` を使用する
 - `description` にはトリガーとなるフレーズ・キーワードを具体的に含める
 
+### SKILL.md で使える文字列置換変数
+- `${CLAUDE_SKILL_DIR}` — SKILL.md が置かれたディレクトリ。スクリプト・ファイル参照用
+- `$ARGUMENTS` / `$ARGUMENTS[N]` / `$N` — スキル呼び出し時の引数
+- `${CLAUDE_SESSION_ID}` — セッションID
+- `${CLAUDE_PLUGIN_ROOT}` — プラグインのインストールルート（hook・MCP設定向け）
+- `${CLAUDE_PLUGIN_DATA}` — 永続データディレクトリ（キャッシュ・依存関係保存用）
+
 ### エージェント作成
 - `<plugin>/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
 - 使用するスキルがある場合は `skills` フロントマターで指定
@@ -48,7 +55,7 @@ bun install          # 依存関係のインストール
 - スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
 - 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
 
-## フロントマター必須フィールド
+## フロントマター必須/任意フィールド
 
 | 種別 | 必須 | 任意 |
 |------|------|------|
