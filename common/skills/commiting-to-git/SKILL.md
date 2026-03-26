@@ -1,6 +1,6 @@
 ---
 name: commiting-to-git
-description: コミットして・git commit・変更をコミット。差分を分析しコミットメッセージを生成してコミットする。引数なしで全変更、--stagedでステージ済みのみ、-yで自動選択
+description: 差分を分析しコミットメッセージを生成してコミットする。引数なしで全変更、--stagedでステージ済みのみ、-yで自動選択。「コミットして」「コミットする」「commit」「コミットメッセージを生成」などの依頼時に使用する。
 argument-hint: [-y] [--staged]
 allowed-tools: Bash(git status), Bash(git diff), Bash(git diff --staged), Bash(git add -A), Bash(git commit -m:*)
 model: sonnet
