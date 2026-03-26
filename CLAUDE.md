@@ -30,7 +30,7 @@ bun install          # 依存関係のインストール
 - 補足情報は `references/` サブディレクトリに分離
 - スクリプトが必要な場合は `scripts/` サブディレクトリに TypeScript で作成し `bun` で実行
 - スクリプトへのパス参照は `${CLAUDE_SKILL_DIR}/scripts/<script>` を使用する
-- `description` にはトリガーとなるフレーズ・キーワードを具体的に含める
+- `description` は説明文を先に書き、末尾に「」付きでトリガーフレーズを3〜5個配置する（例: `...「コミットして」「commit」などの依頼時に使用する。`）
 
 ### SKILL.md で使える文字列置換変数
 - `${CLAUDE_SKILL_DIR}` — SKILL.md が置かれたディレクトリ。スクリプト・ファイル参照用
@@ -54,6 +54,7 @@ bun install          # 依存関係のインストール
 - `cbo/.claude-plugin/plugin.json` — cbo プラグインのメタデータ
 - スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
 - 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
+- プラグインのバージョンは `marketplace.json` の `plugins[].version` で管理する（`plugin.json` には version フィールドなし）
 
 ## フロントマター必須/任意フィールド
 
