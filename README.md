@@ -1,34 +1,6 @@
 # mgzl-claude-code-plugin
 
-個人用の Claude Code プラグイン。
-自作の Skills・Agents・Commands を一元管理する。
-
-## 構成
-
-```
-.
-├── .claude-plugin/
-│   └── marketplace.json             # マーケットプレイス定義
-├── mgzl-claude-code-plugin/         # プラグイン本体
-│   ├── .claude-plugin/
-│   │   └── plugin.json              # プラグインメタデータ
-│   ├── skills/
-│   │   ├── commiting-to-git/
-│   │   │   └── SKILL.md
-│   │   ├── refactoring-skill/
-│   │   │   ├── SKILL.md
-│   │   │   └── references/
-│   │   │       └── skill-authoring-best-practices.md
-│   │   └── web-search-with-codex/
-│   │       ├── SKILL.md
-│   │       └── scripts/
-│   │           └── codex_search.sh
-│   ├── agents/
-│   │   └── web-research-collector.md
-│   └── commands/
-│       └── load-ai-instructions.md
-└── README.md
-```
+個人用 Claude Code プラグイン。Skills・Agents・Commands を一元管理する。
 
 ## インストール
 
@@ -52,63 +24,13 @@
 ### 2. プラグインをインストール
 
 ```bash
-/plugin install mgzl-claude-code-plugin@mgzl-marketplace
+/install mgzl@mgzl-marketplace
+/install cbo@mgzl-marketplace
 ```
 
-## スキル一覧
+## プラグイン
 
-| スキル名 | 説明 | トリガー例 |
-|---|---|---|
-| `commiting-to-git` | 差分分析 → コミットメッセージ生成 → コミット | `コミットして`、`git commit` |
-| `refactoring-skill` | SKILL.md のベストプラクティス分析・改善 | スキルのリファクタリング依頼 |
-| `web-search-with-codex` | Codex CLI を使った Web 検索 | Web 検索クエリ |
-
-## エージェント一覧
-
-| エージェント名 | 説明 |
-|---|---|
-| `web-research-collector` | Web 検索で情報を収集し日本語レポートを生成 |
-
-## コマンド一覧
-
-| コマンド | 説明 |
-|---|---|
-| `/load-ai-instructions` | `ai_instructions.md` を読み込む |
-
-## 新しいスキルの追加方法
-
-1. `mgzl-claude-code-plugin/skills/<skill-name>/SKILL.md` を作成（フロントマター必須）
-2. 必要に応じて `references/` や `scripts/` サブディレクトリを追加
-
-```yaml
----
-name: skill-name
-description: >
-  トリガー条件を記載。"具体的なフレーズ" や "キーワード" を含める。
-version: 1.0.0
----
-```
-
-## 新しいエージェントの追加方法
-
-`mgzl-claude-code-plugin/agents/<agent-name>.md` を作成（フロントマター必須）。
-
-```yaml
----
-name: agent-name
-description: エージェントの説明
-model: sonnet
-tools:
-  - Read
-  - WebSearch
----
-```
-
-## 依存関係
-
-- [OpenAI Codex CLI](https://github.com/openai/codex) - `web-search-with-codex` スキルで使用（任意）
-
-## 参考
-
-- [Claude Code Plugins 公式ドキュメント](https://code.claude.com/docs/en/plugins)
-- [claude-plugins-official](https://github.com/anthropics/claude-plugins-official) - 公式プラグインリポジトリ
+| 名前 | 説明 |
+|------|------|
+| **mgzl** (`common/`) | 汎用ツール。Git コミット自動化、Web 検索など |
+| **cbo** (`cbo/`) | 開発ワークフロー支援。コードレビュー、PR 管理など |
