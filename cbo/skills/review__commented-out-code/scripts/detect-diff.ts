@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * コメントアウトされたコード検出スクリプト（diff モード）
- * Usage: bun detect-diff.ts <base_ref>
+ * Usage: bun run detect-diff.ts <base_ref>
  *
  * git diff の追加行から、コメントアウトされたコードを検出する。
  * テストファイル・モックファイルは対象外。

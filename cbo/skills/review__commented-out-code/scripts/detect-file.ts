@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * コメントアウトされたコード検出スクリプト（ファイルモード）
- * Usage: bun detect-file.ts <file1> [file2 ...]
+ * Usage: bun run detect-file.ts <file1> [file2 ...]
  *
  * 指定されたファイルの全行を走査し、コメントアウトされたコードを検出する。
  * テストファイル・モックファイルは対象外。

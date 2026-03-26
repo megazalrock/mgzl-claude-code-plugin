@@ -2,7 +2,7 @@
 
 /**
  * OpenAPIファイルからスケジュール関連のAPIを抽出するスクリプト
- * Usage: bun extract-schedule-api.ts [オプション]
+ * Usage: bun run extract-schedule-api.ts [オプション]
  *
  * オプション:
  *   --paths       パス情報のみを抽出
@@ -112,7 +112,7 @@ function extractAll(doc: OpenApiDoc): object {
 }
 
 function showHelp(): void {
-  console.log(`Usage: bun extract-schedule-api.ts [OPTION]
+  console.log(`Usage: bun run extract-schedule-api.ts [OPTION]
 
 OpenAPIファイルからスケジュール関連のAPIを抽出します。
 

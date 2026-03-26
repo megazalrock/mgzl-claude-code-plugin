@@ -29,7 +29,7 @@ model: sonnet
 以下のコマンドで検出スクリプトを実行する:
 
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/detect-diff.ts" $ARGUMENTS
+bun run "${CLAUDE_SKILL_DIR}/scripts/detect-diff.ts" $ARGUMENTS
 ```
 
 スクリプトが以下のメッセージを出力した場合はそのまま報告して終了:
@@ -49,7 +49,7 @@ bun "${CLAUDE_SKILL_DIR}/scripts/detect-diff.ts" $ARGUMENTS
 以下のコマンドで検出スクリプトを実行する:
 
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/detect-file.ts" $ARGUMENTS
+bun run "${CLAUDE_SKILL_DIR}/scripts/detect-file.ts" $ARGUMENTS
 ```
 
 スクリプトが以下のメッセージを出力した場合はそのまま報告して終了:

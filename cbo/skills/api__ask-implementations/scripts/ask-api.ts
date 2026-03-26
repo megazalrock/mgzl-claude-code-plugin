@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * APIリポジトリ調査スクリプト
- * Usage: bun ask-api.ts <調査内容>
+ * Usage: bun run ask-api.ts <調査内容>
  *
  * claude CLI の非対話モードでAPIリポジトリを調査する。
  */

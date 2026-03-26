@@ -1,7 +1,7 @@
 ---
 name: vue-tsc-runner
 description: TypeScriptの型チェックを行いたい場合に使用するスキルです。TypeScriptの型チェックを求められた場合、vue-tscを実行したい場合、`pnpm vue-tsc --noEmit` を実行したい場合、「Typeエラーをチェック」「型エラーをチェック」など指示された場合に呼び出します。引数なしでCIと同等のチェック、`--all <パス>` で全ファイルチェック（パス指定必須）。
-allowed-tools: Bash(bun */scripts/run-vue-tsc-ci.ts), Bash(bun */scripts/run-vue-tsc-special-config.ts)
+allowed-tools: Bash(bun run */scripts/run-vue-tsc-ci.ts), Bash(bun run */scripts/run-vue-tsc-special-config.ts)
 model: sonnet
 argument-hint: "[--all <パス>]"
 ---
@@ -37,7 +37,7 @@ $ARGUMENTS
 #### CIと同等（デフォルト: 引数なし）
 
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-ci.ts"
+bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-ci.ts"
 ```
 
 #### 全ファイル（`--all <パス>` 指定時）
@@ -45,7 +45,7 @@ bun "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-ci.ts"
 無関係なファイルも検知されるため `grep` で引数のパスを指定して実行する。
 
 ```bash
-bun "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-special-config.ts" | grep '<引数で指定されたパス>'
+bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-special-config.ts" | grep '<引数で指定されたパス>'
 ```
 
 ### Step 3: 結果の通知

@@ -101,7 +101,7 @@ async ({ page }) => {
 
 #### ユニークID生成
 ```
-bun "${CLAUDE_SKILL_DIR}/scripts/generate_id.ts"
+bun run "${CLAUDE_SKILL_DIR}/scripts/generate_id.ts"
 ```
 
 ## エラーハンドリング

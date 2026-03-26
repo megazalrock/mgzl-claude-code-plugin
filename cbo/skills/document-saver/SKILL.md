@@ -1,7 +1,7 @@
 ---
 name: document-saver
 description: 調査内容や議論のまとめを統一フォーマットの.mdファイルとして保存するスキル。「.mdにまとめて」「ドキュメントを保存」「調査結果をまとめて」「これを記録して」「ナレッジとして保存」「メモを残して」「議論をまとめて保存」「レビュー結果を保存」などの依頼時に呼び出される。
-allowed-tools: Write, Read, Glob, Bash(bun */scripts/get-timestamp.ts)
+allowed-tools: Write, Read, Glob, Bash(bun run */scripts/get-timestamp.ts)
 model: sonnet
 ---
 
@@ -22,7 +22,7 @@ model: sonnet
 **ファイル名**: `yyyyMMdd-hhmmss-document-name.md`
 - タイムスタンプは `get-timestamp.ts` で取得
   ```bash
-  bun "${CLAUDE_SKILL_DIR}/scripts/get-timestamp.ts"
+  bun run "${CLAUDE_SKILL_DIR}/scripts/get-timestamp.ts"
   ```
 - `document-name` は内容を表す簡潔な英語名（ケバブケース）
 
