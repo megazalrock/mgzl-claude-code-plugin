@@ -31,3 +31,22 @@
 }
 ```
 
+### mutation-tester / mutation-testing
+
+ミューテーションテストを worktree 隔離環境で実行するエージェント＋スキル。
+worktree 内でファイル編集を行うため、以下の権限設定が必要。
+
+`.claude/settings.local.json` 以下の設定を追加
+```json
+{
+  "permissions": {
+    "allow": ["Edit(/.claude/worktrees/**)"]
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": ["./.claude/worktrees/"]
+    }
+  }
+}
+```
+
