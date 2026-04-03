@@ -37,6 +37,7 @@ $MGZL_DIR/
 |--------|-----------|------|-----|
 | `APP_HOST` | `playwright:runner` | Playwright 操作時のベース URL | `localhost:3000` |
 | `API_REPO_PATH` | `api:ask-implementations` | API リポジトリの絶対パス | `/path/to/api-repo` |
+| `CDS_REPO_PATH` | `cds:ask-implementations` | デザインシステムリポジトリの絶対パス | `/path/to/craftbank-design-system` |
 | `OPENAPI_FILE` | `api:extract-open-api` | OpenAPI 定義ファイルの絶対パス | `/path/to/openapi.json` |
 
 ```json
@@ -45,6 +46,7 @@ $MGZL_DIR/
     "MGZL_DIR": ".mgzl",
     "APP_HOST": "localhost:3000",
     "API_REPO_PATH": "/path/to/api-repo",
+    "CDS_REPO_PATH": "/path/to/craftbank-design-system",
     "OPENAPI_FILE": "/path/to/openapi.json"
   }
 }
