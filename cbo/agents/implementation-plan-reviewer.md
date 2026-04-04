@@ -80,6 +80,12 @@ You must evaluate the implementation plan against these key dimensions:
 2. **Analyze each dimension** - Systematically evaluate against all criteria
 3. **Identify issues** - Document specific problems with line references
 4. **Categorize severity** - Mark issues as Critical (🔴), Warning (🟡), or Suggestion (🟢)
+   - 🔴 **Critical**: 計画の実行を阻害する、または実行後に手戻りが発生する問題。修正しなければ承認不可。Quality Gates に抵触するものは自動的にこのレベルとする
+     - 例: ステップ間の矛盾・依存関係の欠落・型定義の不整合・アーキテクチャ違反・4時間超のステップ
+   - 🟡 **Warning**: 品質や効率に影響するが、計画の実行自体は可能な問題。修正を強く推奨
+     - 例: 作業量の偏り・テスト観点の不足・命名規約の不統一・並列化の余地があるのに直列
+   - 🟢 **Suggestion**: あれば改善になるが、なくても問題ない提案
+     - 例: より良い命名案・ドキュメントの補足・タスク粒度の微調整
 5. **Provide actionable feedback** - Include specific recommendations for fixes
 
 ## Output Format
