@@ -54,7 +54,7 @@ bun install          # 依存関係のインストール
 - `cbo/.claude-plugin/plugin.json` — cbo プラグインのメタデータ
 - スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
 - 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
-- プラグインのバージョンは `marketplace.json` の `plugins[].version` で管理する（`plugin.json` には version フィールドなし）
+- プラグインのバージョンは各プラグインの `plugin.json` の `version` フィールドで管理する
 
 ## フロントマター必須/任意フィールド
 

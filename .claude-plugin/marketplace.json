@@ -7,14 +7,12 @@
     {
       "name": "mgzl",
       "source": "./common",
-      "description": "個人用 Claude Code プラグイン。Git コミット自動化、スキルリファクタリング、Web 検索などの拡張機能を提供する",
-      "version": "1.0.12"
+      "description": "個人用 Claude Code プラグイン。Git コミット自動化、スキルリファクタリング、Web 検索などの拡張機能を提供する"
     },
     {
       "name": "cbo",
       "source": "./cbo",
-      "description": "開発ワークフロー支援プラグイン。コードレビュー、実装計画、Playwright自動化、PR管理、静的解析などの拡張機能を提供する",
-      "version": "1.0.12"
+      "description": "開発ワークフロー支援プラグイン。コードレビュー、実装計画、Playwright自動化、PR管理、静的解析などの拡張機能を提供する"
     }
   ]
 }
