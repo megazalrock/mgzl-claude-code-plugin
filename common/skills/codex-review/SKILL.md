@@ -1,5 +1,5 @@
 ---
-name: codex-review
+name: codex:review
 description: Codexにコードレビューを依頼する。「Codexでレビューして」「Codexにレビュー依頼」「Codexでコードレビュー」「Codexにレビューさせて」など、Codexによるレビューを明示的に指定した場合にのみ使用する。ファイル・ブランチ差分・コミット・ディレクトリなど、レビュー対象を自然言語で引数に指定可能。
 argument-hint: [-m model] <レビュー対象>
 allowed-tools:

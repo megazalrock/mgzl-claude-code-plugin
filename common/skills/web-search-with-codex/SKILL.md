@@ -1,5 +1,5 @@
 ---
-name: web-search-with-codex
+name: codex:search
 description: Search the internet for information using OpenAI Codex. Use this skill when you need to find current information, documentation, or answers from the web. The skill uses Codex to perform searches and returns formatted results.
 allowed-tools:
   - Bash(*/scripts/codex_search.sh:*)
