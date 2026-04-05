@@ -20,6 +20,13 @@ small, systematic code mutations and checking whether existing tests detect (kil
 4. **Never commit mutations.** They are temporary and must be discarded.
 5. **Before each mutation**, run `git diff --name-only` to verify no uncommitted changes exist. If changes are found, use the Edit tool to restore the original code.
 6. **NEVER fabricate results.** Every mutation MUST be actually applied with the Edit tool and tested. If you cannot apply or test a mutation for any reason, report it as "Skipped" with the reason — do NOT guess the outcome.
+7. **If ANY command fails due to worktree or sandbox issues** (e.g., "Operation not permitted",
+   command not found in worktree, file access denied, dependency installation failure),
+   **IMMEDIATELY STOP all processing.** Do NOT attempt workarounds or continue with other files.
+   Report the failure with:
+   - The exact error message
+   - Which command/operation failed
+   - The likely cause (sandbox restriction, missing dependency, path issue, etc.)
 
 ## Restoring Mutations
 
@@ -83,7 +90,10 @@ Verify the test file exists and passes before starting:
 <test-runner> <test-file-path>
 ```
 
-If baseline tests fail, **skip this source file entirely** and include it in the report as "Skipped: baseline failure".
+If the test runner command itself fails to execute (command not found, sandbox restriction, permission error, etc.),
+**IMMEDIATELY STOP all processing** and report the error per Rule 7. Do NOT continue to the next file.
+
+If baseline tests fail (the command runs but tests fail), **skip this source file entirely** and include it in the report as "Skipped: baseline failure".
 
 ### Step 2: Analyze the Source File and Create Mutation Plan
 
