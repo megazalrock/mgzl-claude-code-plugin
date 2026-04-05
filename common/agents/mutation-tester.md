@@ -5,6 +5,7 @@ model: sonnet
 tools: Read, Edit, Bash, Grep, Glob
 color: yellow
 isolation: worktree
+memory: local
 ---
 
 You are an expert mutation testing agent. Your mission is to evaluate test suite quality by applying
