@@ -59,16 +59,7 @@ find src -name "*.ts" -o -name "*.tsx" | grep -v -E '(__tests__|\.test\.|\.spec\
 - src/domain/validator.ts
 ```
 
-### Step 3: ベースラインテストの確認
-
-全テストが通ることを確認する:
-```bash
-<test-runner>
-```
-
-ベースラインが失敗する場合は、失敗したテストを報告し、続行するか AskUserQuestion で確認する。
-
-### Step 4: エージェントの実行
+### Step 3: エージェントの実行
 
 `@mutation-tester` エージェントを **`isolation: worktree`** で起動する。
 
@@ -86,11 +77,11 @@ find src -name "*.ts" -o -name "*.tsx" | grep -v -E '(__tests__|\.test\.|\.spec\
 ファイル別のレポートと最終サマリーを出力してください。
 ```
 
-### Step 4.1: エージェント実行失敗時の処理
+### Step 3.1: エージェント実行失敗時の処理
 
 エージェントが worktree/sandbox 関連のエラーで中止した場合（「Operation not permitted」、コマンド実行不可、依存関係の問題等）:
 
-1. **Step 5（統合レポート）をスキップ**する
+1. **Step 4（統合レポート）をスキップ**する
 2. エージェントから報告されたエラー内容をそのままユーザーに伝える:
    - 失敗したコマンド・操作
    - エラーメッセージ
@@ -100,9 +91,9 @@ find src -name "*.ts" -o -name "*.tsx" | grep -v -E '(__tests__|\.test\.|\.spec\
    - worktree 対象ディレクトリの書き込み権限
    - 依存関係のインストール状態
 
-**エージェントが正常に完了した場合のみ** Step 5 に進む。
+**エージェントが正常に完了した場合のみ** Step 4 に進む。
 
-### Step 5: 統合レポートの出力
+### Step 4: 統合レポートの出力
 
 エージェントの結果を受け取り、以下の形式で統合レポートを出力する:
 
@@ -111,7 +102,6 @@ find src -name "*.ts" -o -name "*.tsx" | grep -v -E '(__tests__|\.test\.|\.spec\
 
 ## サマリー
 - 対象ファイル数: {N}
-- スキップ: {N} (ベースライン失敗等)
 - 総ミューテーション数: {total}
 - KILLED (検出): {killed} ({killed_pct}%)
 - SURVIVED (未検出): {survived} ({survived_pct}%)

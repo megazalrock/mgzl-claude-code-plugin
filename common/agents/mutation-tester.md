@@ -93,7 +93,12 @@ Verify the test file exists and passes before starting:
 If the test runner command itself fails to execute (command not found, sandbox restriction, permission error, etc.),
 **IMMEDIATELY STOP all processing** and report the error per Rule 7. Do NOT continue to the next file.
 
-If baseline tests fail (the command runs but tests fail), **skip this source file entirely** and include it in the report as "Skipped: baseline failure".
+If baseline tests fail (the command runs but tests fail), **IMMEDIATELY STOP all processing.**
+Report the failure to the user with:
+- Which source file / test file failed
+- The test output (error messages, failing test names)
+- A note that mutations cannot be evaluated against a failing baseline
+Do NOT continue to the next file or apply any mutations.
 
 ### Step 2: Analyze the Source File and Create Mutation Plan
 
@@ -174,13 +179,19 @@ For each source file, output:
 - [Specific test suggestions for each survived mutation]
 ```
 
-For skipped files:
+If baseline tests failed (processing was aborted):
 
 ```markdown
-## <source-file-path>
+## Baseline Failure — Processing Aborted
 
-**Baseline**: FAIL (skipped)
-**Reason**: <reason for baseline failure>
+**File**: <source-file-path>
+**Test file**: <test-file-path>
+**Baseline**: FAIL
+**Error output**:
+<test output / error messages>
+
+ベースラインテストが失敗しているため、ミューテーションテストを実行できません。
+先にテストを修正してから再実行してください。
 ```
 
 ## Final Summary
@@ -191,12 +202,13 @@ After processing all files, output:
 ## Total Summary
 
 - Files tested: <N>
-- Files skipped: <N>
 - Total mutations: <total>
 - Killed: <killed> (<pct>%)
 - Survived: <survived> (<pct>%)
 - Overall Score: <score>% (<rating>)
 ```
+
+Note: If baseline tests fail, this summary is NOT produced — the agent aborts immediately with a failure report instead.
 
 ## Score Criteria
 

@@ -1,7 +1,7 @@
 {
   "name": "mgzl",
   "description": "個人用 Claude Code プラグイン。Git コミット自動化、スキルリファクタリング、Web 検索などの拡張機能を提供する",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "author": {
     "name": "otto"
   }
