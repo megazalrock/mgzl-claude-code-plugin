@@ -27,6 +27,7 @@ worktree 隔離環境で安全にミューテーションを実行する。
 
 プロジェクトの `package.json` を読み取り、使用しているテストランナーを特定する:
 
+0. プロジェクト特有のテストの実行方法（スキル・コマンドなど）があればそれを使用する
 1. `package.json` の `scripts.test` を確認
 2. 依存関係から判定: `bun` → `bun test`, `vitest` → `vitest`, `jest` → `jest`
 3. 検出できない場合は AskUserQuestion でユーザーに確認する
