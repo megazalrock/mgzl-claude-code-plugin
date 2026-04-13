@@ -1,21 +1,8 @@
 {
   "name": "mgzl",
   "description": "個人用 Claude Code プラグイン。Git コミット自動化、スキルリファクタリング、Web 検索などの拡張機能を提供する",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "author": {
     "name": "otto"
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/hooks/check-mojibake.ts"
-          }
-        ]
-      }
-    ]
   }
 }
