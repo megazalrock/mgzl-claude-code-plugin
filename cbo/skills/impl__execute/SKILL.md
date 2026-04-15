@@ -3,7 +3,6 @@ name: impl:execute
 description: TaskList管理で実装計画書を実行
 argument-hint: [implementations file name | -y で確認をスキップ]
 disable-model-invocation: true
-model: opus
 ---
 
 ## コンテキスト

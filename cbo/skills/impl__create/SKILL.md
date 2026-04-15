@@ -2,7 +2,6 @@
 name: impl:create
 description: 対話形式で実装計画書を作成[skill]
 argument-hint: [what to do]
-model: opus
 ---
 
 ## コンテキスト

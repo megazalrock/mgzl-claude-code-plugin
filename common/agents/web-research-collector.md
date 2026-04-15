@@ -2,7 +2,6 @@
 name: web-research-collector
 description: Use this agent when the user needs to search the web for information on a specific topic. This agent is ideal for gathering current information, researching technical topics, finding documentation, or collecting data that requires web searches. The agent will search in English for better results but provide summaries in Japanese.
 tools: Read, WebFetch, WebSearch, Bash, MCPSearch, mcp__context7__resolve-library-id, mcp__context7__query-docs, ListMcpResourcesTool, ReadMcpResourceTool
-model: opus
 skills: codex:search
 ---
 

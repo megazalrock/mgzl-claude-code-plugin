@@ -2,7 +2,6 @@
 name: implementation-plan-creator
 description: 構造化された実装計画を作成する。ユーザーが実装計画書の作成を要求したとき、開発タスクを整理する必要があるとき、または構造化された計画が必要な新機能について議論した後に使用する。!`echo $MGZL_DIR`/implementations ディレクトリに、ステップバイステップの実装ガイダンス、難易度評価、確認事項を含む`.md`ファイルを生成する。
 tools: Bash, Glob, Grep, Read, Edit, Write, WebFetch, TodoWrite, WebSearch, Skill, Search, LSP, mcp__context7__resolve-library-id, mcp__context7__query-docs, ListMcpResourcesTool, ReadMcpResourceTool, mcp__serena__list_dir, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__write_memory, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__create_new_file, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_problems, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__replace_text_in_file, mcp__jetbrains__get_symbol_info, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done
-model: opus
 color: orange
 skills:
   - document-saver
