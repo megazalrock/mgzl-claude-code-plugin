@@ -58,12 +58,15 @@ ${reviewTarget}
 Brief overview of what was reviewed and overall assessment.
 
 ### Findings
-For each finding:
-- 🔴 **Critical**: Bugs, security issues that must be fixed
-- 🟡 **Warning**: Code quality or performance issues that should be addressed
-- 🔵 **Info**: Style or best practice suggestions
+For each finding, assign a severity score from 1 to 5:
+- **[5] Must Fix (Blocker)**: Bugs or security issues that block release/deploy
+- **[4] Strongly Recommended**: Issues that should be fixed before merge
+- **[3] Recommended**: Quality/performance issues worth addressing soon
+- **[2] Minor**: Optional improvements
+- **[1] Info**: Informational notes, no fix required
 
-Include file path, line reference, and suggested fix for each.
+Format each finding as: \`[score] <title>\` with file path, line reference, and suggested fix.
+Sort findings by score (highest first).
 
 ### Good Points
 Note positive aspects briefly.
