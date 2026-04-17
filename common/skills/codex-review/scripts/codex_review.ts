@@ -46,6 +46,8 @@ const reviewPrompt = `You are an expert code reviewer. Review the specified targ
 ${reviewTarget}
 
 ## Instructions
+Note: The sandbox is read-only. Do not run tests, builds, linters, formatters, or any command that writes to the filesystem. Base your review on static analysis only.
+
 1. Based on the review target above, obtain the relevant code or diff:
    - File path: read the file
    - Branch diff (e.g. "develop branch diff", "developブランチとの差分"): run git diff
