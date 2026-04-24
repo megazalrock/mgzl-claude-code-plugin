@@ -1,9 +1,9 @@
 ---
 name: vue-tsc-runner
-description: TypeScriptの型チェックを行いたい場合に使用するスキルです。TypeScriptの型チェックを求められた場合、vue-tscを実行したい場合、`pnpm vue-tsc --noEmit` を実行したい場合、「Typeエラーをチェック」「型エラーをチェック」など指示された場合に呼び出します。`<パス>` でCIと同等のチェック（パス指定必須）、`--all <パス>` で全ファイルチェック（パス指定必須）。
+description: TypeScriptの型チェックを行いたい場合に使用するスキルです。TypeScriptの型チェックを求められた場合、vue-tscを実行したい場合、`pnpm vue-tsc --noEmit` を実行したい場合、「Typeエラーをチェック」「型エラーをチェック」など指示された場合に呼び出します。`<パス>` でCIと同等のチェック（パス省略時は全ファイル対象）、`--all <パス>` で全ファイルチェック（パス指定必須）。
 allowed-tools: Bash(bun run */scripts/run-vue-tsc-ci.ts), Bash(bun run */scripts/run-vue-tsc-special-config.ts)
 model: sonnet
-argument-hint: "[--all] <パス>"
+argument-hint: "[--all] [<パス>]"
 ---
 
 # Vue tsc Runner
@@ -22,23 +22,28 @@ $ARGUMENTS
 
 | 引数 | 実行方法 |
 |------|----------|
-| `<ファイルパス or ディレクトリパス>` | CIと同等モード |
-| `--all <ファイルパス or ディレクトリパス>` | 全ファイルモード |
-| パスなし | **即時終了**（エラーメッセージをユーザーに表示） |
+| `<ファイルパス or ディレクトリパス>` | CIと同等モード（指定パスのエラーのみ表示） |
+| パスなし | CIと同等モード（全エラーを表示） |
+| `--all <ファイルパス or ディレクトリパス>` | 全ファイルモード（パス指定必須） |
 
-#### パスが指定されていない場合
+#### `--all` でパスが指定されていない場合
 
 ユーザーに以下を通知して**即時終了**する（コマンドは実行しない）:
-> ファイルパスまたはディレクトリパスの指定が必要です。
-> 例: `/vue-tsc-runner pages/schedules/`
+> `--all` モードはファイルパスまたはディレクトリパスの指定が必要です。
 > 例: `/vue-tsc-runner --all pages/schedules/`
 
 ### Step 2: コマンド実行
 
-#### CIと同等（`<パス>` 指定時）
+#### CIと同等（パスあり）
 
 ```bash
 bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-ci.ts" '<パス>'
+```
+
+#### CIと同等（パスなし）
+
+```bash
+bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc-ci.ts"
 ```
 
 #### 全ファイル（`--all <パス>` 指定時）
