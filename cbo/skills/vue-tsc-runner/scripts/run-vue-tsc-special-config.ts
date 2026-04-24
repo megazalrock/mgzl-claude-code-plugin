@@ -6,6 +6,13 @@ if (!targetPath) {
   process.exit(1);
 }
 
+const prepare = Bun.spawn(["pnpm", "exec", "nuxt", "prepare"], {
+  stdout: "inherit",
+  stderr: "inherit",
+  env: { ...process.env },
+});
+await prepare.exited;
+
 // vue-tsc がメモリ不足で落ちることを防止するため 8GB に設定
 const proc = Bun.spawn(["vue-tsc", "--noEmit", "--skipLibCheck", "--pretty", "false", "-p", "tsconfig.mgzl.json"], {
   stdout: "pipe",
