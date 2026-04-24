@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+const DOCKER = ["docker", "compose", "exec", "-T", "front"] as const;
+
 const args = process.argv.slice(2);
 const isAllMode = args[0] === "--all";
 const targetPath = isAllMode ? args[1] : args[0];
@@ -9,7 +11,7 @@ if (isAllMode && !targetPath) {
   process.exit(1);
 }
 
-const prepare = Bun.spawn(["pnpm", "exec", "nuxt", "prepare"], {
+const prepare = Bun.spawn([...DOCKER, "pnpm", "exec", "nuxt", "prepare"], {
   stdout: "inherit",
   stderr: "inherit",
   env: { ...process.env },
@@ -20,7 +22,7 @@ await prepare.exited;
 let useMgzlConfig = isAllMode;
 if (!isAllMode && targetPath) {
   const checkProc = Bun.spawn(
-    ["pnpm", "exec", "tsc", "--listFilesOnly", "-p", "tsconfig.ci.json"],
+    [...DOCKER, "pnpm", "exec", "tsc", "--listFilesOnly", "-p", "tsconfig.ci.json"],
     { stdout: "pipe", stderr: "pipe", env: { ...process.env } }
   );
   const files = await new Response(checkProc.stdout).text();
@@ -35,7 +37,7 @@ const tsconfigArgs = useMgzlConfig
   : ["--pretty", "false", "-p", "tsconfig.ci.json"];
 
 // vue-tsc がメモリ不足で落ちることを防止するため 8GB に設定
-const proc = Bun.spawn(["pnpm", "exec", "vue-tsc", "--noEmit", ...tsconfigArgs], {
+const proc = Bun.spawn([...DOCKER, "pnpm", "exec", "vue-tsc", "--noEmit", ...tsconfigArgs], {
   stdout: "pipe",
   stderr: "inherit",
   env: {
