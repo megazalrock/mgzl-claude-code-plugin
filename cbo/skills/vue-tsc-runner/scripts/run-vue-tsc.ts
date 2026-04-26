@@ -26,10 +26,31 @@ debugLog(`target paths (${targetPaths.length}): ${JSON.stringify(targetPaths)}`)
 
 debugLog("running 'nuxt prepare'...");
 const prepare = Bun.spawn([...DOCKER, "pnpm", "exec", "nuxt", "prepare"], {
-  stdout: "inherit",
+  stdout: "pipe",
   stderr: "inherit",
   env: { ...process.env },
 });
+
+// consola の success ログ装飾（◆ マーカー / │ 縦線枠）を含む行を除去
+const NUXT_DECORATION_RE = /[◆│]/;
+const reader = prepare.stdout.getReader();
+const decoder = new TextDecoder();
+let buffer = "";
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  buffer += decoder.decode(value, { stream: true });
+  const lines = buffer.split("\n");
+  buffer = lines.pop() ?? "";
+  for (const line of lines) {
+    if (!NUXT_DECORATION_RE.test(line)) {
+      process.stdout.write(line + "\n");
+    }
+  }
+}
+if (buffer.length > 0 && !NUXT_DECORATION_RE.test(buffer)) {
+  process.stdout.write(buffer);
+}
 await prepare.exited;
 debugLog("'nuxt prepare' finished");
 
