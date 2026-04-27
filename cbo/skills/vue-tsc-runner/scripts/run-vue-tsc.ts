@@ -100,6 +100,7 @@ async function runVueTsc(options: RunOptions): Promise<number> {
   );
 
   let output = await new Response(proc.stdout).text();
+  let filtered = false;
   if (options.filterPaths.length > 0) {
     output = output
       .split("\n")
@@ -108,11 +109,18 @@ async function runVueTsc(options: RunOptions): Promise<number> {
         return options.filterPaths.some((p) => line.includes(p));
       })
       .join("\n");
+    filtered = true;
   }
 
   process.stdout.write(output);
   const code = await proc.exited;
   debugLog(`vue-tsc finished: config=${options.configPath}, exitCode=${code}`);
+
+  // フィルタリング適用後に対象ファイルのエラーが0件なら成功とみなす
+  if (filtered && code !== 0 && output.trim().length === 0) {
+    debugLog(`no errors in filtered output; treating as success (original exitCode=${code})`);
+    return 0;
+  }
   return code;
 }
 
