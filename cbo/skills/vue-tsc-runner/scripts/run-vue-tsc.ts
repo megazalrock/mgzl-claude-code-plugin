@@ -51,8 +51,12 @@ while (true) {
 if (buffer.length > 0 && !NUXT_DECORATION_RE.test(buffer)) {
   process.stdout.write(buffer);
 }
-await prepare.exited;
+const prepareCode = await prepare.exited;
 debugLog("'nuxt prepare' finished");
+if (prepareCode !== 0) {
+  process.stderr.write(`[vue-tsc-runner] nuxt prepare failed (exitCode=${prepareCode})\n`);
+  process.exit(prepareCode);
+}
 
 type RunOptions = {
   configPath: string;
@@ -144,16 +148,16 @@ if (isAllMode) {
   debugLog("classifying paths against tsconfig.ci.json (--listFilesOnly)...");
   const checkProc = Bun.spawn(
     [...DOCKER, "pnpm", "exec", "tsc", "--listFilesOnly", "-p", "tsconfig.ci.json"],
-    { stdout: "pipe", stderr: "pipe", env: { ...process.env } }
+    { stdout: "pipe", stderr: "inherit", env: { ...process.env } }
   );
   const files = await new Response(checkProc.stdout).text();
   const checkExit = await checkProc.exited;
-  const ciFiles = checkExit === 0 ? files.split("\n") : [];
-  debugLog(
-    checkExit === 0
-      ? `tsc --listFilesOnly succeeded: ${ciFiles.length} entries indexed`
-      : `tsc --listFilesOnly failed (exitCode=${checkExit}); treating all paths as CI-out`
-  );
+  if (checkExit !== 0) {
+    process.stderr.write(`[vue-tsc-runner] tsc --listFilesOnly failed (exitCode=${checkExit})\n`);
+    process.exit(checkExit);
+  }
+  const ciFiles = files.split("\n");
+  debugLog(`tsc --listFilesOnly succeeded: ${ciFiles.length} entries indexed`);
 
   const ciTargets: string[] = [];
   const mgzlTargets: string[] = [];

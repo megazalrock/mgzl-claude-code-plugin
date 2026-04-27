@@ -54,6 +54,10 @@ bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc.ts"
 bun run "${CLAUDE_SKILL_DIR}/scripts/run-vue-tsc.ts" --all '<パス1>' '<パス2>' ...
 ```
 
+#### スクリプト失敗時の即時中断
+
+`nuxt prepare` または `tsc --listFilesOnly` がゼロ以外の exit code で終了した場合、スクリプトは即座に停止してエラーメッセージを stderr に出力する。その際はユーザーに状況を報告し、対処方法について判断を仰ぐ。
+
 ### Step 3: 結果の通知
 
 Typeエラーを検知した場合は発生したTypeエラーをユーザーへ通知し、判断を仰ぐ。
