@@ -2,7 +2,7 @@
 name: pr:update
 description: GitHubのプルリクエストのタイトルと本文を更新する。「PRを更新して」「PRの説明を書いて」「PR descriptionを作成して」などの要求時に使用。
 argument-hint: [pr number]
-allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(gh pr edit:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(gh pr edit:*), Bash(bun run:*)
 ---
 
 ## コンテキスト
@@ -17,16 +17,17 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(
 
 ### Phase 2: 情報収集
 
-3. 対象PRの現在の内容を確認
-   - `gh pr view <PR番号> --json title,body`
+3. 対象PRの現在の内容・コミットを一括確認
+   - `gh pr view <PR番号> --json title,body,commits --jq '{title,body,commits:[.commits[].messageHeadline]}'`
 4. `reference/pr_template.md` を読み込み、PRのフォーマット（セクション構成）を把握
 5. 過去PRから書き方・文体を把握
-   - `gh pr list --author @me --state merged --limit 5 --json number,title`
-   - いくつかのPRの詳細を確認（`gh pr view <PR番号> --json title,body`）
+   - `bun run "${CLAUDE_SKILL_DIR}/scripts/fetch_past_prs.ts"`
+   - 出力は JSON 配列（number, title, body）。キャッシュから取得するため通常は GraphQL 呼び出しが発生しない
+   - キャッシュを強制更新したい場合: `bun run "${CLAUDE_SKILL_DIR}/scripts/fetch_past_prs.ts" --refresh`
+   - スクリプトが失敗した場合（レートリミット超過等）はこのステップをスキップし、テンプレートと変更内容のみを元に本文を作成する
 6. 対象PRの変更内容を確認
    - 変更規模の把握: `gh pr diff <PR番号> --stat`（まず全体の変更規模を把握する）
    - 変更ファイル一覧: `gh pr diff <PR番号> --name-only`
-   - コミットメッセージ: `gh pr view <PR番号> --json commits --jq '.commits[].messageHeadline'`
    - diffが大きい場合（目安: 500行以上）は、ファイル単位で `gh pr diff <PR番号> -- <ファイルパス>` で確認する
    - diffが小さい場合は全体を一括で確認してもよい
 
