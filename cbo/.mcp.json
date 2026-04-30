@@ -26,10 +26,8 @@
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp@latest",
-        "--extension",
-        "--user-data-dir",
-        "/Users/otto/Library/Application Support/Google/Chrome/Profile 7"
+        "@playwright/mcp@0.0.70",
+        "--extension"
       ],
       "env": {
         "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "U3UlNmkY-MLpoc_SZTV6TlHHyxBRA_qYf_TKgnMAOkc"
