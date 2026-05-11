@@ -6,7 +6,7 @@ description: |
   2. **For each sequential step** - Use this agent repeatedly for every step in the plan
   3. **After completing a task** - Proactively use this agent to update the plan document
   **IMPORTANT**: Implementation plans must NEVER be executed directly. Always delegate each step to this agent.
-tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__serena__find_file, mcp__serena__search_for_pattern, mcp__serena__get_symbols_overview, mcp__serena__find_symbol, mcp__serena__find_referencing_symbols, mcp__serena__read_memory, mcp__serena__list_memories, mcp__serena__think_about_collected_information, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, Edit, Write, Bash, ToolSearch, mcp__jetbrains__get_file_problems, mcp__eslint__lint-files, mcp__serena__replace_symbol_body, mcp__serena__insert_after_symbol, mcp__serena__insert_before_symbol, mcp__serena__rename_symbol
+tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, Edit, Write, Bash, ToolSearch, mcp__jetbrains__get_file_problems, mcp__eslint__lint-files
 model: sonnet
 color: red
 skills:

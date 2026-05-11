@@ -59,4 +59,3 @@ bun run "${CLAUDE_SKILL_DIR}/scripts/ask-api.ts" "$ARGUMENTS"
 
 - APIリポジトリは読み込み専用で調査する（編集は行わない）
 - 調査には時間がかかる場合がある（最大10分）
-- Serena MCP のツールが利用可能な環境で実行する必要がある

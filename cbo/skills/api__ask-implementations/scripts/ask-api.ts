@@ -10,15 +10,6 @@ const ALLOWED_TOOLS = [
   "Read",
   "Glob",
   "Grep",
-  "mcp__serena__list_dir",
-  "mcp__serena__find_file",
-  "mcp__serena__search_for_pattern",
-  "mcp__serena__get_symbols_overview",
-  "mcp__serena__find_symbol",
-  "mcp__serena__find_referencing_symbols",
-  "mcp__serena__read_memory",
-  "mcp__serena__list_memories",
-  "mcp__serena__think_about_collected_information",
 ] as const
 
 const API_REPO_PATH = process.env.API_REPO_PATH;
