@@ -38,6 +38,7 @@ bun install          # 依存関係のインストール
 - `${CLAUDE_SESSION_ID}` — セッションID
 - `${CLAUDE_PLUGIN_ROOT}` — プラグインのインストールルート（hook・MCP設定向け）
 - `${CLAUDE_PLUGIN_DATA}` — 永続データディレクトリ（キャッシュ・依存関係保存用）
+- `${CLAUDE_PROJECT_DIR}` — Claude Code が起動されたプロジェクトのルートディレクトリ
 
 ### エージェント作成
 - `<plugin>/agents/<agent-name>.md` にフロントマター (`name`, `description`, `model`, `tools`) を記載
