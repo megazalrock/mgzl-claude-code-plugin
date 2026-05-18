@@ -25,11 +25,17 @@ debugLog(`mode: ${isAllMode ? "--all" : targetPaths.length === 0 ? "no-paths" : 
 debugLog(`target paths (${targetPaths.length}): ${JSON.stringify(targetPaths)}`);
 
 debugLog("running 'nuxt prepare'...");
-const prepare = Bun.spawn([...DOCKER, "pnpm", "exec", "nuxt", "prepare"], {
-  stdout: "pipe",
-  stderr: "inherit",
-  env: { ...process.env },
-});
+// コンテナ内の pnpm install が TTY 無し環境で
+// `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` を出して中断するのを防ぐため、
+// docker compose exec の `-e` で `CI=true` をコンテナ内プロセスへ明示的に渡す。
+const prepare = Bun.spawn(
+  [...DOCKER_EXEC, "-e", "CI=true", DOCKER_SERVICE, "pnpm", "exec", "nuxt", "prepare"],
+  {
+    stdout: "pipe",
+    stderr: "inherit",
+    env: { ...process.env },
+  }
+);
 
 // consola の success ログ装飾（◆ マーカー / │ 縦線枠）を含む行を除去
 const NUXT_DECORATION_RE = /[◆│]/;
