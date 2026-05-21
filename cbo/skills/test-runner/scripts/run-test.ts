@@ -13,7 +13,7 @@ if (!testPath) {
   process.exit(1);
 }
 
-const testCommand = process.env.TEST_COMMAND ?? "pnpm exec vitest run";
+const testCommand = process.env.TEST_COMMAND ?? "vitest run";
 const [cmd, ...args] = testCommand.split(" ");
 
 if (!cmd) {
