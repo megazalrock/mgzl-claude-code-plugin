@@ -13,7 +13,7 @@ if (!testPath) {
   process.exit(1);
 }
 
-const testCommand = process.env.TEST_COMMAND ?? "vitest run";
+const testCommand = process.env.TEST_COMMAND ?? "vitest run --reporter dot";
 const [cmd, ...args] = testCommand.split(" ");
 
 if (!cmd) {
