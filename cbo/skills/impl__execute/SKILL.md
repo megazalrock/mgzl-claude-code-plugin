@@ -71,17 +71,29 @@ disable-model-invocation: true
 
 7. 全ステップ完了後、コードレビュータスクを実行
   - TaskUpdate でステータスを `in_progress` に変更
-  - テストコードの場合は @reviewer-for-test-code サブエージェントでレビュー
-  - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance サブエージェントで**並列**でレビュー
-  - レビュー結果に問題があれば @code-fix-executor を実行し再レビュー
-  - 問題がなければ TaskUpdate でステータスを `completed` に変更
+  - 修正回数カウンタを 0 で初期化し、以下のレビュー→修正ループを実行する（修正は最大 2 回まで）
+    1. **レビュー実施**
+       - テストコードの場合は @reviewer-for-test-code サブエージェントでレビュー
+       - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance サブエージェントで**並列**でレビュー
+    2. **判定**
+       - `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **0 件** → ループを抜ける
+       - 指摘が **1 件以上** かつ **修正回数 < 2** → 3. へ進む
+       - 指摘が **1 件以上** かつ **修正回数 ≥ 2** → 4. へ進む
+    3. **修正**
+       - 指摘箇所を直接修正し、修正回数を 1 増やす
+       - 1. に戻る
+    4. **上限到達時のユーザー判断**
+       - AskUserQuestion で「completed にする / もう一度だけ修正を試みる / 中止する」を提示
+         - 「completed にする」→ ループを抜ける
+         - 「もう一度だけ修正を試みる」→ 3. に戻る（再度 4. に到達したら再びユーザー確認）
+         - 「中止する」→ 実行を中止し、残った指摘内容をユーザーに報告
+  - ループを抜けた場合は TaskUpdate でステータスを `completed` に変更
 
 8. 実装計画書のタイトルに「（実装完了）」と追記
 
 9. 全ての作業が完了した旨をユーザーに通知
 
 ## 注意事項
-- レビューを2回以上繰り返しても修正できない場合は実行を中止し、問題点を報告
 - タスクの進捗はいつでも TaskList で確認可能
 - チーム実行中にチームメイトがエラーや問題を報告した場合は、SendMessage で指示を送り対処する
 - チームメイトが応答しなくなった場合は、shutdown_request を送信してから手動で対処する
