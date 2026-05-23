@@ -17,11 +17,12 @@ model: sonnet
 1. レビュー対象ファイル一覧が空の場合ははその旨をユーザーに通知し終了
 2. レビュー対象ファイル一覧を元にファイルごとにファイルごとのタスクをTaskListに登録
   - ファイルごとにレビュー用のサブエージェントを決定する
-    - テストファイルの場合は @test-code-reviewer サブエージェントを選択
-    - その他のファイルの場合は、以下の3つのサブエージェントで**並列**でレビュー:
-      - @code-quality-reviewer（コード設計・構造・可読性）
-      - @static-analysis-reviewer（TypeScript品質・コメント品質）
-      - @security-performance-reviewer（セキュリティ・パフォーマンス）
+    - テストファイルの場合は @reviewer-for-test-code サブエージェントを選択
+    - その他のファイルの場合は、以下の4つのサブエージェントで**並列**でレビュー:
+      - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
+      - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
+      - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
+      - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
   - ファイルごとに `git diff $ARGUMENTS <filepath>` でファイルごとの差分を取得
   - ファイルごとの差分を選択したサブエージェントでレビュー
 3. レビューを並列で実行するように、TaskListの依存関係を設定

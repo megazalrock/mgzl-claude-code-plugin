@@ -71,8 +71,8 @@ disable-model-invocation: true
 
 7. 全ステップ完了後、コードレビュータスクを実行
   - TaskUpdate でステータスを `in_progress` に変更
-  - テストコードの場合は @test-code-reviewer サブエージェントでレビュー
-  - それ以外は @code-quality-reviewer、@static-analysis-reviewer、@security-performance-reviewer サブエージェントで**並列**でレビュー
+  - テストコードの場合は @reviewer-for-test-code サブエージェントでレビュー
+  - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance サブエージェントで**並列**でレビュー
   - レビュー結果に問題があれば @code-fix-executor を実行し再レビュー
   - 問題がなければ TaskUpdate でステータスを `completed` に変更
 

@@ -1,6 +1,6 @@
 ---
 name: code-fix-executor
-description: Use this agent when レビューエージェント（code-quality-reviewer、static-analysis-reviewer、security-performance-reviewer） has identified issues that need to be fixed. This agent takes the review findings and systematically applies corrections to the codebase. 
+description: Use this agent when レビューエージェント（reviewer-for-style、reviewer-for-logic、reviewer-for-design、reviewer-for-security-performance、reviewer-for-test-code） has identified issues that need to be fixed. This agent takes the review findings and systematically applies corrections to the codebase. 
 tools: Bash, Glob, Grep, Read, Edit, Write, NotebookEdit, WebFetch, TodoWrite, WebSearch, Skill, LSP, MCPSearch, mcp__jetbrains__execute_run_configuration, mcp__jetbrains__get_file_problems, mcp__jetbrains__create_new_file, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__replace_text_in_file, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__jetbrains__rename_refactoring, mcp__jetbrains__runNotebookCell, mcp__jetbrains__permission_prompt, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__eslint__lint-files, ListMcpResourcesTool, ReadMcpResourceTool, mcp__ide__getDiagnostics
 color: red
 skills:

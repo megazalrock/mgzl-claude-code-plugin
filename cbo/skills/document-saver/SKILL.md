@@ -10,7 +10,7 @@ model: sonnet
 ### Step 1: 種類の特定とファイル名の決定
 
 以下のいずれかのドキュメント種類を特定する：
-- **レビュー結果**: レビューエージェント（code-quality-reviewer、static-analysis-reviewer、security-performance-reviewer、test-code-reviewer）が出力したレビュー結果
+- **レビュー結果**: レビューエージェント（reviewer-for-style、reviewer-for-logic、reviewer-for-design、reviewer-for-security-performance、reviewer-for-test-code）が出力したレビュー結果
 - **実装計画書**: implementation-plan-creator サブエージェントが出力した実装計画書
 - **調査レポート**: コードベースや技術調査の結果
 - **技術メモ**: 実装中に得た知見や気づき
