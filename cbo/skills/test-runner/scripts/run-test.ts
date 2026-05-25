@@ -13,15 +13,9 @@ if (!testPath) {
   process.exit(1);
 }
 
-const testCommand = process.env.TEST_COMMAND ?? "vitest run --reporter dot";
-const [cmd, ...args] = testCommand.split(" ");
+const testCommand = ["vitest", "run", "--reporter", "dot", "--maxWorkers", "6"];
 
-if (!cmd) {
-  console.error("エラー: テストコマンドが空です。TEST_COMMAND を確認してください。");
-  process.exit(1);
-}
-
-const proc = Bun.spawn([cmd, ...args, testPath], {
+const proc = Bun.spawn([...testCommand, testPath], {
   stdout: "inherit",
   stderr: "inherit",
   env: { ...process.env },
