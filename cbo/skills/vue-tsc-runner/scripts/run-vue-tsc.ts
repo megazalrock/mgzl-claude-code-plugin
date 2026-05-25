@@ -24,46 +24,6 @@ debugLog(`raw args: ${JSON.stringify(rawArgs)}`);
 debugLog(`mode: ${isAllMode ? "--all" : targetPaths.length === 0 ? "no-paths" : "ci-classify"}`);
 debugLog(`target paths (${targetPaths.length}): ${JSON.stringify(targetPaths)}`);
 
-debugLog("running 'nuxt prepare'...");
-// コンテナ内の pnpm install が TTY 無し環境で
-// `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` を出して中断するのを防ぐため、
-// docker compose exec の `-e` で `CI=true` をコンテナ内プロセスへ明示的に渡す。
-const prepare = Bun.spawn(
-  [...DOCKER_EXEC, "-e", "CI=true", DOCKER_SERVICE, "pnpm", "exec", "nuxt", "prepare"],
-  {
-    stdout: "pipe",
-    stderr: "inherit",
-    env: { ...process.env },
-  }
-);
-
-// consola の success ログ装飾（◆ マーカー / │ 縦線枠）を含む行を除去
-const NUXT_DECORATION_RE = /[◆│]/;
-const reader = prepare.stdout.getReader();
-const decoder = new TextDecoder();
-let buffer = "";
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  buffer += decoder.decode(value, { stream: true });
-  const lines = buffer.split("\n");
-  buffer = lines.pop() ?? "";
-  for (const line of lines) {
-    if (!NUXT_DECORATION_RE.test(line)) {
-      process.stdout.write(line + "\n");
-    }
-  }
-}
-if (buffer.length > 0 && !NUXT_DECORATION_RE.test(buffer)) {
-  process.stdout.write(buffer);
-}
-const prepareCode = await prepare.exited;
-debugLog("'nuxt prepare' finished");
-if (prepareCode !== 0) {
-  process.stderr.write(`[vue-tsc-runner] nuxt prepare failed (exitCode=${prepareCode})\n`);
-  process.exit(prepareCode);
-}
-
 type RunOptions = {
   configPath: string;
   skipLibCheck: boolean;
