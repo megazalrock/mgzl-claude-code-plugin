@@ -1,0 +1,26 @@
+{
+  "skill_name": "investigate-bug",
+  "evals": [
+    {
+      "id": 1,
+      "name": "js-date-timezone",
+      "prompt": "予約日が1日ズレるバグの調査をお願いします。バグ報告とソースは evals/fixtures/case1-js-date/ にあります。REPORT.md を読んで、徹底的に原因を調査してください。",
+      "expected_output": "原因は new Date() がタイムゾーン情報なしのローカル時刻文字列をローカル時刻として解釈し、formatDateForDisplay が getUTC* を使うことで日付が1日前にズレること。修正方針として (a) フロントから ISO 8601 形式（タイムゾーン込み）で送る (b) サーバー側で意図したタイムゾーンとして parse する (c) 表示時もローカル時刻メソッドを使う、などが提示される。`createdAt` や DB 設定など他の仮説が一度は考慮されることが望ましい。",
+      "files": ["evals/fixtures/case1-js-date/"]
+    },
+    {
+      "id": 2,
+      "name": "py-mutable-default",
+      "prompt": "ショッピングカートに前のユーザーの商品が混ざるバグの調査をお願いします。バグ報告とソースは evals/fixtures/case2-py-mutable/ にあります。REPORT.md を読んで、徹底的に原因を調査してください。",
+      "expected_output": "原因は add_to_cart の `cart=[]` がミュータブルデフォルト引数で、関数定義時に1度だけ作られたリストが呼び出しごとに使い回されること。修正方針として `cart=None` にして関数内で `[] if cart is None else cart` する、CartService 側で自前のリストを保持する、などが提示される。セッション/グローバル状態などの仮説も考慮されることが望ましい。",
+      "files": ["evals/fixtures/case2-py-mutable/"]
+    },
+    {
+      "id": 3,
+      "name": "shell-quoting",
+      "prompt": "バックアップスクリプトがスペース入りファイルを取りこぼすバグの調査をお願いします。バグ報告とソースは evals/fixtures/case3-shell-quoting/ にあります。REPORT.md を読んで、徹底的に原因を調査してください。",
+      "expected_output": "原因は `for f in $(ls $SOURCE)` で単語分割が発生し、スペース入りファイル名が複数トークンに分割されること、および `cp $SOURCE/$f $DEST/$f` の変数を引用符で囲んでいないこと。修正方針としては glob (`for f in \"$SOURCE\"/*`) を使い、変数を `\"$f\"` のように引用符で囲む。find + -print0 / xargs -0 を使う案も可。",
+      "files": ["evals/fixtures/case3-shell-quoting/"]
+    }
+  ]
+}
