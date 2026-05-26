@@ -18,11 +18,12 @@ model: sonnet
 2. レビュー対象ファイル一覧を元にファイルごとにファイルごとのタスクをTaskListに登録
   - ファイルごとにレビュー用のサブエージェントを決定する
     - テストファイルの場合は @reviewer-for-test-code サブエージェントを選択
-    - その他のファイルの場合は、以下の4つのサブエージェントで**並列**でレビュー:
+    - その他のファイルの場合は、以下の5つのサブエージェントで**並列**でレビュー:
       - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
       - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
       - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
       - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
+      - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
   - ファイルごとに `git diff $ARGUMENTS <filepath>` でファイルごとの差分を取得
   - ファイルごとの差分を選択したサブエージェントでレビュー
 3. レビューを並列で実行するように、TaskListの依存関係を設定
