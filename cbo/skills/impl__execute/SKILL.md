@@ -73,8 +73,8 @@ disable-model-invocation: true
   - TaskUpdate でステータスを `in_progress` に変更
   - 修正回数カウンタを 0 で初期化し、以下のレビュー→修正ループを実行する（修正は最大 2 回まで）
     1. **レビュー実施**
-       - テストコードの場合は @reviewer-for-test-code サブエージェントでレビュー
-       - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance サブエージェントで**並列**でレビュー
+       - テストコードの場合は @reviewer-for-test-code、@reviewer-for-comments サブエージェントで並列レビュー
+       - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance、@reviewer-for-comments サブエージェントで**並列**でレビュー
     2. **判定**
        - `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **0 件** → ループを抜ける
        - 指摘が **1 件以上** かつ **修正回数 < 2** → 3. へ進む
