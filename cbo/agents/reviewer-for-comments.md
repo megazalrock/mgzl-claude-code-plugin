@@ -69,7 +69,7 @@ Flag comments that pay no rent.
 - Inconsistent terminology — the same concept referred to by multiple names across nearby comments
 - Typos and obvious spelling mistakes in comments
 - **Commented-out code** — leftover old implementations (e.g., `// const oldFn = ...`) or debug statements (e.g., `// console.log(...)`). Git history preserves the deleted version, so commented-out code rarely earns its place. Flag for removal unless an explicit `// keep for reference because <reason>` comment is attached
-- **Review-trail / work-history comments** — notes that record *the process* of arriving at the current code rather than helping a reader understand the code itself. Examples: `// LOGIC-E 対応`, `// STYLE-3 fix`, `// レビュー対応`, `// 指摘対応`, `// PR コメント反映`, `// @reviewer の指摘で修正`, `// addressed LOGIC-3`. Git history, PR descriptions, and review threads are the proper home for this information — flag for removal. (Severity `[4]`.)
+- **Review-trail / work-history comments** — notes that record *the process* of arriving at the current code rather than helping a reader understand the code itself. Examples: `// LOGIC-E 対応`, `// STYLE-3 fix`, `// レビュー対応`, `// 指摘対応`, `// PR コメント反映`, `// @reviewer の指摘で修正`, `// addressed LOGIC-3`, `// PR #123 で追加`, `// see PR #456`, `// closes #42`, `// fixes #100`, `// see commit abc1234`, `// reverts abc1234`. Git history, PR descriptions, and review threads are the proper home for this information — flag for removal. (Severity `[4]`.)
 - Other redundant commentary whose removal would not impair a reader's understanding
 
 ### 4. Suggestions for additional comments
@@ -87,7 +87,7 @@ This agent uses only three severity levels. Per the agent's scope, `[5]` and `[2
 
 | Score | Label | Meaning |
 |---|---|---|
-| `[4]` | 強く推奨 | Comments that diverge from the implementation (including **misleading** comments that contradict the actual behavior), or references to files / symbols not present in the repository. References to external resources should use URLs. **Also includes review-trail / work-history comments that describe the editing process rather than the code itself.** |
+| `[4]` | 強く推奨 | Comments that diverge from the implementation (including **misleading** comments that contradict the actual behavior), or references to files / symbols not present in the repository. References to external resources should use URLs. **Also includes review-trail / work-history comments that describe the editing process rather than the code itself, including references to PR numbers, issue numbers, or commit hashes.** |
 | `[3]` | 推奨 | Comments that describe *what* the code does rather than *why*; long comments whose intent is unclear; inconsistent terminology; typos; **commented-out code** left in the file; otherwise redundant comments |
 | `[1]` | 情報 | Suggestions to add a comment where one would help |
 
