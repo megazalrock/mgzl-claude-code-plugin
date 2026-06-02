@@ -1,8 +1,5 @@
 #!/usr/bin/env bun
 
-const DOCKER_EXEC = ["docker", "compose", "exec", "-T"] as const;
-const DOCKER_SERVICE = "front";
-
 const rawArgs = process.argv.slice(2);
 const isAllMode = rawArgs.includes("--all");
 const isDebug = rawArgs.includes("--debug");
@@ -42,36 +39,16 @@ async function runVueTsc(options: RunOptions): Promise<number> {
   debugLog(
     `running vue-tsc: config=${options.configPath}, skipLibCheck=${options.skipLibCheck}, ` +
       `filterPaths=${JSON.stringify(options.filterPaths)}, excludeContextLines=${options.excludeContextLines}, ` +
-      `containerEnv=NODE_OPTIONS=--max_old_space_size=8192,CI=true`
+      `env=NODE_OPTIONS=--max_old_space_size=8192`
   );
 
-  // コンテナ内の vue-tsc がメモリ不足で落ちることを防止するため、
-  // docker compose exec の `-e` でコンテナへ NODE_OPTIONS を直接渡す（heap 上限 8GB）。
-  // ホスト側 process.env.NODE_OPTIONS は docker compose exec を介すと
-  // コンテナ内プロセスへ伝搬しないため、`-e` での明示が必須。
-  // また CI=true は pnpm exec 時の依存関係チェックで node_modules 再構築が
-  // 走る際、`-T` で TTY が無いことに起因する ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY
-  // を回避するため（pnpm 公式の推奨対処）。
-  const proc = Bun.spawn(
-    [
-      ...DOCKER_EXEC,
-      "-e",
-      "NODE_OPTIONS=--max_old_space_size=8192",
-      "-e",
-      "CI=true",
-      DOCKER_SERVICE,
-      "pnpm",
-      "exec",
-      "vue-tsc",
-      "--noEmit",
-      ...tscArgs,
-    ],
-    {
-      stdout: "pipe",
-      stderr: "inherit",
-      env: { ...process.env },
-    }
-  );
+  // vue-tsc をホスト上で直接実行する。メモリ不足で落ちることを防止するため、
+  // spawn の env で NODE_OPTIONS を付与して heap 上限を 8GB に引き上げる。
+  const proc = Bun.spawn(["vue-tsc", "--noEmit", ...tscArgs], {
+    stdout: "pipe",
+    stderr: "inherit",
+    env: { ...process.env, NODE_OPTIONS: "--max_old_space_size=8192" },
+  });
 
   let output = await new Response(proc.stdout).text();
   let filtered = false;
@@ -116,21 +93,8 @@ if (isAllMode) {
   });
 } else {
   debugLog("classifying paths against tsconfig.ci.json (--listFilesOnly)...");
-  // CI=true は pnpm exec の依存チェックで node_modules 再構築が走った際の
-  // TTY 不在による中断（ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY）を回避するため。
   const checkProc = Bun.spawn(
-    [
-      ...DOCKER_EXEC,
-      "-e",
-      "CI=true",
-      DOCKER_SERVICE,
-      "pnpm",
-      "exec",
-      "tsc",
-      "--listFilesOnly",
-      "-p",
-      "tsconfig.ci.json",
-    ],
+    ["tsc", "--listFilesOnly", "-p", "tsconfig.ci.json"],
     { stdout: "pipe", stderr: "inherit", env: { ...process.env } }
   );
   const files = await new Response(checkProc.stdout).text();
