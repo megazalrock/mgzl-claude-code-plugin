@@ -89,9 +89,11 @@ disable-model-invocation: true
          - 「中止する」→ 実行を中止し、残った指摘内容をユーザーに報告
   - ループを抜けた場合は TaskUpdate でステータスを `completed` に変更
 
-8. 実装計画書のタイトルに「（実装完了）」と追記
+8. 知見蓄積: タスク7のレビューループ中に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** 検出された場合のみ、`${CLAUDE_SKILL_DIR}/../../references/review-lessons/accumulation-procedure.md` を Read し、その手順に従って !`echo $MGZL_DIR`/knowledge/implementation-lessons.md に汎用的なコード実装の教訓を蓄積する。`[2]` 以下のみ・0 件ならスキップする
 
-9. 全ての作業が完了した旨をユーザーに通知
+9. 実装計画書のタイトルに「（実装完了）」と追記
+
+10. 全ての作業が完了した旨をユーザーに通知
 
 ## 注意事項
 - タスクの進捗はいつでも TaskList で確認可能

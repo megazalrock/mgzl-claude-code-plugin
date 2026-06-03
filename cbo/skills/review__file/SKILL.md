@@ -5,7 +5,7 @@ argument-hint: [ file path ]
 ---
 
 このスキルではレビューを行い、レビュー結果をまとめたり、実装計画書を作成したりすることに集中する
-**このスキルの実行ではファイルの修正を行ってはならない**
+**このスキルの実行ではファイルの修正を行ってはならない**（教訓ファイルはレビュー対象コードではなく knowledge ストアであり、本制約の対象外）
 
 # コンテキスト
 
@@ -24,3 +24,5 @@ argument-hint: [ file path ]
     - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
 3. 全サブエージェントのレビュー結果を統合する
 4. レビュー結果を document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
+5. 知見蓄積: 統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`${CLAUDE_SKILL_DIR}/../../references/review-lessons/accumulation-procedure.md` を Read し、その手順に従って !`echo $MGZL_DIR`/knowledge/implementation-lessons.md に汎用的なコード実装の教訓を蓄積する。`[2]` 以下のみ・0 件ならスキップする
+6. レビュー結果の保存先パスと、蓄積した教訓の件数（スキップ時はその旨）をユーザーに伝え終了する
