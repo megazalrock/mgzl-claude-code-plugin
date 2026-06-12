@@ -1,38 +1,56 @@
 ---
 name: review:diff
 description: 指定されたコミットやブランチとの差分をレビュー
-argument-hint: [branch/tag/commit]
+argument-hint: [branch/tag/commit] [--target <絞り込み指定>] [--simple]
 model: sonnet
 ---
 
 このスキルではレビューを行い、レビュー結果をまとめたり、実装計画書を作成したりすることに集中する
 **このスキルの実行ではファイルの修正を行ってはならない**（教訓ファイルはレビュー対象コードではなく knowledge ストアであり、本制約の対象外）
 
+## 引数
+
+$ARGUMENTS を以下の3つに解析する:
+
+- **diff 対象**（省略可）: 最初のフラグ以外の引数。branch/tag/commit を指定する
+- **`--target <絞り込み指定>`**（省略可）: レビュー対象ファイルを絞り込む自然言語の指定。`--target` の直後から次のフラグまたは末尾までを値として扱う（例: 「新規ファイルのみ」「既存ファイルのみ」「認証に関係するファイルのみ」「`src/api/` 以下」）
+- **`--simple`**（省略可）: 簡易レビューモードを有効化する
+
 ## コンテキスト
 
-- レビュー対象ファイル一覧: !`git diff --name-only $ARGUMENTS`
+- 渡された引数: $ARGUMENTS
 
 ## タスク
 
-1. レビュー対象ファイル一覧が空の場合はその旨をユーザーに通知し終了
-2. **「ファイル × レビュー観点」の組み合わせごとに1つのサブエージェント呼び出し**を TaskList に1タスクとして登録する
+1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定する
+2. `git diff --name-status <diff対象>` を実行してレビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
+3. 絞り込み指定がある場合、ステータス・ファイルパス・必要に応じて差分内容から該当性を判断し、ファイル一覧を絞り込む
+4. レビュー対象ファイル一覧（絞り込み後）が空の場合はその旨をユーザーに通知し終了
+5. **「ファイル × レビュー観点」の組み合わせごとに1つのサブエージェント呼び出し**を TaskList に1タスクとして登録する
   - 各タスクは「1つのファイルの差分を、1つの観点専門のサブエージェントでレビューする」単位
   - 観点（=サブエージェント）の選び分け:
-    - テストファイル → 以下の2つ
-      - @reviewer-for-test-code
-      - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
-    - その他のファイル → 以下の5つ
-      - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
-      - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
-      - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
-      - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
-      - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
-3. 各タスクのサブエージェントへの入力は次のとおり:
-  - 対象ファイルの差分を `git diff $ARGUMENTS <filepath>` で取得し、**その差分のみ**を渡す
+    - 通常モード:
+      - テストファイル → 以下の2つ
+        - @reviewer-for-test-code
+        - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
+      - その他のファイル → 以下の5つ
+        - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
+        - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
+        - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
+        - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
+        - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
+    - 簡易モード（`--simple` 指定時）:
+      - テストファイル → @reviewer-for-test-code のみ
+      - その他のファイル → 以下の3つ
+        - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
+        - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
+        - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
+6. 各タスクのサブエージェントへの入力は次のとおり:
+  - 対象ファイルの差分を `git diff <diff対象> <filepath>` で取得し、**その差分のみ**を渡す
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
-4. 全タスク間に依存関係を持たせず、並列実行されるようにする
-5. 全てのタスクを実行
-6. 全てのレビュー結果をまとめ、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
-7. 知見蓄積: 統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`${CLAUDE_SKILL_DIR}/../../references/review-lessons/accumulation-procedure.md` を Read し、その手順に従って !`echo $MGZL_DIR`/knowledge/implementation-lessons.md に汎用的なコード実装の教訓を蓄積する。`[2]` 以下のみ・0 件ならスキップする
-8. 保存したレビュー報告書を mcp__jetbrains__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
-9. レビュー結果の保存先パスと、蓄積した教訓の件数（スキップ時はその旨）をユーザーに伝え終了する
+7. 全タスク間に依存関係を持たせず、並列実行されるようにする
+8. 全てのタスクを実行
+9. 全てのレビュー結果をまとめ、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
+10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`${CLAUDE_SKILL_DIR}/../../references/review-lessons/accumulation-procedure.md` を Read し、その手順に従って !`echo $MGZL_DIR`/knowledge/implementation-lessons.md に汎用的なコード実装の教訓を蓄積する。`[2]` 以下のみ・0 件ならスキップする
+11. 保存したレビュー報告書を mcp__jetbrains__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
+12. レビュー結果の保存先パスと、蓄積した教訓の件数（スキップ時はその旨）をユーザーに伝え終了する
