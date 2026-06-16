@@ -105,6 +105,116 @@ expect(result.toISOString()).toBe('2025-06-15T00:00:00.000Z')
 expect(result.getHours()).toBe(0)
 ```
 
+### 5. Test design rigor (general patterns)
+
+Generic correctness / maintainability patterns that catch defects no other category covers.
+
+#### 5.1 Argument symmetry
+
+When a function takes symmetric arguments (`f(a, b)` where `a` and `b` participate in the same branching condition, typically via `||` / `&&`), a one-sided test cannot detect deletion of the other side's branch. Cover both sides plus the both-true case, ideally with `it.each`.
+
+```typescript
+// Bad: only the `a` side is exercised — mutating `!isX(a) || !isX(b)` to `!isX(a)` stays green
+it('returns 0 when either side is non-numeric', () => {
+  expect(compareRowId(NON_NUMERIC, NUMERIC)).toBe(0)
+})
+
+// Good: both sides and both-true are parametrized
+it.each([
+  ['a is non-numeric', NON_NUMERIC, NUMERIC],
+  ['b is non-numeric', NUMERIC, NON_NUMERIC],
+  ['both are non-numeric', NON_NUMERIC, NON_NUMERIC],
+])('returns 0 when %s', (_label, a, b) => {
+  expect(compareRowId(a, b)).toBe(0)
+})
+```
+
+#### 5.2 Parametrization granularity consistency
+
+Within the same file, similarly-shaped guard-condition tests should use the same parametrization granularity. Mixing `it.each` for one guard and a single-value `it` for a structurally identical guard confuses maintainers and leaks coverage.
+
+- ✅ `getIsFixed` covers `it.each([NO_ORDER, ATTENDANCE_HOLIDAY])`
+- ❌ `movePosition` only tests `NO_ORDER` — same kind of guard, weaker coverage
+
+Flag any imbalance where the same class of input is enumerated in one test and tested with a single value in another.
+
+#### 5.3 Assertion granularity consistency
+
+Within the same operation category (e.g. `top` / `up` / `down` / `bottom` reorder operations), assertion granularity must match. If one case verifies the full structure and another only a projection, regressions in shared internal logic (numbering, position recomputation, etc.) escape detection.
+
+```typescript
+// Bad: mixed granularity within the same category
+it('top', () => expect(result).toEqual([[id1, 0], [id2, 1], [id3, 2]]))  // full
+it('up',  () => expect(getIds(result)).toEqual([id1, id3, id2]))         // projection only
+
+// Good: aligned to the most detailed granularity in the category
+it('top', () => expect(result).toEqual([[id1, 0], [id2, 1], [id3, 2]]))
+it('up',  () => expect(result).toEqual([[id1, 0], [id3, 1], [id2, 2]]))
+```
+
+#### 5.4 Invariance must use `toBe` (reference identity)
+
+When verifying that an early-return guard truly does nothing, structural equality (`toEqual`) passes even if the value is replaced by a same-shape object. Use `toBe` to assert reference identity.
+
+```typescript
+// Bad: a same-shape replacement still passes
+const beforeValue = state.value
+guardedAction()
+expect(state.value).toEqual(beforeValue)
+
+// Good: only an untouched reference passes
+const beforeValue = state.value
+guardedAction()
+expect(state.value).toBe(beforeValue)
+```
+
+Matcher selection rule:
+
+| Intent | Matcher |
+|---|---|
+| "Is the content equal?" | `toEqual` |
+| "Was it left untouched (same reference)?" | `toBe` |
+
+#### 5.5 Module-level mutable state as a future footgun
+
+A single-slot module-level variable that holds an `afterEach` cleanup target (`effectScope`, the return value of `watch`, `setInterval` handle, EventListener, AbortController, etc.) is safe **only as long as setup is called once per test**. The moment a future test calls setup twice, the first resource is orphaned — watch / timer / listener leaks ensue.
+
+```typescript
+// Bad: a second setupStore() call orphans the first scope
+let scope: EffectScope | undefined
+const setupStore = () => {
+  scope = effectScope()
+  // ...
+}
+afterEach(() => scope?.stop())
+
+// Good: track every instance, tear them all down
+let scopes: EffectScope[] = []
+const setupStore = () => {
+  const scope = effectScope()
+  scopes.push(scope)
+  // ...
+}
+beforeEach(() => { scopes = [] })
+afterEach(() => scopes.forEach(s => s.stop()))
+```
+
+#### 5.6 Characterization tests must annotate intent
+
+A test that pins a counter-intuitive current behavior (e.g. `indexOf=-1` flowing into `splice(-1, 1)` and silently removing the tail) must explain itself, otherwise readers misread "the test is green" as "the spec is correct". Require an inline comment covering:
+
+- **Why** the value is what it is (the implementation side-effect being pinned)
+- **Operational premise** — whether that input can realistically occur in production
+- **Future fix candidate** — room left for a follow-up correction
+
+```typescript
+it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
+  // currentIndex=-1 → splice(-1, 1) removes the last element — counter-intuitive
+  // characterization test (production watch sync prevents this input in practice)
+  ...
+})
+```
+
 ## Detection checklist
 
 #### [5] 必須修正 (ブロッカー)
@@ -116,6 +226,8 @@ expect(result.getHours()).toBe(0)
 - [ ] Critical coverage gap on important branches or main use cases
 - [ ] Date-dependent test that will definitely break (direct `new Date()` / `Date.now()`, `parse(..., new Date())`, etc.)
 - [ ] Missing `vi.useRealTimers()` after `vi.useFakeTimers()` — pollutes other tests
+- [ ] Argument-symmetric function tested on only one side (the other side's branch deletion would go undetected)
+- [ ] "Unchanged" invariance asserted via `toEqual` where a same-shape replacement would silently pass — use `toBe`
 
 #### [3] 推奨
 - [ ] Redundant or duplicate test cases; tests that could be consolidated with `it.each` / `describe.each`
@@ -123,11 +235,15 @@ expect(result.getHours()).toBe(0)
 - [ ] Insufficient coverage of edge cases / failure modes
 - [ ] Missing date-boundary cases (end of month / year, leap year, DST transitions, etc.)
 - [ ] Timezone-dependent assertions (`toLocaleString()` / `getHours()`, etc.)
+- [ ] Inconsistent parametrization granularity within the same file (mix of `it.each` and single-value `it` for the same kind of guard condition)
+- [ ] Inconsistent assertion granularity within the same operation category (some cases verify full structure, others only a subset)
+- [ ] Module-level single-slot variable (`let scope`, `let controller`, etc.) used to hold an `afterEach` cleanup target — convert to an array
 
 #### [2] 軽微
 - [ ] Room to improve `describe` block structure
 - [ ] Better test-case naming
 - [ ] Snapshot tests that produce no real value
+- [ ] Characterization test pinning a counter-intuitive current behavior without a comment explaining *why* / *operational premise* / *future fix candidate*
 
 #### [1] 情報
 - [ ] Design questions
@@ -190,9 +306,9 @@ Total verdict = highest severity present (or `[1]` if no findings).
 | Score | Label | Meaning | Examples |
 |---|---|---|---|
 | `[5]` | 必須修正 (ブロッカー) | Tests cannot guarantee implementation correctness | Always-passing tests, tests drifted from implementation, non-functional suite |
-| `[4]` | 強く推奨 | High-impact quality issue to fix before merge | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration |
-| `[3]` | 推奨 | Affects maintainability / reliability | Redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue |
-| `[2]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot |
+| `[4]` | 強く推奨 | High-impact quality issue to fix before merge | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration, one-sided test of a symmetric-argument function, invariance asserted with `toEqual` |
+| `[3]` | 推奨 | Affects maintainability / reliability | Redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue, parametrization / assertion granularity inconsistency, single-slot `afterEach` cleanup target |
+| `[2]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot, uncommented characterization test |
 | `[1]` | 情報 | Informational only, no fix required | Design question, good-pattern note |
 
 ## Project-specific guidelines
