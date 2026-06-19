@@ -24,6 +24,6 @@ argument-hint: [ file path ]
     - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
 3. 全サブエージェントのレビュー結果を統合する
 4. レビュー結果を document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
-5. 知見蓄積: 統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`${CLAUDE_SKILL_DIR}/../../references/review-lessons/accumulation-procedure.md` を Read し、その手順に従って !`echo $MGZL_DIR`/knowledge/implementation-lessons.md に汎用的なコード実装の教訓を蓄積する。`[2]` 以下のみ・0 件ならスキップする
+5. 知見蓄積: 統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で起動し、統合レビュー結果を `source` として渡してバックグラウンドで教訓蓄積する。`[2]` 以下のみ・0 件ならスキップする。結果は待たず、すぐに 6. に進む。
 6. 保存したレビュー報告書を mcp__jetbrains__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
-7. レビュー結果の保存先パスと、蓄積した教訓の件数（スキップ時はその旨）をユーザーに伝え終了する
+7. レビュー結果の保存先パスと、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）をユーザーに伝え終了する
