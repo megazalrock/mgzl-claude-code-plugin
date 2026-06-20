@@ -71,16 +71,20 @@ disable-model-invocation: true
 
 7. 全ステップ完了後、コードレビュータスクを実行
   - TaskUpdate でステータスを `in_progress` に変更
+  - **次回起動するレビュアー集合**（次のラウンドで並列起動するサブエージェントの種類の集合。レビュー対象のファイルではなくサブエージェント種別のリスト）を初期化する
+    - テストコードの場合: `@reviewer-for-test-code`, `@reviewer-for-comments`
+    - それ以外: `@reviewer-for-style`, `@reviewer-for-logic`, `@reviewer-for-design`, `@reviewer-for-security-performance`, `@reviewer-for-comments`
   - 修正回数カウンタを 0 で初期化し、以下のレビュー→修正ループを実行する（修正は最大 2 回まで）
     1. **レビュー実施**
-       - テストコードの場合は @reviewer-for-test-code、@reviewer-for-comments サブエージェントで並列レビュー
-       - それ以外は @reviewer-for-style、@reviewer-for-logic、@reviewer-for-design、@reviewer-for-security-performance、@reviewer-for-comments サブエージェントで**並列**でレビュー
+       - 「次回起動するレビュアー集合」に含まれるサブエージェントを**並列**で起動してレビュー
     2. **判定**
        - `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **0 件** → ループを抜ける
        - 指摘が **1 件以上** かつ **修正回数 < 2** → 3. へ進む
        - 指摘が **1 件以上** かつ **修正回数 ≥ 2** → 4. へ進む
     3. **修正**
        - 指摘箇所を直接修正し、修正回数を 1 増やす
+       - **「次回起動するレビュアー集合」を、今回のラウンドで `[3]` 以上の指摘を出したレビュアー種別のみに更新する**
+         （例: `@reviewer-for-comments` のみが指摘した場合、次回は `@reviewer-for-comments` のみで再レビュー）
        - 1. に戻る
     4. **上限到達時のユーザー判断**
        - AskUserQuestion で「completed にする / もう一度だけ修正を試みる / 中止する」を提示
