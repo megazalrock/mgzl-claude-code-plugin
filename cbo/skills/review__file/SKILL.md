@@ -22,7 +22,7 @@ argument-hint: [ file path ]
     - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
     - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
     - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
-3. 全サブエージェントのレビュー結果を統合する
+3. 全サブエージェントのレビュー結果を統合する（各指摘の **報告者** フィールドに担当サブエージェント名を記載すること）
 4. レビュー結果を document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
 5. 知見蓄積: 統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で起動し、統合レビュー結果を `source` として渡してバックグラウンドで教訓蓄積する。`[2]` 以下のみ・0 件ならスキップする。結果は待たず、すぐに 6. に進む。
 6. 保存したレビュー報告書を mcp__jetbrains__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
