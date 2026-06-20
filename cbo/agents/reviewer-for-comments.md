@@ -27,7 +27,7 @@ By default, review the diff returned by `git diff HEAD`. When the user specifies
 - Security or performance issues → covered by `reviewer-for-security-performance`
 - Test code quality → covered by `reviewer-for-test-code`
 - Documentation files (`README.md`, design docs) — this agent reviews **comments embedded in source files**, not standalone documents
-- Prose style of the human language in comments (English-vs-Japanese tone, grammar polish) — flag only when meaning is unclear
+- Prose style of the human language in comments (English-vs-Japanese tone, casual tone, capitalization) — use criterion 5 for Japanese readability
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
@@ -80,10 +80,22 @@ Flag comments that pay no rent.
 
 Where a non-obvious constraint, hidden invariant, or workaround would benefit a future reader, suggest adding a short comment. Be conservative — default to "no comment needed" unless the reason for the code is genuinely not derivable from reading it.
 
+### 5. Japanese readability
+
+コメントが日本語で書かれている場合、その文章が読みやすいかを評価する。
+
+- **主語・述語の対応** — 主語が脱落または曖昧で、誰が・何がそうなのか判断できない
+- **一文の長さ** — 50文字を超える一文は要注意。接続詞（「また」「そして」「ただし」）で分割できないか確認する
+- **二重否定** — 「〜でないわけではない」のような二重否定は避け、肯定形に言い換える
+- **敬体・常体の混在** — 同一コメントブロック内で「です・ます体」と「だ・である体」が混在している
+- **回りくどい表現** — 「〜という形で」「〜に関しては」「〜については」などの冗長なつなぎ言葉
+
+Severity: 明らかに読み取りに支障をきたす場合は `[3]`、軽微な改善提案は `[1]`。
+
 ### Explicit out-of-scope reminders
 
 - Do not critique the underlying logic, design, naming, or style that the comment annotates — only the comment itself
-- Do not flag human-language polish (grammar, capitalization, casual tone) unless meaning is unclear
+- Do not flag grammar or casual tone for English text unless meaning is unclear. For Japanese, apply criterion 5
 
 ## Severity scale
 
@@ -106,9 +118,10 @@ This agent uses only three severity levels. Per the agent's scope, `[5]` and `[2
 2. **For each comment**, locate the adjacent code it describes and verify the claim it makes
 3. **For each reference** in a comment, verify the file / symbol exists, or that an external URL is provided
 4. **Scan for redundancy** — restated implementations, vague long paragraphs, drift in terminology, typos, **review-trail / work-history comments such as `// LOGIC-E 対応` or `// レビュー対応`**, and **HTML / template comments (`<!-- -->`)**, which are `[4]` remove-by-default unless they are tool-interpreted directives / markers or an irreducible workaround rationale on an anonymous, class-less, empty element. Apply the decision test: can the intent be expressed by a class name, the element itself, or a CSS comment? If yes, flag it
-5. **Look for places that lack a comment** but would clearly benefit from one
-6. **Classify** every finding using the severity scale above
-7. **Self-review** the draft report and drop anything outside comment territory (logic, design, style, security, tests)
+5. **日本語コメントの読みやすさ確認** — 主述の対応、一文の長さ（50文字超を要注意）、二重否定、敬体/常体の混在、回りくどい表現を確認する（criterion 5）
+6. **Look for places that lack a comment** but would clearly benefit from one
+7. **Classify** every finding using the severity scale above
+8. **Self-review** the draft report and drop anything outside comment territory (logic, design, style, security, tests)
 
 ## Report template
 
