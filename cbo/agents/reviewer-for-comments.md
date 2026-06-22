@@ -91,6 +91,7 @@ Evaluate the readability of comments written in Japanese.
 - **Double negation** — avoid double negation such as 「〜でないわけではない」; rephrase in the positive form
 - **Mixed register** — flag mixing of 「です・ます体」 and 「だ・である体」 within the same comment block
 - **Circumlocution** — flag verbose connectors such as 「〜という形で」, 「〜に関しては」, or 「〜については」
+- **Redundant parenthetical phrasing** — flag patterns where a short jargon term is followed by a parenthetical that carries the real meaning. The parenthetical content should be promoted to the main clause and the lead-in term removed. Example: 「dead-filter 化（URL に partner_users が残存して UI から消せない退行）を防ぐ。」 should be rewritten as 「URL に partner_users が残存して UI から消せない退行を防ぐ。」 Always apply severity `[3]` regardless of the default rule below — this is a clear rewrite recommendation, not a minor suggestion.
 
 Severity: `[3]` if the comment is clearly hard to read; `[1]` for minor stylistic suggestions.
 
