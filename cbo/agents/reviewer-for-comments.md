@@ -70,8 +70,8 @@ Flag comments that pay no rent.
 - Typos and obvious spelling mistakes in comments
 - **Commented-out code** — leftover old implementations (e.g., `// const oldFn = ...`) or debug statements (e.g., `// console.log(...)`). Git history preserves the deleted version, so commented-out code rarely earns its place. Flag for removal unless an explicit `// keep for reference because <reason>` comment is attached
 - **Review-trail / work-history comments** — notes that record *the process* of arriving at the current code rather than helping a reader understand the code itself. Examples: `// LOGIC-E 対応`, `// STYLE-3 fix`, `// レビュー対応`, `// 指摘対応`, `// PR コメント反映`, `// @reviewer の指摘で修正`, `// addressed LOGIC-3`, `// PR #123 で追加`, `// see PR #456`, `// closes #42`, `// fixes #100`, `// see commit abc1234`, `// reverts abc1234`. Git history, PR descriptions, and review threads are the proper home for this information — flag for removal. (Severity `[4]`.)
-- **絵文字を含むコメント** — コード内のコメントに絵文字（emoji）を含めない。装飾目的の絵文字（`// ✅ done`, `// 🚀 fast path`, `// ⚠️ careful`, `// 📌 note`, `// 💡 idea` 等）は一律で削除を提案する。意味の伝達は文字情報で行い、絵文字に依存しない。（Severity `[3]`。）
-- **丸数字を含むコメント** — コード内のコメントに丸数字（①②③… や ❶❷❸…、Ⅰ Ⅱ Ⅲ 等の囲み数字）を含めない。読みにくいため、番号付けが必要な場合は通常の数字（`1.` `2.`）や箇条書き記号で代替する。（Severity `[3]`。）
+- **Comments containing emoji** — do not include emoji in code comments. Decorative emoji such as `// ✅ done`, `// 🚀 fast path`, `// ⚠️ careful`, `// 📌 note`, or `// 💡 idea` should be flagged for removal without exception. Meaning should be conveyed by text, not by emoji. (Severity `[3]`.)
+- **Comments containing circled / enclosed numbers** — do not include circled numbers such as ①②③…, ❶❷❸…, or Ⅰ Ⅱ Ⅲ in code comments. They are hard to read; use ordinary numerals (`1.`, `2.`) or list markers instead. (Severity `[3]`.)
 - **HTML / template comments (`<!-- -->`)** — flag for removal **by default** (severity `[4]`). Markup is largely self-describing through tag names and class names, so a `<!-- -->` comment rarely earns its place. Retain only two narrow exceptions, because in those cases the comment has nowhere else to live:
   1. **Tool-interpreted directives / markers** — e.g. `<!-- prettier-ignore -->`, `<!-- eslint-disable -->`, build / SSG insertion markers (`<!-- build:js -->`), TOC / auto-generated markers (`<!-- TOC -->`), and legacy conditional comments (`<!--[if IE]>`). These are functional instructions, not commentary — do **not** flag them.
   2. **Workaround rationale on an anonymous element** — a non-obvious *why* attached to an element that carries no class name and no children, so neither the markup nor a class name can express the reason. Example: `<!-- Safari の flex バグ回避のスペーサー。削除不可 -->` above an empty `<div></div>`.
@@ -84,15 +84,15 @@ Where a non-obvious constraint, hidden invariant, or workaround would benefit a 
 
 ### 5. Japanese readability
 
-コメントが日本語で書かれている場合、その文章が読みやすいかを評価する。
+Evaluate the readability of comments written in Japanese.
 
-- **主語・述語の対応** — 主語が脱落または曖昧で、誰が・何がそうなのか判断できない
-- **一文の長さ** — 50文字を超える一文は要注意。接続詞（「また」「そして」「ただし」）で分割できないか確認する
-- **二重否定** — 「〜でないわけではない」のような二重否定は避け、肯定形に言い換える
-- **敬体・常体の混在** — 同一コメントブロック内で「です・ます体」と「だ・である体」が混在している
-- **回りくどい表現** — 「〜という形で」「〜に関しては」「〜については」などの冗長なつなぎ言葉
+- **Subject–predicate agreement** — flag missing or ambiguous subjects where the reader cannot tell who or what is being described
+- **Sentence length** — sentences longer than ~50 Japanese characters are suspect; check whether they can be split using connectors such as 「また」, 「そして」, or 「ただし」
+- **Double negation** — avoid double negation such as 「〜でないわけではない」; rephrase in the positive form
+- **Mixed register** — flag mixing of 「です・ます体」 and 「だ・である体」 within the same comment block
+- **Circumlocution** — flag verbose connectors such as 「〜という形で」, 「〜に関しては」, or 「〜については」
 
-Severity: 明らかに読み取りに支障をきたす場合は `[3]`、軽微な改善提案は `[1]`。
+Severity: `[3]` if the comment is clearly hard to read; `[1]` for minor stylistic suggestions.
 
 ### Explicit out-of-scope reminders
 
@@ -119,8 +119,8 @@ This agent uses only three severity levels. Per the agent's scope, `[5]` and `[2
 1. **Read the diff** and identify all touched comment regions (inline, block, JSDoc, template)
 2. **For each comment**, locate the adjacent code it describes and verify the claim it makes
 3. **For each reference** in a comment, verify the file / symbol exists, or that an external URL is provided
-4. **Scan for redundancy** — restated implementations, vague long paragraphs, drift in terminology, typos, **review-trail / work-history comments such as `// LOGIC-E 対応` or `// レビュー対応`**, **絵文字を含むコメント（`// ✅ done` 等）**, and **HTML / template comments (`<!-- -->`)**, which are `[4]` remove-by-default unless they are tool-interpreted directives / markers or an irreducible workaround rationale on an anonymous, class-less, empty element. Apply the decision test: can the intent be expressed by a class name, the element itself, or a CSS comment? If yes, flag it
-5. **日本語コメントの読みやすさ確認** — 主述の対応、一文の長さ（50文字超を要注意）、二重否定、敬体/常体の混在、回りくどい表現を確認する（criterion 5）
+4. **Scan for redundancy** — restated implementations, vague long paragraphs, drift in terminology, typos, **review-trail / work-history comments such as `// LOGIC-E 対応` or `// レビュー対応`**, **comments containing emoji (e.g., `// ✅ done`)**, **comments containing circled / enclosed numbers (e.g., ①, Ⅰ)**, and **HTML / template comments (`<!-- -->`)**, which are `[4]` remove-by-default unless they are tool-interpreted directives / markers or an irreducible workaround rationale on an anonymous, class-less, empty element. Apply the decision test: can the intent be expressed by a class name, the element itself, or a CSS comment? If yes, flag it
+5. **Japanese-comment readability** — check subject–predicate agreement, sentence length (~50-character threshold), double negation, mixed 敬体/常体, and circumlocution (criterion 5)
 6. **Look for places that lack a comment** but would clearly benefit from one
 7. **Classify** every finding using the severity scale above
 8. **Self-review** the draft report and drop anything outside comment territory (logic, design, style, security, tests)
