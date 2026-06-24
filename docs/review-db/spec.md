@@ -27,13 +27,20 @@ verdict の意味は [summary.md](./summary.md) を参照。
 │  ├ Codex / Copilot / ClaudeCode code-review が出力          │
 │  └ 人間が各 finding に評価マーク（verdict / reason）を追記   │
 └──────────────────┬──────────────────────────────────────────┘
-                   │ ファイルパス渡し
+                   │ ユーザー発話「レビュー報告書をインポートして」
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ review:import-report スキル（オーケストレータ）             │
+│  ├─→ パス確定（引数 or $MGZL_DIR/reviews/ から選択）        │
+│  ├─→ finding-extractor サブエージェントを Agent ツール起動  │
+│  │    （Markdown → 構造化 JSON 変換、verdict も抽出）       │
+│  └─→ JSON を CLI に渡す                                     │
+└──────────────────┬──────────────────────────────────────────┘
+                   │ --findings <jsonpath>
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ bun scripts/review-db.ts import-report                       │
-│  ├─→ finding-extractor サブエージェントを呼び出し           │
-│  │    （Markdown → 構造化 JSON 変換、verdict も抽出）       │
-│  └─→ SQLite に INSERT                                       │
+│  └─→ JSON を検証して SQLite に UPSERT                       │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -57,13 +64,13 @@ verdict の意味は [summary.md](./summary.md) を参照。
 - **Drizzle ORM** を採用する。
   - スキーマファーストで TypeScript の型推論が強く、マイグレーションの自動生成が利く。
   - bun + better-sqlite3 ドライバで動作する。
-- マイグレーションファイルは `cbo/scripts/review-db/migrations/` に配置。
+- マイグレーションファイルは `cbo/skills/review__import-report/scripts/migrations/` に配置。
 - 初回起動時に未適用のマイグレーションを自動適用する（CLI 内で実行）。
 
 ### 4.3 スキーマ
 
 ```ts
-// cbo/scripts/review-db/schema.ts
+// cbo/skills/review__import-report/scripts/schema.ts
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const reports = sqliteTable('reports', {
@@ -109,18 +116,20 @@ export const findings = sqliteTable('findings', {
 - `import-report` 実行時に同一パスの report があれば、当該 report の `id` を保持したまま **findings を CASCADE で全削除 → ファイルから再抽出して再 INSERT**（UPSERT 動作）する。
   - これにより、評価追記後の再 import は同じ report に対する findings の差し替えとして自然に表現される。
   - finding ID は再生成される点に注意（finding ID を外部から参照している場合は壊れる。本仕様では外部参照は想定しない）。
-- ファイルを移動・リネームした場合は別 report として扱われる。意図せず重複した場合は手動 DELETE で対処する（将来的に `relocate` サブコマンドの追加を検討、§ 10）。
+- ファイルを移動・リネームした場合は別 report として扱われる。意図せず重複した場合は手動 DELETE で対処する（将来的に `relocate` サブコマンドの追加を検討、§ 11）。
 
-## 5. CLI: `bun scripts/review-db.ts`
+## 5. CLI: `review-db.ts`
 
-すべてのサブコマンドは `cbo/scripts/review-db.ts` をエントリポイントとする。
+すべてのサブコマンドは `cbo/skills/review__import-report/scripts/review-db.ts` をエントリポイントとする。スキル内からは `bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" <subcommand>` の形式で呼び出す。
+
+CLI は永続化（SQLite 操作）に専念し、サブエージェント呼び出しは行わない。finding 抽出は `review:import-report` スキル（§ 7）がオーケストレートする。
 
 ### 5.1 サブコマンド一覧
 
 | サブコマンド | 役割 |
 |---|---|
-| `import-report <path>` | 報告書ファイルを取り込み、finding-extractor を呼んで DB に投入。verdict もファイル内の記述から抽出する。冪等キーは絶対ファイルパス。同じパスで再実行すると UPSERT（report は同 ID 保持、findings は CASCADE 削除して再 INSERT） |
-| `set-verdict <finding-id> <verdict> [--reason <text>]` | 単一 finding に評価を書き込む（ad-hoc 修正用。通常はファイル編集＋ `import-report` で同期する） |
+| `import-report <path> --findings <jsonpath>` | 事前抽出済みの finding 配列 JSON を受け取り、DB に UPSERT する。冪等キーは絶対ファイルパス。同じパスで再実行すると UPSERT（report は同 ID 保持、findings は CASCADE 削除して再 INSERT） |
+| `set-verdict <finding-id> <verdict> [--reason <text>]` | 単一 finding に評価を書き込む（ad-hoc 修正用。通常はファイル編集＋ `review:import-report` スキルで同期する） |
 | `list reports [--limit N]` | 報告書一覧を表示 |
 | `list findings [--report-id <id>] [--unverdicted] [--reporter <name>]` | finding 一覧を表示 |
 | `show finding <id>` | finding の詳細を表示 |
@@ -135,20 +144,21 @@ export const findings = sqliteTable('findings', {
 
 ### 5.3 `import-report` 詳細
 
-1. ファイル存在チェックと絶対パスへの正規化。
-2. `finding-extractor` サブエージェントを呼び出し、構造化 JSON を取得。
-3. JSON Schema で検証（zod 等）。失敗時はエラー終了。
-4. トランザクション内で UPSERT：
+呼び出し例：`bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath>`
+
+1. `<path>` の存在チェックと絶対パスへの正規化。
+2. `--findings` で指定された JSON ファイル（finding 配列）を読み込み、zod で検証。失敗時はエラー終了。
+3. トランザクション内で UPSERT：
    - 同一 `file_path` の report が存在する場合：当該 report の `id` を保持しつつ、紐づく findings を CASCADE で全削除し、新しい findings を INSERT。
    - 存在しない場合：UUIDv7 で `report.id` を発番し、`reports` と `findings` を INSERT。
-5. 投入結果を `key=value` で表示（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）。
+4. 投入結果を `key=value` で表示（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）。
 
 ### 5.4 評価の同期フロー
 
 評価は **レビュー報告書ファイルへの追記** が一次情報源。DB はファイルの抽出結果を保持するキャッシュ層として扱う。
 
-1. 人間が報告書ファイルを開き、各 finding の近くに評価マークを追記する（後述 § 7）。
-2. `bun scripts/review-db.ts import-report <path>` を再実行する。
+1. 人間が報告書ファイルを開き、各 finding の近くに評価マークを追記する（後述 § 8）。
+2. `review:import-report` スキルを再実行する（同じパスを指定 or 再選択）。
 3. 同一パスの report は UPSERT され、既存 findings は CASCADE で削除されたうえで評価込みで再 INSERT される。
 4. ad-hoc な修正のみ DB へ直接反映したい場合は `set-verdict <finding-id> <verdict> [--reason ...]` を使う。ただしファイルとの整合性は手動管理になる点に注意。
 
@@ -165,6 +175,7 @@ export const findings = sqliteTable('findings', {
 | 配置先 | `cbo/agents/finding-extractor.md` |
 | モデル | Sonnet（安定運用後に Haiku への切り替えを検討） |
 | ツール権限 | `Read` のみ |
+| 呼び出し元 | `review:import-report` スキル（§ 7）が Agent ツール経由で起動 |
 | 入力 | レビュー報告書のファイルパス、reporter 名（ヒント） |
 | 出力 | 後述の JSON Schema に従う配列 |
 
@@ -192,14 +203,44 @@ type ExtractedFinding = {
 
 - 1 つのプロンプトで Codex / Copilot / ClaudeCode 全フォーマットを吸収する（reporter ごとに分岐しない）。
 - severity と category は報告書中に明記がなければエージェントが内容から推定する。
-- verdict と verdictReason は **`**評価**:` / `**評価理由**:` フィールド（§ 7.1）に明示的に書かれている値のみ抽出する**。値が空の場合や該当行が無い場合は必ず null とする。エージェントが推定して埋めることは禁止。
+- verdict と verdictReason は **`**評価**:` / `**評価理由**:` フィールド（§ 8.1）に明示的に書かれている値のみ抽出する**。値が空の場合や該当行が無い場合は必ず null とする。エージェントが推定して埋めることは禁止。
 - 推定根拠を別カラムに残す要件は現時点では持たない（必要になったら schema 拡張）。
 
-## 7. レビュー報告書内の評価記法
+## 7. スキル: `review:import-report`
 
-評価は **人間がレビュー報告書ファイル（Markdown）に直接書き込む** ことを唯一の入力経路とする。AI による自動評価は本仕様の範囲外（§ 10「将来検討」を参照）。
+### 7.1 役割
 
-### 7.1 記法
+レビュー報告書を取り込んで DB に保存する一連の処理をオーケストレートする。Claude Code セッション中にユーザーが「レビュー報告書をインポートして」等と発話したときに起動される、本仕様のユーザー向けエントリポイント。
+
+### 7.2 配置と仕様
+
+| 項目 | 内容 |
+|---|---|
+| 配置先 | `cbo/skills/review__import-report/SKILL.md` |
+| スクリプト | `cbo/skills/review__import-report/scripts/review-db.ts` ほか |
+| 引数 | `[<report-path>]`（省略可） |
+| description トリガーフレーズ | 「レビュー報告書をインポート」「レビュー結果をDBに保存」「レビューをDBに」など 3〜5 個（[[feedback_skill_trigger_words]] に準拠） |
+
+### 7.3 内部処理
+
+1. 引数で path が指定されていればそれを利用する。省略時は `$MGZL_DIR/reviews/` から **最新 5 件を `AskUserQuestion` で提示してユーザーに選択させる**（[`cbo/skills/impl__execute/SKILL.md`](../../cbo/skills/impl__execute/SKILL.md) の選択パターンを踏襲）。該当ファイルが 0 件ならエラーで終了。
+2. `finding-extractor` サブエージェント（§ 6）を Agent ツールで起動する。入力はレビュー報告書のファイルパスと reporter ヒント。出力は finding 配列 JSON。
+3. 取得した JSON を一時ファイル（例：`$TMPDIR/review-findings-<uuid>.json`）に書き出す。
+4. `bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath>` を実行する。
+5. CLI 出力（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）をそのままユーザーに報告する。
+
+### 7.4 制約
+
+- このスキル内ではレビュー対象のソースコードは編集しない（レビュー報告書ファイル自体も含む）。
+- 取り込み失敗時は途中で停止し、原因をユーザーに報告。DB への部分書き込みは CLI 側のトランザクションで防がれる。
+
+## 8. レビュー報告書内の評価記法
+
+評価は **人間がレビュー報告書ファイル（Markdown）に直接書き込む** ことを唯一の入力経路とする。
+
+AI による評価は本仕様（CLI / `review:import-report` スキル）のスコープ外。インポート時に AI が評価を補完することはしない。AI に評価を任せたい場合は、ユーザーが Claude Code に対して「レビュー報告書の評価項目を確認して埋めて」等と直接指示する運用を想定する（その指示は本仕様の対象外）。
+
+### 8.1 記法
 
 各 finding ブロックの末尾に、既存テンプレート（[`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md)）と同じ `**項目**:` 形式で `**評価**` と `**評価理由**` を追記する。
 
@@ -220,11 +261,11 @@ type ExtractedFinding = {
 - `**評価理由**:` は任意。空欄でもよい。複数行に渡る場合は次行以降に通常の本文として続ける。
 - 評価マークが付いていない、または値が空の finding は `verdict = NULL`（未評価）として扱う。
 
-### 7.2 テンプレート修正
+### 8.2 テンプレート修正
 
 既存テンプレート [`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md) に **`**評価**:`** と **`**評価理由**:`** フィールドを各 finding 例（R000〜R004）の末尾に追加する。初期値は空とし、人間が後から書き込む運用とする。詳細タスクは `tasks.md` で扱う。
 
-### 7.3 評価ルーブリック
+### 8.3 評価ルーブリック
 
 報告書を書き込む人間が参照する基準。エージェントの自動評価は行わないため、エージェントには織り込まない。
 
@@ -235,47 +276,47 @@ type ExtractedFinding = {
 
 判定に迷う場合は **より厳しい側**（`tp` > `nit` > `fp` の順で安全側）を選ぶ。
 
-## 8. ユースケース
+## 9. ユースケース
 
-### 8.1 評価込みのレビュー報告書を取り込む
+### 9.1 スキル発話起点で取り込む（標準ルート）
 
-```bash
-# 1. 人間がレビュー報告書を編集し、各 finding に評価マーク（§ 7.1）を追記する
-#    例：> verdict: tp / > reason: ...
+```
+ユーザー: 「レビュー報告書をインポートしておいて」
 
-# 2. 報告書を取り込み
-bun scripts/review-db.ts import-report ./reviews/2026-06-23-pr-42.md
-
-# 3. 出力例（key=value 形式）
-# report_id=01977e2a-...
-# findings_count=7
-# verdicted_count=5
-# unverdicted_count=2
-
-# 4. 結果確認
-bun scripts/review-db.ts list findings --report-id 01977e2a-... --json
+→ review:import-report スキルが起動
+→ 引数が無いので $MGZL_DIR/reviews/ の最新 5 件を AskUserQuestion で提示
+→ ユーザーが対象を選択
+→ finding-extractor サブエージェントが Markdown を構造化 JSON に変換
+→ CLI が SQLite に UPSERT
+→ 結果報告：
+   report_id=01977e2a-...
+   findings_count=7
+   verdicted_count=5
+   unverdicted_count=2
 ```
 
-### 8.2 評価を後から追記する
+評価を後から追記して再同期する場合も同じスキルを再実行する。同一パスなら UPSERT で findings が再構築されるため、verdict は最新ファイルの内容で上書きされる。
+
+### 9.2 自動化／ad-hoc 用途で CLI を直接叩く
+
+抽出済みの finding 配列 JSON が既に手元にある場合や、自動化スクリプトから呼ぶ場合は CLI を直接叩く。
 
 ```bash
-# 1. 初回 import 時点では未評価で投入
-bun scripts/review-db.ts import-report ./reviews/2026-06-23-pr-42.md
-
-# 2. 後日、人間が報告書ファイルに評価マークを追記
-
-# 3. 再 import で同期（同一パスなので UPSERT、findings は CASCADE で再構築）
-bun scripts/review-db.ts import-report ./reviews/2026-06-23-pr-42.md
+# finding 配列 JSON を渡して UPSERT
+bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report \
+  ./reviews/2026-06-23-pr-42.md \
+  --findings ./tmp/findings.json
 ```
 
-### 8.3 既存データの集計
+### 9.3 既存データの集計
 
 ```bash
 # reporter 別の偽陽性率を出すため、JSON でエクスポートして任意のツールで集計
-bun scripts/review-db.ts export --format json --output ./review-export.json
+bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" export \
+  --format json --output ./review-export.json
 ```
 
-## 9. 含めない項目（再掲）
+## 10. 含めない項目（再掲）
 
 [summary.md](./summary.md) より。
 
@@ -285,9 +326,8 @@ bun scripts/review-db.ts export --format json --output ./review-export.json
 - 重複指摘リンク
 - 修正コミット SHA
 
-## 10. 将来検討
+## 11. 将来検討
 
-- **AI による補助評価**：人間評価が主だが、未評価 finding に対して仮判定を提示するサブエージェント（仮称 `verdict-suggester`）を後付けする余地は残す。人間が報告書に書き込む前のたたき台用途。
 - **`relocate` サブコマンド**：レビュー報告書ファイルを移動・リネームした際、既存 report の `file_path` を新パスに更新する CLI を追加する。現状は手動 DELETE → 再 import で対処。
 - 重複 finding の検出と紐付け（同一指摘が複数報告書に出現するケース）。
 - knowledge-distiller スキルへの接続（評価済み finding の傾向を蒸留）。
