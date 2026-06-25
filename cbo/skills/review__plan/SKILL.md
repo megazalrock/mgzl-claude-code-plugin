@@ -66,7 +66,7 @@ model: sonnet
 
 6. **最終レビューサマリの出力**
    - 会話に**箇条書きで最終サマリを表示**する。**ファイル保存はしない**
-   - 出力の先頭に、ユーザーが手動で `$MGZL_DIR/reviews/` に保存して `review:import-report` スキルで DB に取り込めるよう、YAML フロントマターを含めて出力する:
+   - 出力の先頭に、ユーザーが手動で `$MGZL_DIR/reviews/` に保存できるよう、YAML フロントマターを含めて出力する:
      ```yaml
      ---
      reporter: ClaudeCode review:plan

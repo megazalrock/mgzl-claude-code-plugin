@@ -23,7 +23,7 @@ argument-hint: [ file path ]
     - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
     - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
 3. 全サブエージェントのレビュー結果を統合する（各指摘の **報告者** フィールドに担当サブエージェント名を記載すること）
-   - **統合レビュー結果のファイル先頭に YAML フロントマターを必ず埋める**（`review:import-report` スキルがメタデータとして利用する）:
+   - **統合レビュー結果のファイル先頭に YAML フロントマターを必ず埋める**:
      ```yaml
      ---
      reporter: ClaudeCode review:file
