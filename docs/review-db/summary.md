@@ -63,4 +63,6 @@ CBOプラグインで、レビュー結果をDBに保存しレビューの精度
 | ClaudeCode からのDBアクセスはどうするか？ | **bun スクリプト経由（SQLite）**。プラグイン配布性と既存ルール（bun+TS）との整合性を優先 |
 | ClaudeCode からの操作 UX は？ | **`review:import-report` スキルで CLI をラップ**。「レビュー報告書をインポートして」等の発話で起動。スクリプトは `cbo/skills/review__import-report/scripts/review-db.ts` |
 | 評価は誰が行うか？ | **人間がレビュー報告書ファイルに直接書き込む**。AI による評価は本スコープ外（必要時にユーザーが Claude Code に直接指示する想定） |
+| レポートのメタデータをどう持つか？ | **レビュー報告書ファイル先頭の YAML フロントマター**（`reporter` / `model` 必須、任意項目は記録メモのみで DB には保存しない）。`report.created_at` はファイルの mtime |
+| CLI 引数パーサは？ | **`util.parseArgs`（Node.js 標準・bun 互換）**。外部ライブラリは導入しない |
 | 抽出した知識はどうするか？ | **`knowledge__distill` スキルを起点とした蒸留パイプライン化**（※ 次回タスクで扱う） |

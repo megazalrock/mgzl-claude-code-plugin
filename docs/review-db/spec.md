@@ -32,14 +32,17 @@ verdict の意味は [summary.md](./summary.md) を参照。
 ┌─────────────────────────────────────────────────────────────┐
 │ review:import-report スキル（オーケストレータ）             │
 │  ├─→ パス確定（引数 or $MGZL_DIR/reviews/ から選択）        │
+│  ├─→ 報告書のフロントマター（YAML）を読んで reporter/model  │
+│  │    などのメタデータを取得                                │
 │  ├─→ finding-extractor サブエージェントを Agent ツール起動  │
 │  │    （Markdown → 構造化 JSON 変換、verdict も抽出）       │
-│  └─→ JSON を CLI に渡す                                     │
+│  └─→ findings JSON + メタデータを CLI に渡す                │
 └──────────────────┬──────────────────────────────────────────┘
-                   │ --findings <jsonpath>
+                   │ --findings <jsonpath> --model <name>
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ bun scripts/review-db.ts import-report                       │
+│  ├─→ ファイル mtime を created_at として採用                │
 │  └─→ JSON を検証して SQLite に UPSERT                       │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -76,8 +79,8 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 export const reports = sqliteTable('reports', {
   id: text('id').primaryKey(),                       // UUIDv7
   filePath: text('file_path').notNull().unique(),    // 絶対パス。冪等キー
-  createdAt: text('created_at').notNull(),           // ISO8601
-  model: text('model'),                              // nullable
+  createdAt: text('created_at').notNull(),           // ISO8601。ファイルの mtime を採用
+  model: text('model'),                              // nullable。報告書フロントマターから取得
 });
 
 export const findings = sqliteTable('findings', {
@@ -124,34 +127,38 @@ export const findings = sqliteTable('findings', {
 
 CLI は永続化（SQLite 操作）に専念し、サブエージェント呼び出しは行わない。finding 抽出は `review:import-report` スキル（§ 7）がオーケストレートする。
 
+引数パーサは Node.js 標準の `util.parseArgs`（bun でも動作）を使用し、外部ライブラリは導入しない。サブコマンド分岐は `switch` で処理し、ヘルプは簡素な文字列を `--help` で出力する。
+
 ### 5.1 サブコマンド一覧
 
 | サブコマンド | 役割 |
 |---|---|
-| `import-report <path> --findings <jsonpath>` | 事前抽出済みの finding 配列 JSON を受け取り、DB に UPSERT する。冪等キーは絶対ファイルパス。同じパスで再実行すると UPSERT（report は同 ID 保持、findings は CASCADE 削除して再 INSERT） |
+| `import-report <path> --findings <jsonpath> [--model <name>]` | 事前抽出済みの finding 配列 JSON を受け取り、DB に UPSERT する。`<path>` は対象レビュー報告書、`--findings` は finding 配列 JSON のパス、`--model` は report.model に書き込む値。冪等キーは絶対ファイルパス。同じパスで再実行すると UPSERT（report は同 ID 保持、findings は CASCADE 削除して再 INSERT） |
 | `set-verdict <finding-id> <verdict> [--reason <text>]` | 単一 finding に評価を書き込む（ad-hoc 修正用。通常はファイル編集＋ `review:import-report` スキルで同期する） |
-| `list reports [--limit N]` | 報告書一覧を表示 |
-| `list findings [--report-id <id>] [--unverdicted] [--reporter <name>]` | finding 一覧を表示 |
-| `show finding <id>` | finding の詳細を表示 |
+| `list reports [--limit N] [--json]` | 報告書一覧を表示 |
+| `list findings [--report-id <id>] [--unverdicted] [--reporter <name>] [--full] [--json]` | finding 一覧を表示。既定では body は先頭 80 文字 + `…` で省略。`--full` で全文表示 |
+| `show finding <id> [--full] [--json]` | finding の詳細を表示。既定では body は先頭 200 文字 + `…` で省略、`--full` で全文表示 |
 | `export [--format json\|csv] [--output <path>]` | 全 finding をエクスポート |
 | `migrate` | マイグレーションを手動実行 |
 
 ### 5.2 出力形式
 
 - 既定は `key=value` の 1 行 1 レコード形式（[[feedback_simple_script_output]] に準拠）。
-- `--json` フラグで JSON 出力に切り替え可能。
+- `--json` フラグで JSON 出力に切り替え可能。**jq で扱いやすい配列形式**（行ストリーミングではなく `[{...}, {...}]`）を採用する。複数件返るサブコマンド（`list ...`、`export`）は配列、単一件は単一オブジェクト。
 - `export` のみ用途上 JSON / CSV を選択。
 
 ### 5.3 `import-report` 詳細
 
-呼び出し例：`bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath>`
+呼び出し例：`bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath> --model <name>`
 
 1. `<path>` の存在チェックと絶対パスへの正規化。
-2. `--findings` で指定された JSON ファイル（finding 配列）を読み込み、zod で検証。失敗時はエラー終了。
-3. トランザクション内で UPSERT：
-   - 同一 `file_path` の report が存在する場合：当該 report の `id` を保持しつつ、紐づく findings を CASCADE で全削除し、新しい findings を INSERT。
+2. `<path>` の **mtime を取得し ISO8601 形式で `report.created_at` に採用**。
+3. `--findings` で指定された JSON ファイル（finding 配列）を読み込み、zod で検証。失敗時はエラー終了。
+4. `--model` が指定されていればその値を `report.model` に採用。省略時は null。
+5. トランザクション内で UPSERT：
+   - 同一 `file_path` の report が存在する場合：当該 report の `id` を保持しつつ、紐づく findings を CASCADE で全削除し、新しい findings を INSERT。`created_at` と `model` も最新ファイルに合わせて更新。
    - 存在しない場合：UUIDv7 で `report.id` を発番し、`reports` と `findings` を INSERT。
-4. 投入結果を `key=value` で表示（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）。
+6. 投入結果を `key=value` で表示（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）。
 
 ### 5.4 評価の同期フロー
 
@@ -203,7 +210,7 @@ type ExtractedFinding = {
 
 - 1 つのプロンプトで Codex / Copilot / ClaudeCode 全フォーマットを吸収する（reporter ごとに分岐しない）。
 - severity と category は報告書中に明記がなければエージェントが内容から推定する。
-- verdict と verdictReason は **`**評価**:` / `**評価理由**:` フィールド（§ 8.1）に明示的に書かれている値のみ抽出する**。値が空の場合や該当行が無い場合は必ず null とする。エージェントが推定して埋めることは禁止。
+- verdict と verdictReason は **`**評価**:` / `**評価理由**:` フィールド（§ 8.2）に明示的に書かれている値のみ抽出する**。値が空の場合や該当行が無い場合は必ず null とする。エージェントが推定して埋めることは禁止。
 - 推定根拠を別カラムに残す要件は現時点では持たない（必要になったら schema 拡張）。
 
 ## 7. スキル: `review:import-report`
@@ -224,25 +231,56 @@ type ExtractedFinding = {
 ### 7.3 内部処理
 
 1. 引数で path が指定されていればそれを利用する。省略時は `$MGZL_DIR/reviews/` から **最新 5 件を `AskUserQuestion` で提示してユーザーに選択させる**（[`cbo/skills/impl__execute/SKILL.md`](../../cbo/skills/impl__execute/SKILL.md) の選択パターンを踏襲）。該当ファイルが 0 件ならエラーで終了。
-2. `finding-extractor` サブエージェント（§ 6）を Agent ツールで起動する。入力はレビュー報告書のファイルパスと reporter ヒント。出力は finding 配列 JSON。
-3. 取得した JSON を一時ファイル（例：`$TMPDIR/review-findings-<uuid>.json`）に書き出す。
-4. `bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath>` を実行する。
-5. CLI 出力（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）をそのままユーザーに報告する。
+2. 報告書ファイル先頭の **YAML フロントマター（§ 8.1）を読み取り**、`reporter` と `model` を取得する。
+   - フロントマターが無い場合や `reporter` が空の場合は、ユーザーに `AskUserQuestion` で reporter を確認する（フォールバックとして `unknown` も選択肢に含める）。
+   - `model` が無い場合は null として扱う。
+3. `finding-extractor` サブエージェント（§ 6）を Agent ツールで起動する。入力はレビュー報告書のファイルパスと **手順 2 で確定した reporter ヒント**。出力は finding 配列 JSON。
+4. 取得した JSON を一時ファイル（例：`$TMPDIR/review-findings-<uuid>.json`）に書き出す。
+5. `bun run "${CLAUDE_SKILL_DIR}/scripts/review-db.ts" import-report <path> --findings <jsonpath> --model <name>` を実行する（`--model` は手順 2 で取得した値。null の場合は省略）。
+6. CLI 出力（`report_id=...`, `findings_count=...`, `verdicted_count=...`, `unverdicted_count=...`）をそのままユーザーに報告する。
 
 ### 7.4 制約
 
 - このスキル内ではレビュー対象のソースコードは編集しない（レビュー報告書ファイル自体も含む）。
 - 取り込み失敗時は途中で停止し、原因をユーザーに報告。DB への部分書き込みは CLI 側のトランザクションで防がれる。
 
-## 8. レビュー報告書内の評価記法
+## 8. レビュー報告書の記法
+
+レビュー報告書（Markdown ファイル）は、報告書全体のメタデータを **YAML フロントマター** で、各 finding の評価を本文中の `**項目**:` フィールドで記述する。
+
+### 8.1 フロントマター
+
+報告書ファイル先頭に YAML フロントマターを置き、report レベルのメタデータを記録する。`review:import-report` スキルがこれを読んで CLI に渡す。
+
+```markdown
+---
+reporter: ClaudeCode review:diff
+model: claude-sonnet-4-6
+target: feature/foo  # 任意。diff 対象等
+---
+
+# {ファイル名}レビュー結果
+
+## 良い点
+...
+
+## 改善提案
+### R000 [5] 必須修正 (ブロッカー)
+...
+```
+
+- **必須項目**：`reporter`（レビュー実行主体）、`model`（使用モデル名）
+- **任意項目**：`target`、`branch` など自由に追記してよい。ただし **DB スキーマへの反映は当面なし**（reports テーブルに新カラムを追加しない）。フロントマターの任意項目は記録のためのメモとしてのみ機能する
+- 既存テンプレート（[`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md)）にもフロントマターを追加する（詳細は § 8.4）
+- Codex / Copilot 由来の報告書にはフロントマターが付かない可能性がある。その場合は `review:import-report` スキルがユーザーに reporter を確認する（§ 7.3 手順 2）
+
+### 8.2 評価記法
 
 評価は **人間がレビュー報告書ファイル（Markdown）に直接書き込む** ことを唯一の入力経路とする。
 
 AI による評価は本仕様（CLI / `review:import-report` スキル）のスコープ外。インポート時に AI が評価を補完することはしない。AI に評価を任せたい場合は、ユーザーが Claude Code に対して「レビュー報告書の評価項目を確認して埋めて」等と直接指示する運用を想定する（その指示は本仕様の対象外）。
 
-### 8.1 記法
-
-各 finding ブロックの末尾に、既存テンプレート（[`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md)）と同じ `**項目**:` 形式で `**評価**` と `**評価理由**` を追記する。
+各 finding ブロックの末尾に、既存テンプレートと同じ `**項目**:` 形式で `**評価**` と `**評価理由**` を追記する。
 
 ```markdown
 ### R000 [5] 必須修正 (ブロッカー)
@@ -261,10 +299,6 @@ AI による評価は本仕様（CLI / `review:import-report` スキル）のス
 - `**評価理由**:` は任意。空欄でもよい。複数行に渡る場合は次行以降に通常の本文として続ける。
 - 評価マークが付いていない、または値が空の finding は `verdict = NULL`（未評価）として扱う。
 
-### 8.2 テンプレート修正
-
-既存テンプレート [`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md) に **`**評価**:`** と **`**評価理由**:`** フィールドを各 finding 例（R000〜R004）の末尾に追加する。初期値は空とし、人間が後から書き込む運用とする。詳細タスクは `tasks.md` で扱う。
-
 ### 8.3 評価ルーブリック
 
 報告書を書き込む人間が参照する基準。エージェントの自動評価は行わないため、エージェントには織り込まない。
@@ -275,6 +309,19 @@ AI による評価は本仕様（CLI / `review:import-report` スキル）のス
 - **oos**：指摘は正しいがスコープ外で、当該変更で対応すべきでない。
 
 判定に迷う場合は **より厳しい側**（`tp` > `nit` > `fp` の順で安全側）を選ぶ。
+
+### 8.4 テンプレート修正
+
+本仕様の運用にあたって、以下の既存ファイルへの修正が必要となる。詳細タスクは `tasks.md` で扱う。
+
+| 対象 | 修正内容 |
+|---|---|
+| [`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md) | (1) ファイル先頭に YAML フロントマター（`reporter` / `model`）を追加。(2) 各 finding 例（R000〜R004）の末尾に `**評価**:` と `**評価理由**:` を空欄で追加 |
+| [`cbo/skills/review__diff/SKILL.md`](../../cbo/skills/review__diff/SKILL.md) | レビュー結果統合時にフロントマターの必須項目（`reporter`、`model`）を埋めるよう手順を追加 |
+| [`cbo/skills/review__file/SKILL.md`](../../cbo/skills/review__file/SKILL.md) | 同上 |
+| [`cbo/skills/review__plan/SKILL.md`](../../cbo/skills/review__plan/SKILL.md) | 同上 |
+
+`reviewer-for-*` サブエージェント側には変更を加えない（個別 finding を返すのみで、report 全体のメタデータ管理はオーケストレータ側スキルの責務）。
 
 ## 9. ユースケース
 
