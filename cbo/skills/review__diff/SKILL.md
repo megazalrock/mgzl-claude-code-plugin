@@ -50,7 +50,18 @@ $ARGUMENTS を以下の3つに解析する:
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
 8. 全てのタスクを実行
-9. 全てのレビュー結果をまとめる（各指摘の **報告者** フィールドに担当サブエージェント名を記載すること）。その後、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
+9. 全てのレビュー結果をまとめる（各指摘の **報告者** フィールドに担当サブエージェント名を記載すること）。
+   - **統合レビュー結果のファイル先頭に YAML フロントマターを必ず埋める**:
+     ```yaml
+     ---
+     reporter: ClaudeCode review:diff
+     model: claude-sonnet-4-6   # 自身のモデル名を記載
+     ---
+     ```
+     - `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）。
+     - 任意項目（`target`, `branch` 等）を追加するのは構わない。
+   - フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照する。
+   - その後、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
 10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、統合レビュー結果を `source` として渡してバックグラウンドで教訓蓄積する。`[2]` 以下のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
 11. 保存したレビュー報告書を mcp__jetbrains__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
 12. レビュー結果の保存先パスと、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）をユーザーに伝え終了する
