@@ -60,7 +60,7 @@ CBOプラグインで、レビュー結果をDBに保存しレビューの精度
 | 指摘内容本文を要約とするか全文とするか？ | **全文＋構造化フィールド**（ファイルパス・行番号・抜粋コード等を別カラムに分離） |
 | レビュー報告書IDをどうするか？ | **UUIDv7 を発番**。ファイルパスはメタデータとして別カラムに保持 |
 | 指摘内容のID体系をどうするか？ | **UUIDv7**（グローバル一意） |
-| ClaudeCode からのDBアクセスはどうするか？ | **bun スクリプト経由（SQLite）**。プラグイン配布性と既存ルール（bun+TS）との整合性を優先 |
+| ClaudeCode からのDBアクセスはどうするか？ | **bun スクリプト経由（SQLite）**。プラグイン配布性と既存ルール（bun+TS）との整合性を優先。SQLite ドライバは Bun 組み込みの `bun:sqlite`（`drizzle-orm/bun-sqlite`）を採用（`better-sqlite3` は Bun 1.3 系の Node ABI と非互換のため不採用） |
 | ClaudeCode からの操作 UX は？ | **`review:import-report` スキルで CLI をラップ**。「レビュー報告書をインポートして」等の発話で起動。スクリプトは `cbo/skills/review__import-report/scripts/review-db.ts` |
 | 評価は誰が行うか？ | **人間がレビュー報告書ファイルに直接書き込む**。AI による評価は本スコープ外（必要時にユーザーが Claude Code に直接指示する想定） |
 | レポートのメタデータをどう持つか？ | **レビュー報告書ファイル先頭の YAML フロントマター**（`reporter` / `model` 必須、任意項目は記録メモのみで DB には保存しない）。`report.created_at` はファイルの mtime |

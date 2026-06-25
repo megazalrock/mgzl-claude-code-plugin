@@ -66,7 +66,7 @@ verdict の意味は [summary.md](./summary.md) を参照。
 
 - **Drizzle ORM** を採用する。
   - スキーマファーストで TypeScript の型推論が強く、マイグレーションの自動生成が利く。
-  - bun + better-sqlite3 ドライバで動作する。
+  - **SQLite ドライバは Bun 組み込みの `bun:sqlite`（`drizzle-orm/bun-sqlite`）を使う**。`better-sqlite3` は Bun 1.3 系の Node ABI（v137）と非互換でロード時に Segmentation fault を起こすため不採用。`bun:sqlite` は外部ネイティブ依存が無く、ビルドステップなしで動作する。
 - マイグレーションファイルは `cbo/skills/review__import-report/scripts/migrations/` に配置。
 - 初回起動時に未適用のマイグレーションを自動適用する（CLI 内で実行）。
 
@@ -319,7 +319,7 @@ AI による評価は本仕様（CLI / `review:import-report` スキル）のス
 | [`cbo/skills/document-saver/references/format-review-result.md`](../../cbo/skills/document-saver/references/format-review-result.md) | (1) ファイル先頭に YAML フロントマター（`reporter` / `model`）を追加。(2) 各 finding 例（R000〜R004）の末尾に `**評価**:` と `**評価理由**:` を空欄で追加 |
 | [`cbo/skills/review__diff/SKILL.md`](../../cbo/skills/review__diff/SKILL.md) | レビュー結果統合時にフロントマターの必須項目（`reporter`、`model`）を埋めるよう手順を追加 |
 | [`cbo/skills/review__file/SKILL.md`](../../cbo/skills/review__file/SKILL.md) | 同上 |
-| [`cbo/skills/review__plan/SKILL.md`](../../cbo/skills/review__plan/SKILL.md) | 同上 |
+| [`cbo/skills/review__plan/SKILL.md`](../../cbo/skills/review__plan/SKILL.md) | このスキルは Plan Mode 中の会話出力のみでファイル保存しない設計のため、**最終サマリの出力先頭にフロントマター（`reporter` / `model`）を含めて出力する**形に変更（ユーザーが手動で `$MGZL_DIR/reviews/` 配下にコピー保存して `review:import-report` に渡せるようにするため）。各指摘ブロックの末尾に `**評価**:` / `**評価理由**:` の空欄も含める |
 
 `reviewer-for-*` サブエージェント側には変更を加えない（個別 finding を返すのみで、report 全体のメタデータ管理はオーケストレータ側スキルの責務）。
 

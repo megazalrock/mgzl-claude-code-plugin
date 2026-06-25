@@ -5,7 +5,7 @@
 ## 前提
 
 - 言語・ランタイム：TypeScript + bun
-- ORM：Drizzle ORM + better-sqlite3
+- ORM：Drizzle ORM + `bun:sqlite`（`drizzle-orm/bun-sqlite`）
 - バリデーション：zod
 - ID 採番：UUIDv7
 - CLI 引数パース：Node.js 標準 `util.parseArgs`（外部ライブラリ追加禁止）
@@ -17,7 +17,7 @@
 
 | # | タスク | 完了基準 |
 |---|---|---|
-| 0-1 | `package.json` に `drizzle-orm` / `drizzle-kit` / `better-sqlite3` / `zod` / `uuidv7` を追加 | `bun install` が成功し、各モジュールが import 可能 |
+| 0-1 | `package.json` に `drizzle-orm` / `drizzle-kit` / `zod` / `uuidv7` / `yaml` を追加（SQLite は Bun 組み込みの `bun:sqlite` を利用するため `better-sqlite3` は不要） | `bun install` が成功し、各モジュールが import 可能 |
 
 ### Phase 1: DB スキーマとマイグレーション
 
@@ -55,7 +55,7 @@
 | # | タスク | 依存 | 完了基準 |
 |---|---|---|---|
 | 4-1 | `cbo/skills/review__import-report/SKILL.md` 作成。description はトリガーフレーズ 3〜5 個（[[feedback_skill_trigger_words]] に準拠）。手順は spec.md § 7.3 をそのまま | 2-2, 3-1 | スキルとして登録され、トリガーフレーズで起動する |
-| 4-2 | スキル内のフロントマター読み取りロジック（小スクリプト or インライン処理）。YAML パーサは bun 標準 or 必要なら `yaml` を Phase 0 に追加 | 4-1 | `reporter` / `model` が取得できる。フロントマター無しなら null |
+| 4-2 | スキル内のフロントマター読み取りロジック（小スクリプト `scripts/read-frontmatter.ts` として実装）。YAML パーサは `yaml` パッケージ（Phase 0 で追加済み）を使用 | 4-1 | `reporter` / `model` が取得できる。フロントマター無しなら null |
 
 ### Phase 5: 既存テンプレート / スキルの修正（spec.md § 8.4）
 

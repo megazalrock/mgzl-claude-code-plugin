@@ -66,6 +66,15 @@ model: sonnet
 
 6. **最終レビューサマリの出力**
    - 会話に**箇条書きで最終サマリを表示**する。**ファイル保存はしない**
+   - 出力の先頭に、ユーザーが手動で `$MGZL_DIR/reviews/` に保存して `review:import-report` スキルで DB に取り込めるよう、YAML フロントマターを含めて出力する:
+     ```yaml
+     ---
+     reporter: ClaudeCode review:plan
+     model: claude-sonnet-4-6   # 自身のモデル名を記載
+     ---
+     ```
+     - `reporter` は固定で `ClaudeCode review:plan`。`model` は実行中の自身のモデル名（不明なら `unknown`）。
+     - 各指摘ブロックには `**評価**:` / `**評価理由**:` の空欄も含める（フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照）。
    - 出力に含める項目:
      - レビュー対象パス: `<plan_file_path>`
      - レビュー実施回数 / 修正回数
