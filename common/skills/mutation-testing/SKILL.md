@@ -46,10 +46,12 @@ git diff main...HEAD --name-only --diff-filter=ACMR
 `$ARGUMENTS` で指定されたファイルパスをそのまま使用する。ファイルの存在を確認すること。
 
 **`all` の場合**:
-`src/` 配下の全ソースファイルを検索する。テストファイル、型定義ファイル、`index.ts` は除外する。
-```bash
-find src -name "*.ts" -o -name "*.tsx" | grep -v -E '(__tests__|\.test\.|\.spec\.|\.d\.ts|index\.ts)'
-```
+`src/` 配下の全ソースファイルを検索する。Glob ツールで `src/**/*.ts` と `src/**/*.tsx` を取得し、以下に該当するパスを除外する：
+
+- `__tests__/` 配下
+- `*.test.*` / `*.spec.*`
+- `*.d.ts`
+- `index.ts`
 
 対象が0件の場合は「ミューテーション対象のソースファイルがありません」と報告して終了する。
 
