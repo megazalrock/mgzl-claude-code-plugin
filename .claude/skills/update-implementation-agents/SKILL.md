@@ -1,6 +1,6 @@
 ---
 name: update-implementation-agents
-description: 統合された教訓ナレッジ `implementation-lessons.md` を精査し、設計よりの知見を `cbo/agents/implementation-plan-creator.md` に、実装・書き方の知見を `cbo/agents/implementation-step-executor.md` に蒸留して反映するスキル。`/update-implementation-agents` で明示的に呼び出された場合のみ使用する。
+description: 統合された教訓ナレッジ `implementation-lessons.md` を精査し、設計よりの知見を `cbo/agents/implementation-plan-creator.md` に、実装・書き方の知見を `cbo/agents/code-implementer.md` に蒸留して反映するスキル。`/update-implementation-agents` で明示的に呼び出された場合のみ使用する。
 argument-hint: [knowledge-md-path]
 allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion
 disable-model-invocation: true
@@ -12,7 +12,7 @@ disable-model-invocation: true
 プロジェクト側で蓄積された **統合教訓ナレッジ** を精査し、**汎用的な知見だけ** を、内容に応じて以下 2 つのエージェント本体に蒸留反映する。
 
 - 設計・計画段階で活かす知見 → `cbo/agents/implementation-plan-creator.md`
-- 実装・コードの書き方で活かす知見 → `cbo/agents/implementation-step-executor.md`
+- 実装・コードの書き方で活かす知見 → `cbo/agents/code-implementer.md`
 
 教訓を「ランタイム参照されるナレッジファイル」に置きっぱなしにすると、サブエージェント呼び出し時に追加読込が必要になりプロンプト密度も下がる。本スキルは "蒸留して本体に取り込む" 流儀で各サブエージェントの初期能力を高める方針。
 
@@ -22,7 +22,7 @@ disable-model-invocation: true
   - 省略時のデフォルト: `/Users/otto/workspace/craftbank/arrangement-env/front/.mgzl/knowledge/implementation-lessons.md`
 - 反映先（固定 2 つ）:
   - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/implementation-plan-creator.md`
-  - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/implementation-step-executor.md`
+  - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/code-implementer.md`
 
 ## 振り分けルール
 
@@ -31,11 +31,11 @@ disable-model-invocation: true
 | 教訓カテゴリ（lessons の見出し） | デフォルト振り分け | 補足判定 |
 |---|---|---|
 | 設計・責務分離・依存関係（旧: 設計・責務分離・原則違反） | **plan-creator** | アーキテクチャ判断・依存関係定義・影響範囲は計画段階の論点 |
-| ロジック・エッジケース・例外処理 | **step-executor** | 実装段階の判断 |
-| テスト戦略・テストコード品質 | **内容判定** | 「テスト戦略」「カバレッジ方針」→ plan-creator、「テストコードの書き方」「flaky 対策」→ step-executor |
-| セキュリティ・パフォーマンス | **step-executor** | 実装時のチェック項目 |
-| コードスタイル・命名・配置 | **step-executor** | コードの書き方 |
-| コメント・ドキュメント品質（旧: コメント品質） | **step-executor** | 実装時の表現 |
+| ロジック・エッジケース・例外処理 | **code-implementer** | 実装段階の判断 |
+| テスト戦略・テストコード品質 | **内容判定** | 「テスト戦略」「カバレッジ方針」→ plan-creator、「テストコードの書き方」「flaky 対策」→ code-implementer |
+| セキュリティ・パフォーマンス | **code-implementer** | 実装時のチェック項目 |
+| コードスタイル・命名・配置 | **code-implementer** | コードの書き方 |
+| コメント・ドキュメント品質（旧: コメント品質） | **code-implementer** | 実装時の表現 |
 | その他 | **内容判定** | 内容を見て近い方に倒す |
 
 **判定が割れる教訓**（両方該当・どちらとも判定困難）は「曖昧」フラグを立てて、ステップ 6 の承認で明示的にユーザーに振り分け指定させる。
@@ -47,7 +47,7 @@ disable-model-invocation: true
 1. ナレッジファイルパスを確定する（`$1` があれば優先、無ければデフォルト絶対パス）。
 2. ナレッジファイルが存在しない場合はユーザーに通知して終了する（勝手に別ファイルを探さない）。
 3. ナレッジファイル全文を `Read` で取り込む。
-4. 反映先 2 ファイル（`implementation-plan-creator.md` / `implementation-step-executor.md`）を `Read` で取り込む。
+4. 反映先 2 ファイル（`implementation-plan-creator.md` / `code-implementer.md`）を `Read` で取り込む。
 
 ### ステップ2: 教訓の精査と汎用化判定
 
@@ -67,7 +67,7 @@ disable-model-invocation: true
 採用判定を通過した各教訓について、以下のラベルを付ける:
 
 - `plan-creator` — 設計・計画段階で活かす内容
-- `step-executor` — 実装・コードの書き方で活かす内容
+- `code-implementer` — 実装・コードの書き方で活かす内容
 - `曖昧` — 両方に該当する or どちらとも判定困難なもの
 
 判定は「振り分けルール」表に従う。曖昧の場合は推奨振り分け先とその理由を後段で提示できるように記録しておく。
@@ -86,7 +86,7 @@ disable-model-invocation: true
 | 検証コマンド・grep サニティ | `## 技術的考慮事項チェックリスト` または `## 検証ステップ設計` |
 | ドキュメント・仕様整合 | `## ワークフロー > ### ステップ4: 実装計画ドキュメントの作成` |
 
-#### step-executor 側（`implementation-step-executor.md`）
+#### code-implementer 側（`code-implementer.md`）
 
 | 教訓の性質 | 反映先候補セクション |
 |---|---|
@@ -115,7 +115,7 @@ disable-model-invocation: true
 
 2. ...
 
-# 反映案（step-executor）
+# 反映案（code-implementer）
 3. [カテゴリ] 教訓1行サマリ
    反映先: <セクション名>
    操作: 追記 / 既存文の補強 / 新規サブセクション
@@ -124,7 +124,7 @@ disable-model-invocation: true
 # 振り分けが曖昧な項目（要ユーザー判断）
 4. [カテゴリ] 教訓1行サマリ
    推奨: plan-creator（理由: ...）
-   候補: plan-creator / step-executor / 両方
+   候補: plan-creator / code-implementer / 両方
    差分プレビュー（±3行程度）
 
 # スキップ理由（参考）
@@ -141,7 +141,7 @@ disable-model-invocation: true
 
 - すべて反映（曖昧項目は推奨どおり） — 提示した全項目を Edit で適用
 - 項目を選択して反映 — 番号で取捨選択（番号リストを別途回答）
-- 曖昧項目の振り分けを指定 — 番号と振り分け先（plan-creator / step-executor / 両方）を回答
+- 曖昧項目の振り分けを指定 — 番号と振り分け先（plan-creator / code-implementer / 両方）を回答
 - 文言を調整したい — どの項目をどう書き換えるかをユーザーが指定
 - 今回は反映しない — 何も変更せず終了
 
@@ -151,7 +151,7 @@ disable-model-invocation: true
 
 1. 承認された項目を **振り分け先別** に Edit で適用する。
    - plan-creator 向け項目 → `cbo/agents/implementation-plan-creator.md` を順次 Edit
-   - step-executor 向け項目 → `cbo/agents/implementation-step-executor.md` を順次 Edit
+   - code-implementer 向け項目 → `cbo/agents/code-implementer.md` を順次 Edit
    - 「両方」と指定された項目は、両エージェント向けに文言を調整して別々に Edit
 2. 1 項目ずつ Edit を実行し、各 Edit の `old_string` は前後の文脈を 2〜3 行含めて一意性を確保する。
 3. 両エージェントのフロントマター（`name`, `description`, `model`, `tools`, `skills`, `memory` 等）は変更しない。
@@ -164,14 +164,14 @@ disable-model-invocation: true
 ```
 implementation-agents を更新しました
 
-反映先: implementation-plan-creator.md / implementation-step-executor.md
+反映先: implementation-plan-creator.md / code-implementer.md
 反映元: <ナレッジパス>
-反映項目数: plan-creator N件 / step-executor M件
+反映項目数: plan-creator N件 / code-implementer M件
 スキップ項目数: K件（理由は前段で提示済み）
 
 # 反映した知見の見出し
 - [plan-creator] ...
-- [step-executor] ...
+- [code-implementer] ...
 ```
 
 ナレッジファイル側は **編集しない**。蓄積ルール上、ナレッジ側のローテーションは別タスクで行う。
@@ -183,5 +183,5 @@ implementation-agents を更新しました
 - **既存記述との重複回避**: 既に書かれている指針と同じことを別言語で言わない。補強の場合は既存箇所を編集する。
 - **フロントマター不可侵**: `tools`, `skills`, `memory` 等のメタ情報は本スキルで触らない。
 - **承認なき反映は禁止**: `AskUserQuestion` で明示承認を得るまで `Edit` を呼ばない。
-- **両エージェントを混同しない**: 設計判断は plan-creator に、実装判断は step-executor に。同じ教訓を両方に重複追記しない（「両方」指定の場合のみ文言を調整して別々に反映）。
+- **両エージェントを混同しない**: 設計判断は plan-creator に、実装判断は code-implementer に。同じ教訓を両方に重複追記しない（「両方」指定の場合のみ文言を調整して別々に反映）。
 - **ナレッジファイルは編集しない**: 読み取りのみ。ローテーション・統合は別タスク。

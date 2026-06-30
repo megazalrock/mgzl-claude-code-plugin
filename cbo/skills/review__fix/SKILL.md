@@ -48,14 +48,14 @@ disable-model-invocation: true
   - TaskList で未完了の修正タスクを全件抽出する
   - 単一タスクの場合:
     - TaskUpdate でステータスを `in_progress` に変更
-    - @implementation-step-executor サブエージェントを起動して修正
+    - @code-implementer サブエージェントを起動して修正
     - 完了後、TaskUpdate でステータスを `completed` に変更
   - 複数タスクが未完了の場合（通常並列フロー）:
     - 各タスクの TaskUpdate でステータスを `in_progress` に変更
-    - @implementation-step-executor サブエージェントを **並列に起動** して修正
+    - @code-implementer サブエージェントを **並列に起動** して修正
     - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
 
-  @implementation-step-executor に渡すプロンプトは以下の構造で統一する:
+  @code-implementer に渡すプロンプトは以下の構造で統一する:
 
   ```
   レビュー報告書 {報告書の絶対パス} の指摘 {R000} を修正してください。
@@ -66,7 +66,7 @@ disable-model-invocation: true
   ## 注意
   - 修正対象は本指摘 1 件のみ。他の指摘には触れない
   - 報告書ファイル自体は編集しない（`**評価**:` 欄は人間が記入する欄であり、エージェントは触らない）
-  - 修正完了後、implementation-step-executor の通常の報告形式で結果を返す
+  - 修正完了後、code-implementer の通常の報告形式で結果を返す
   ```
 
 7. 全修正タスク完了後、コードレビュータスクを実行

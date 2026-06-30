@@ -39,7 +39,7 @@ disable-model-invocation: true
   - TaskList で並列実行可能な（ブロックされていない）未完了タスクを特定する
   - 単一タスクの場合:
     - TaskUpdate でステータスを `in_progress` に変更
-    - @implementation-step-executor サブエージェントを利用して実装
+    - @code-implementer サブエージェントを利用して実装
     - 完了後、TaskUpdate でステータスを `completed` に変更
   - 複数タスクが並列実行可能な場合:
     a. 実装計画書の難易度情報を参照し、各タスクを「難易度: 高」と「それ以外」に分類
@@ -51,12 +51,12 @@ disable-model-invocation: true
   2. 難易度: 高の各ステップについて、チームのタスクリストに TaskCreate で登録
      - subject: ステップのタイトル
      - description: ステップの詳細内容（実装計画書から転記）
-  3. 各タスクに対応する @implementation-step-executor チームメイトを Agent ツールで起動
+  3. 各タスクに対応する @code-implementer チームメイトを Agent ツールで起動
      - team_name パラメータを設定
      - name: `step-{ステップ番号}` 形式
      - プロンプトに実装計画書のパスと担当ステップ番号を明記
   4. TaskUpdate で各チームタスクの owner を対応するチームメイト名に設定
-  5. 難易度: 中/低のステップは通常通り @implementation-step-executor Agent で並列起動（チーム外）
+  5. 難易度: 中/低のステップは通常通り @code-implementer Agent で並列起動（チーム外）
   6. 全チームメイトの完了報告を待つ（メッセージは自動配信される）
   7. 全タスク完了後:
      - 各チームメイトに SendMessage type: "shutdown_request" を送信
@@ -65,7 +65,7 @@ disable-model-invocation: true
 
 5-B. 通常並列フロー（難易度: 高なしの並列ステップ）
   - 各タスクの TaskUpdate でステータスを `in_progress` に変更
-  - @implementation-step-executor サブエージェントを並列に起動して実装
+  - @code-implementer サブエージェントを並列に起動して実装
   - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
 
 6. TaskList で残りのタスクを確認し、未完了タスクがあれば5.を繰り返す
