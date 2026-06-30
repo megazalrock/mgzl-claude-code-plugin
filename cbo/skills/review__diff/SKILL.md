@@ -33,16 +33,14 @@ $ARGUMENTS を以下の3つに解析する:
       - テストファイル → 以下の2つ
         - @reviewer-for-test-code
         - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
-      - その他のファイル → 以下の5つ
-        - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
+      - その他のファイル → 以下の4つ
         - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
         - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
         - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
     - 簡易モード（`--simple` 指定時）:
       - テストファイル → @reviewer-for-test-code のみ
-      - その他のファイル → 以下の3つ
-        - @reviewer-for-style（コードの書き方・命名・配置・コードサイズ）
+      - その他のファイル → 以下の2つ
         - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
 6. 各タスクのサブエージェントへの入力は次のとおり:

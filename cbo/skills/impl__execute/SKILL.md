@@ -74,7 +74,7 @@ disable-model-invocation: true
   - TaskUpdate でステータスを `in_progress` に変更
   - **次回起動するレビュアー集合**（次のラウンドで並列起動するサブエージェントの種類の集合。レビュー対象のファイルではなくサブエージェント種別のリスト）を初期化する
     - テストコードの場合: `@reviewer-for-test-code`, `@reviewer-for-comments`
-    - それ以外: `@reviewer-for-style`, `@reviewer-for-logic`, `@reviewer-for-design`, `@reviewer-for-security-performance`, `@reviewer-for-comments`
+    - それ以外: `@reviewer-for-logic`, `@reviewer-for-design`, `@reviewer-for-security-performance`, `@reviewer-for-comments`
   - 修正回数カウンタを 0 で初期化し、以下のレビュー→修正ループを実行する（修正は最大 2 回まで）
     1. **レビュー実施**
        - 「次回起動するレビュアー集合」に含まれるサブエージェントを**並列**で起動してレビュー

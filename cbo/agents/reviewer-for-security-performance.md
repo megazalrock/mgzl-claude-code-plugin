@@ -21,7 +21,7 @@ By default, review the diff returned by `git diff HEAD`. When the user specifies
 
 ## Out of scope (do not report)
 
-- Naming, formatting, file placement, code size, TypeScript surface style → covered by `reviewer-for-style`
+- Naming, formatting, file placement, code size, TypeScript surface style → out of scope
 - General logic errors, edge cases, exception-handling correctness, algorithmic performance (N+1, large-data efficiency) → covered by `reviewer-for-logic`
 - DRY/KISS/SOLID/YAGNI principles, responsibility separation, dependency management → covered by `reviewer-for-design`
 - Test code quality → covered by `reviewer-for-test-code`
