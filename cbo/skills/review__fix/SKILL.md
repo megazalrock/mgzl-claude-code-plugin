@@ -2,7 +2,6 @@
 name: review:fix
 description: レビュー報告書の指定IDの指摘を並列修正
 argument-hint: [R000 R001 ...] [report file path] | -y で確認をスキップ
-disable-model-invocation: true
 ---
 
 ## コンテキスト
