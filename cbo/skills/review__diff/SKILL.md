@@ -24,6 +24,10 @@ $ARGUMENTS を以下の3つに解析する:
 
 1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定する
 2. `git diff --name-status <diff対象>` を実行してレビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
+   - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 のフロントマター出力まで保持する:
+     - `git rev-parse <diff対象>` の結果を `base_commit` として保持（`<diff対象>` が省略された場合は `git rev-parse HEAD` を代わりに使う）
+     - `git rev-parse HEAD` の結果を `head_commit` として保持
+     - どちらも短縮せずフル 40 桁の SHA-1 を使う
 3. 絞り込み指定がある場合、ステータス・ファイルパス・必要に応じて差分内容から該当性を判断し、ファイル一覧を絞り込む
 4. レビュー対象ファイル一覧（絞り込み後）が空の場合はその旨をユーザーに通知し終了
 5. **「ファイル × レビュー観点」の組み合わせごとに1つのサブエージェント呼び出し**を TaskList に1タスクとして登録する
@@ -54,9 +58,12 @@ $ARGUMENTS を以下の3つに解析する:
      ---
      reporter: ClaudeCode review:diff
      model: claude-sonnet-4-6   # 自身のモデル名を記載
+     base_commit: <BASE のフル SHA>   # Step 2 で取得したハッシュを埋める
+     head_commit: <HEAD のフル SHA>   # Step 2 で取得したハッシュを埋める
      ---
      ```
      - `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）。
+     - `base_commit` / `head_commit` は `review:diff` では**必須**。Step 2 で解決したフル 40 桁の SHA-1 をそのまま埋める。
      - 任意項目（`target`, `branch` 等）を追加するのは構わない。
    - フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照する。
    - その後、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する

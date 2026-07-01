@@ -1,9 +1,11 @@
 ---
 reporter: {レビュー実行主体（例: ClaudeCode review:diff / Codex / GitHub Copilot / @reviewer-for-logic）}
 model: {使用モデル名（例: claude-sonnet-4-6）。不明なら省略せず unknown と記載}
-# 以下は任意項目
+# 以下は任意項目（スキルによっては必須指定あり。各スキルの SKILL.md を参照）
 # target: feature/foo
 # branch: feature/foo
+# base_commit: <BASE のフル SHA>   # review:diff で diff 対象のハッシュ
+# head_commit: <HEAD のフル SHA>   # レビュー実行時の HEAD ハッシュ
 ---
 
 <!-- 各改善提案には R000 形式（R + 3桁ゼロパディング連番）の一意なIDを採番する。出現順に R000, R001, R002, ... と振る -->
