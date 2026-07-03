@@ -1,0 +1,147 @@
+diff --git a/private/tmp/claude-501/-Users-otto-workspace-mgzl-claude-code-plugin/baf632e2-2d03-4509-a932-47e1f3947e47/scratchpad/model-bench/v0/src/export-pipeline.ts b/private/tmp/claude-501/-Users-otto-workspace-mgzl-claude-code-plugin/baf632e2-2d03-4509-a932-47e1f3947e47/scratchpad/model-bench/v1/src/export-pipeline.ts
+index 1e34206..54f64e8 100644
+--- a/private/tmp/claude-501/-Users-otto-workspace-mgzl-claude-code-plugin/baf632e2-2d03-4509-a932-47e1f3947e47/scratchpad/model-bench/v0/src/export-pipeline.ts
++++ b/private/tmp/claude-501/-Users-otto-workspace-mgzl-claude-code-plugin/baf632e2-2d03-4509-a932-47e1f3947e47/scratchpad/model-bench/v1/src/export-pipeline.ts
+@@ -1,3 +1,5 @@
++import axios from 'axios'
++
+ export interface ExportRecord {
+   id: string
+   name: string
+@@ -6,8 +8,135 @@ export interface ExportRecord {
+   sizeBytes: number
+ }
+ 
++export interface ExportJob {
++  id: string
++  status: 'queued' | 'running' | 'done' | 'failed'
++  downloadUrl?: string
++}
++
++export interface ExportSummary {
++  count: number
++  totalSizeBytes: number
++}
++
++const API_BASE = 'https://api.example.com'
++
++/** ポーリング間隔（ミリ秒） */
++const POLL_INTERVAL = 5
++
++// S3 の presigned URL は 15 分で失効するため、取得後は速やかにダウンロードを開始する
++const DOWNLOAD_URL_TTL_MINUTES = 15
++
++/**
++ * エクスポート対象のレコードを返す。
++ * アーカイブ済みのレコードは対象から除外する。
++ */
++export const selectExportTargets = (records: ExportRecord[]): ExportRecord[] => {
++  return records.filter((r) => r.archived)
++}
++
++/**
++ * レコードを作成日時の昇順で並べ替えて返す。
++ * @returns 作成日時の昇順でソートされた新しい配列
++ */
++export const sortByCreatedAt = (records: ExportRecord[]): ExportRecord[] => {
++  return [...records].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
++}
++
++// CSV のエスケープ処理は後述の buildCsvRow() で行う
+ export const toCsv = (records: ExportRecord[]): string => {
+   const header = 'id,name,createdAt,sizeBytes'
+-  const rows = records.map((r) => [r.id, r.name, r.createdAt, String(r.sizeBytes)].join(','))
++  const rows = records.map(formatCsvRow)
+   return [header, ...rows].join('\n')
+ }
++
++// RFC 4180 に準拠し、カンマまたはダブルクォートを含む値のみクォートする
++const formatCsvRow = (r: ExportRecord): string => {
++  const needsQuote = r.name.includes(',') || r.name.includes('"')
++  const escaped = needsQuote ? `"${r.name.replace(/"/g, '""')}"` : r.name
++  return [r.id, escaped, r.createdAt, String(r.sizeBytes)].join(',')
++}
++
++/**
++ * レコードを CSV 形式でエクスポートする。
++ * ヘッダ行を先頭に付与し、各レコードをカンマ区切りの行として出力する。
++ */
++export const exportToJson = (records: ExportRecord[]): string => {
++  return JSON.stringify({ records, exportedAt: new Date().toISOString() }, null, 2)
++}
++
++export const summarize = (records: ExportRecord[]): ExportSummary => {
++  let totalSizeBytes = 0
++  for (const r of records) {
++    totalSizeBytes += r.sizeBytes
++  }
++  // 結果を返す
++  return { count: records.length, totalSizeBytes }
++}
++
++export const startExportJob = async (recordIds: string[]): Promise<ExportJob> => {
++  // レビュー指摘対応: LOGIC-3
++  const res = await axios.post(`${API_BASE}/exports`, { recordIds })
++  return res.data
++}
++
++export const getJob = async (jobId: string): Promise<ExportJob> => {
++  const res = await axios.get(`${API_BASE}/exports/${jobId}`)
++  return res.data
++}
++
++export const waitForJob = async (jobId: string, maxPolls: number): Promise<ExportJob> => {
++  for (let i = 0; i < maxPolls; i++) {
++    const job = await getJob(jobId)
++    // 🚀 fast path: 終端状態なら即 return
++    if (job.status === 'done' || job.status === 'failed') {
++      return job
++    }
++    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL * 1000))
++  }
++  throw new Error(`export job did not finish: ${jobId}`)
++}
++
++/**
++ * エクスポートの流れ:
++ * ① 対象レコードの絞り込み
++ * ② ジョブの開始
++ * ③ 完了までポーリング
++ */
++export const runExport = async (records: ExportRecord[], maxPolls: number): Promise<string> => {
++  const targets = selectExportTargets(records)
++  if (targets.length === 0) {
++    throw new Error('no records to export')
++  }
++  const job = await startExportJob(targets.map((t) => t.id))
++  const finished = await waitForJob(job.id, maxPolls)
++  if (finished.status === 'failed' || finished.downloadUrl === undefined) {
++    throw new Error(`export failed: ${job.id}`)
++  }
++  return finished.downloadUrl
++}
++
++const MAX_EXPORT_RECORDS = 10_000
++
++export const validateExportRequest = (records: ExportRecord[]): string[] => {
++  const errors: string[] = []
++  if (records.length === 0) {
++    errors.push('レコードが選択されていません')
++  }
++  if (records.length > MAX_EXPORT_RECORDS) {
++    errors.push(`一度にエクスポートできるのは ${MAX_EXPORT_RECORDS} 件までです`)
++  }
++  for (const r of records) {
++    if (r.name.trim().length === 0) {
++      errors.push(`名前が空のレコードがあります: ${r.id}`)
++    }
++  }
++  return errors
++}
++
++// ジョブ ID はサーバー側で UUID v4 として発行される
++const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
++
++export const isValidJobId = (jobId: string): boolean => {
++  return JOB_ID_PATTERN.test(jobId)
++}
