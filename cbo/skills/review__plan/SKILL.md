@@ -74,7 +74,7 @@ model: sonnet
      ---
      ```
      - `reporter` は固定で `ClaudeCode review:plan`。`model` は実行中の自身のモデル名（不明なら `unknown`）。
-     - 各指摘ブロックには `**評価**:` / `**評価理由**:` の空欄も含める（フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照）。
+     - 各指摘ブロックの見出し行末尾に `評価：` を空欄で含める（フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照）。
    - 出力に含める項目:
      - レビュー対象パス: `<plan_file_path>`
      - レビュー実施回数 / 修正回数
