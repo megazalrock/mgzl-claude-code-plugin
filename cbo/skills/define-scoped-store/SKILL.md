@@ -118,6 +118,63 @@ vi.mock('~/composables/stores/schedules/useXxxStore', async (importOriginal) => 
 3. テスト等が import している他の export（定数など）は維持する（例: `SCHEDULE_LIST_IDS_CHUNK_SIZE`）
 4. ストア単体テストは `mountWithSetup` パターンへ全面書き換えになる
 
+## 既存ストアへの併存追加パターン
+
+前節の「移行チェックリスト」は旧経路を廃して丸ごと差し替える想定だが、旧・手書き `InjectionKey` の inject が多数のコンポーネントに広がっており一気に置換できない場合、**旧経路を残したまま同一ファイル末尾に `defineScopedStore` を追加して新機能サブツリーだけ scoped 版を使う**という併存運用も有効。実装コストが局所化され、新機能の開発中は旧経路のリグレッションゼロを保てる。
+
+代償として、同じ状態を持つ「別チャネル」のストアが2つ並走する（片方の provide が届く場所と、もう片方の provide が届く場所は独立）。全体最終形は片チャネルへの統合を狙うが、その時期は別途判断する。
+
+### 実装形
+
+`UseHolidaysStore.ts` の末尾がお手本。冒頭の手書き `InjectionKey` はレガシー扱いの JSDoc を添えたうえで残し、ファイル末尾に `defineScopedStore` を1ブロック追加する。
+
+```ts
+/**
+ * 祝日ストアの手動 InjectionKey（レガシー）。
+ * ファイル末尾の useHolidaysScopedStore/provideHolidaysScopedStore（defineScopedStore）とは
+ * 内部でそれぞれ別の Symbol を生成する別チャネルであり、ラベル文字列が近くても連動しない。
+ */
+export const HOLIDAY_STORE_KEY: InjectionKey<HolidaysStore> = Symbol('holidayStore')
+
+export const useHolidaysStore = () => {
+  /* 既存実装をそのまま維持 */
+}
+
+export type HolidaysStore = ReturnType<typeof useHolidaysStore>
+
+// HOLIDAY_STORE_KEY（手動 InjectionKey）とは別チャネル
+export const {
+  useStore: useHolidaysScopedStore,
+  provideStore: provideHolidaysScopedStore,
+} = defineScopedStore('HolidaysScopedStore', useHolidaysStore)
+```
+
+### Symbol(key) は毎回別チャネル
+
+`defineScopedStore` は内部で `Symbol(key)` を1回だけ生成して `InjectionKey` として保持する（`composables/shared/store/defineScopedStore.ts` の `Symbol(key)` 行を参照）。`Symbol(description)` は description 文字列を「識別のためのラベル」として保持するだけで、呼び出しごとに必ずユニークな Symbol を返すのが JavaScript の言語仕様（`Symbol('a') === Symbol('a')` は `false`）。したがって、旧手書き側の `Symbol('holidayStore')` と `defineScopedStore('holidayStore', ...)` は description が完全一致していても**別チャネル**であり、片方に provide しても他方の inject には届かない。ラベル文字列を近い名前にすると誤解を招くため、新チャネル側は `'HolidaysScopedStore'` のように意図的にずらす方が読者の混乱を減らせる。
+
+### provideStore の戻り値活用
+
+`provideStore` は setup 実行 → `provide()` → **ストアインスタンス自身を return** する（前節「基本性質」）。手書き provide 時代の `const store = useXxxStore()` + `provide(KEY, store)` の2行は、scoped 版に統一する場面では `const store = provideXxxScopedStore()` の1行にたためる。併存期間中に「旧チャネル向けの手書き provide と、新チャネル向けの provideStore を同時に走らせる」構成が必要な親コンポーネントでは、以下のように両方を並列に呼ぶ:
+
+```ts
+const holidayStore = provideHolidaysScopedStore() // 新チャネル
+provide(HOLIDAY_STORE_KEY, holidayStore)          // 旧チャネル（同じインスタンスを共有）
+```
+
+### 旧 defaultFactory inject の機械置換は不可
+
+旧経路の inject が `inject<HolidaysStore>(HOLIDAY_STORE_KEY, () => useHolidaysStore(), true)` のように defaultFactory 付きになっているケースでは、**祖先で provide されていなくてもローカル生成にフォールバックする**という緩い契約になっている。これを何も考えずに `useHolidaysScopedStore()` に置換すると、`useStore` は inject 未提供時に throw する仕様（前節「基本性質」）のため、祖先で provide していないコンポーネントで実行時エラーになる。置換時は必ず祖先の provide 有無をトレースし、必要なら祖先側に `provideHolidaysScopedStore()` を追加してから inject を置換する。
+
+### 併存追加チェックリスト
+
+1. ファイル冒頭の手書き `InjectionKey` 宣言に「レガシー・別チャネル」を明示する JSDoc を追加
+2. ファイル末尾に `defineScopedStore` を追加し、「手動 InjectionKey とは別チャネル」の一行コメントを添える
+3. 型 export（`ReturnType` 型）は旧経路がまだ使うので残す
+4. 新チャネルのラベル文字列は旧 `InjectionKey` の description と意図的にずらす（例: `'holidayStore'` に対して `'HolidaysScopedStore'`）
+5. `useXxxStore` を直接呼ぶ既存の単体テストは書き換え不要
+6. `vi.mock` で全 export を差し替えるモックファイルがある場合、新 scoped 経路の export（`useXxxScopedStore` / `provideXxxScopedStore`）もモック側で同型に提供する（未対応だと下流テストが落ちる）
+
 ## 参考実装
 
 - 本体: `composables/shared/store/defineScopedStore.ts`（TSDoc に引数あり/なし両方の @example あり）
@@ -126,3 +183,6 @@ vi.mock('~/composables/stores/schedules/useXxxStore', async (importOriginal) => 
   - `composables/stores/schedules/useShiftBoardConfigStore.ts`
   - `composables/stores/schedules/useShiftBoardTableDataStore.ts`
   - `composables/stores/schedules/useScheduleListStore.ts`
+- 併存パターン適用例（旧手書き `InjectionKey` を残しつつ末尾で `defineScopedStore` を追加）:
+  - `composables/stores/schedules/UseHolidaysStore.ts`
+  - `composables/stores/schedules/useEditAndDetailModalStore.ts`
