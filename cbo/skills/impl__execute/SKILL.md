@@ -37,9 +37,14 @@ disable-model-invocation: true
 
 5. 次の未完了タスクを実行
   - TaskList で並列実行可能な（ブロックされていない）未完了タスクを特定する
+  - **各未完了タスクについて、起動する実装エージェント種別を判定する**（起動するのは 1 タスクにつき 1 種類、集合ではない）
+    - **テスト実装ステップの場合**: `@test-implementer`
+    - **それ以外の場合**: `@code-implementer`
+    - **「テスト実装ステップ」の判定基準**: 当該ステップの変更対象ファイルが `*.test.ts` / `*.spec.ts` / `__tests__/` 配下のファイル**のみ**で構成されている場合
+    - 判定が曖昧な場合は `@code-implementer` を選択する（本体コードを含むステップも扱える広い守備範囲で安全側）
   - 単一タスクの場合:
     - TaskUpdate でステータスを `in_progress` に変更
-    - @code-implementer サブエージェントを利用して実装
+    - 判定結果に応じて `@test-implementer` または `@code-implementer` サブエージェントを利用して実装
     - 完了後、TaskUpdate でステータスを `completed` に変更
   - 複数タスクが並列実行可能な場合:
     a. 実装計画書の難易度情報を参照し、各タスクを「難易度: 高」と「それ以外」に分類
@@ -51,12 +56,13 @@ disable-model-invocation: true
   2. 難易度: 高の各ステップについて、チームのタスクリストに TaskCreate で登録
      - subject: ステップのタイトル
      - description: ステップの詳細内容（実装計画書から転記）
-  3. 各タスクに対応する @code-implementer チームメイトを Agent ツールで起動
+  3. 各タスクに対応するチームメイトを Agent ツールで起動
+     - 起動するサブエージェント種別は、ステップ 5 冒頭の判定基準に従い `@test-implementer` または `@code-implementer` を選ぶ（判定はタスク単位で個別に行うため、同一チーム内で両種が混在してよい）
      - team_name パラメータを設定
      - name: `step-{ステップ番号}` 形式
      - プロンプトに実装計画書のパスと担当ステップ番号を明記
   4. TaskUpdate で各チームタスクの owner を対応するチームメイト名に設定
-  5. 難易度: 中/低のステップは通常通り @code-implementer Agent で並列起動（チーム外）
+  5. 難易度: 中/低のステップは通常通り Agent で並列起動（チーム外）。起動するサブエージェント種別はステップ 5 冒頭の判定基準に従う
   6. 全チームメイトの完了報告を待つ（メッセージは自動配信される）
   7. 全タスク完了後:
      - 各チームメイトに SendMessage type: "shutdown_request" を送信
@@ -65,7 +71,7 @@ disable-model-invocation: true
 
 5-B. 通常並列フロー（難易度: 高なしの並列ステップ）
   - 各タスクの TaskUpdate でステータスを `in_progress` に変更
-  - @code-implementer サブエージェントを並列に起動して実装
+  - 各タスクについてステップ 5 冒頭の判定基準に従い、`@test-implementer` または `@code-implementer` サブエージェントを並列に起動して実装（判定はタスク単位で個別に行うため、同一並列バッチ内で両種が混在してよい）
   - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
 
 6. TaskList で残りのタスクを確認し、未完了タスクがあれば5.を繰り返す

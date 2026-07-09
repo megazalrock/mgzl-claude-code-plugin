@@ -1,6 +1,6 @@
 ---
 name: update-implementation-agents
-description: 統合された教訓ナレッジ `implementation-lessons.md` を精査し、設計よりの知見を `cbo/agents/implementation-plan-creator.md` に、実装・書き方の知見を `cbo/agents/code-implementer.md` に蒸留して反映するスキル。`/update-implementation-agents` で明示的に呼び出された場合のみ使用する。
+description: 統合された教訓ナレッジ `implementation-lessons.md` を精査し、設計よりの知見を `cbo/agents/implementation-plan-creator.md` に、本体コード実装の知見を `cbo/agents/code-implementer.md` に、テスト実装の知見を `cbo/agents/test-implementer.md` に蒸留して反映するスキル。`/update-implementation-agents` で明示的に呼び出された場合のみ使用する。
 argument-hint: [knowledge-md-path]
 allowed-tools: Read, Edit, Grep, Glob, Bash, AskUserQuestion
 disable-model-invocation: true
@@ -9,10 +9,11 @@ disable-model-invocation: true
 # update-implementation-agents
 
 このリポジトリ (`mgzl-claude-code-plugin`) の開発時専用スキル。
-プロジェクト側で蓄積された **統合教訓ナレッジ** を精査し、**汎用的な知見だけ** を、内容に応じて以下 2 つのエージェント本体に蒸留反映する。
+プロジェクト側で蓄積された **統合教訓ナレッジ** を精査し、**汎用的な知見だけ** を、内容に応じて以下 3 つのエージェント本体に蒸留反映する。
 
 - 設計・計画段階で活かす知見 → `cbo/agents/implementation-plan-creator.md`
-- 実装・コードの書き方で活かす知見 → `cbo/agents/code-implementer.md`
+- 本体コード実装で活かす知見 → `cbo/agents/code-implementer.md`
+- テスト実装で活かす知見 → `cbo/agents/test-implementer.md`
 
 教訓を「ランタイム参照されるナレッジファイル」に置きっぱなしにすると、サブエージェント呼び出し時に追加読込が必要になりプロンプト密度も下がる。本スキルは "蒸留して本体に取り込む" 流儀で各サブエージェントの初期能力を高める方針。
 
@@ -20,9 +21,10 @@ disable-model-invocation: true
 
 - `$1` — 教訓ナレッジファイルの絶対パス（任意）
   - 省略時のデフォルト: `/Users/otto/workspace/craftbank/arrangement-env/front/.mgzl/knowledge/implementation-lessons.md`
-- 反映先（固定 2 つ）:
+- 反映先（固定 3 つ）:
   - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/implementation-plan-creator.md`
   - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/code-implementer.md`
+  - `/Users/otto/workspace/mgzl-claude-code-plugin/cbo/agents/test-implementer.md`
 
 ## 振り分けルール
 
@@ -30,15 +32,15 @@ disable-model-invocation: true
 
 | 教訓カテゴリ（lessons の見出し） | デフォルト振り分け | 補足判定 |
 |---|---|---|
-| 設計・責務分離・依存関係（旧: 設計・責務分離・原則違反） | **plan-creator** | アーキテクチャ判断・依存関係定義・影響範囲は計画段階の論点 |
-| ロジック・エッジケース・例外処理 | **code-implementer** | 実装段階の判断 |
-| テスト戦略・テストコード品質 | **内容判定** | 「テスト戦略」「カバレッジ方針」→ plan-creator、「テストコードの書き方」「flaky 対策」→ code-implementer |
-| セキュリティ・パフォーマンス | **code-implementer** | 実装時のチェック項目 |
-| コードスタイル・命名・配置 | **code-implementer** | コードの書き方 |
-| コメント・ドキュメント品質（旧: コメント品質） | **code-implementer** | 実装時の表現 |
+| 設計・責務分離・依存関係（旧: 設計・責務分離・原則違反） | **plan-creator + code-implementer + test-implementer**（共通指針） | アーキテクチャ判断・依存関係定義・影響範囲は計画段階の論点として plan-creator に、コード配置・責務境界は 3 エージェント共通指針として code-implementer / test-implementer にも重複反映 |
+| ロジック・エッジケース・例外処理 | **code-implementer + test-implementer**（共通指針） | 実装段階の判断。テスト実装でも遵守すべき共通指針のため両方に重複反映 |
+| テスト戦略・テストコード品質 | **内容判定** | 「テスト戦略」「カバレッジ方針」→ plan-creator、「テストコードの書き方」「flaky 対策」「モック設計」→ **test-implementer** |
+| セキュリティ・パフォーマンス | **code-implementer** | 実装時のチェック項目（本体コード寄り） |
+| コードスタイル・命名・配置 | **code-implementer + test-implementer**（共通指針） | コードの書き方は本体・テスト双方に適用されるため両方に重複反映 |
+| コメント・ドキュメント品質（旧: コメント品質） | **code-implementer + test-implementer**（共通指針） | 実装時の表現。テストコード内のコメント・JSDoc にも同じ品質基準が必要なため両方に重複反映 |
 | その他 | **内容判定** | 内容を見て近い方に倒す |
 
-**判定が割れる教訓**（両方該当・どちらとも判定困難）は「曖昧」フラグを立てて、ステップ 6 の承認で明示的にユーザーに振り分け指定させる。
+**判定が割れる教訓**（両方該当・どちらとも判定困難）は「曖昧」フラグを立てて、ステップ 6 の承認で明示的にユーザーに振り分け指定させる。共通指針として複数エージェントへ重複反映する場合は、対象エージェント名を全て明記する（例: `code-implementer + test-implementer`）。
 
 ## ワークフロー
 
@@ -47,7 +49,7 @@ disable-model-invocation: true
 1. ナレッジファイルパスを確定する（`$1` があれば優先、無ければデフォルト絶対パス）。
 2. ナレッジファイルが存在しない場合はユーザーに通知して終了する（勝手に別ファイルを探さない）。
 3. ナレッジファイル全文を `Read` で取り込む。
-4. 反映先 2 ファイル（`implementation-plan-creator.md` / `code-implementer.md`）を `Read` で取り込む。
+4. 反映先 3 ファイル（`implementation-plan-creator.md` / `code-implementer.md` / `test-implementer.md`）を `Read` で取り込む。
 
 ### ステップ2: 教訓の精査と汎用化判定
 
@@ -64,13 +66,14 @@ disable-model-invocation: true
 
 ### ステップ3: 振り分け判定
 
-採用判定を通過した各教訓について、以下のラベルを付ける:
+採用判定を通過した各教訓について、以下のラベルを付ける（複数付与可）:
 
 - `plan-creator` — 設計・計画段階で活かす内容
-- `code-implementer` — 実装・コードの書き方で活かす内容
-- `曖昧` — 両方に該当する or どちらとも判定困難なもの
+- `code-implementer` — 本体コード実装で活かす内容
+- `test-implementer` — テスト実装で活かす内容
+- `曖昧` — 上記のどれにも決めきれないもの
 
-判定は「振り分けルール」表に従う。曖昧の場合は推奨振り分け先とその理由を後段で提示できるように記録しておく。
+判定は「振り分けルール」表に従う。共通指針として複数エージェントへ重複反映する場合は複数ラベルを付ける（例: `code-implementer` + `test-implementer`）。曖昧の場合は推奨振り分け先とその理由を後段で提示できるように記録しておく。
 
 ### ステップ4: 反映先セクションの決定
 
@@ -88,6 +91,8 @@ disable-model-invocation: true
 
 #### code-implementer 側（`code-implementer.md`）
 
+本体コード実装の指針を反映する。テストコード品質（`### テストコード`）は本エージェントには存在しないため、テストコードに関する教訓は test-implementer 側に振り分ける。
+
 | 教訓の性質 | 反映先候補セクション |
 |---|---|
 | コードスタイル・命名・配置 | `## コーディング指針 > ### TypeScript の型と記法` / `### 設計・責務分離` |
@@ -95,7 +100,19 @@ disable-model-invocation: true
 | 設計・責務分離関連の実装観点 | `## コーディング指針 > ### 設計・責務分離` |
 | セキュリティ・パフォーマンス | `## コーディング指針` 内の性質が最も近いサブセクション |
 | コメント・ドキュメント品質 | `## コーディング指針 > ### コメント・ドキュメント` |
-| テストコード品質 | `## コーディング指針 > ### テストコード` |
+| その他 | `## 注意事項` または近い既存セクション |
+
+#### test-implementer 側（`test-implementer.md`）
+
+テスト実装の指針を反映する。共通指針（`### TypeScript の型と記法` / `### ロジック・エッジケース` / `### 設計・責務分離` / `### コメント・ドキュメント`）は code-implementer と同一構造で保持されているため、共通指針として反映する場合は両方に同じ文言で追記する（教訓の重複複製ポリシー）。`### Vue リアクティビティ・テンプレート` セクションは test-implementer には存在しないため反映不可。
+
+| 教訓の性質 | 反映先候補セクション |
+|---|---|
+| テストコードの書き方・flaky 対策・モック設計・fixture 設計 | `## コーディング指針 > ### テストコード` |
+| コードスタイル・命名・配置（テストコードにも適用） | `## コーディング指針 > ### TypeScript の型と記法` / `### 設計・責務分離`（code-implementer と両方に反映） |
+| ロジック・エッジケース・例外処理（テストコードにも適用） | `## コーディング指針 > ### ロジック・エッジケース`（code-implementer と両方に反映） |
+| コメント・ドキュメント品質（テストコードにも適用） | `## コーディング指針 > ### コメント・ドキュメント`（code-implementer と両方に反映） |
+| SUT との責務境界・テスト実装プロセスの指針 | `## 実装プロセス` の該当ステップ、または `## 注意事項` |
 | その他 | `## 注意事項` または近い既存セクション |
 
 既存項目に統合できる場合は **新規箇条書きを増やすより既存文の補強を優先** する。膨張を避けるため。
@@ -121,10 +138,22 @@ disable-model-invocation: true
    操作: 追記 / 既存文の補強 / 新規サブセクション
    差分プレビュー（±3行程度）
 
-# 振り分けが曖昧な項目（要ユーザー判断）
+# 反映案（test-implementer）
 4. [カテゴリ] 教訓1行サマリ
+   反映先: <セクション名>
+   操作: 追記 / 既存文の補強 / 新規サブセクション
+   差分プレビュー（±3行程度）
+
+# 反映案（共通指針: code-implementer + test-implementer 両方）
+5. [カテゴリ] 教訓1行サマリ
+   反映先: <両エージェントの同名セクション>
+   操作: 追記 / 既存文の補強 / 新規サブセクション
+   差分プレビュー（両エージェントに同じ文言を反映）
+
+# 振り分けが曖昧な項目（要ユーザー判断）
+6. [カテゴリ] 教訓1行サマリ
    推奨: plan-creator（理由: ...）
-   候補: plan-creator / code-implementer / 両方
+   候補: plan-creator / code-implementer / test-implementer / 複数選択
    差分プレビュー（±3行程度）
 
 # スキップ理由（参考）
@@ -133,7 +162,7 @@ disable-model-invocation: true
 - 「既に plan-creator に同等記述あり」→ 反映済み
 ```
 
-全項目が片方のエージェントに偏る場合、もう片方のセクションは「該当なし」と明示する。全項目が「反映済み」または「不採用」の場合は「反映候補なし」と報告してステップ 6 をスキップする。
+全項目が一部のエージェントに偏る場合、対象外のセクションは「該当なし」と明示する。全項目が「反映済み」または「不採用」の場合は「反映候補なし」と報告してステップ 6 をスキップする。
 
 ### ステップ6: ユーザー承認
 
@@ -141,7 +170,7 @@ disable-model-invocation: true
 
 - すべて反映（曖昧項目は推奨どおり） — 提示した全項目を Edit で適用
 - 項目を選択して反映 — 番号で取捨選択（番号リストを別途回答）
-- 曖昧項目の振り分けを指定 — 番号と振り分け先（plan-creator / code-implementer / 両方）を回答
+- 曖昧項目の振り分けを指定 — 番号と振り分け先（plan-creator / code-implementer / test-implementer / 複数選択）を回答
 - 文言を調整したい — どの項目をどう書き換えるかをユーザーが指定
 - 今回は反映しない — 何も変更せず終了
 
@@ -152,10 +181,11 @@ disable-model-invocation: true
 1. 承認された項目を **振り分け先別** に Edit で適用する。
    - plan-creator 向け項目 → `cbo/agents/implementation-plan-creator.md` を順次 Edit
    - code-implementer 向け項目 → `cbo/agents/code-implementer.md` を順次 Edit
-   - 「両方」と指定された項目は、両エージェント向けに文言を調整して別々に Edit
+   - test-implementer 向け項目 → `cbo/agents/test-implementer.md` を順次 Edit
+   - 共通指針として複数エージェントに反映する項目は、対象エージェント全てに同一文言で Edit（`code-implementer` と `test-implementer` の共通指針セクションは同名見出しで揃っているため同じ挿入位置で反映可能）
 2. 1 項目ずつ Edit を実行し、各 Edit の `old_string` は前後の文脈を 2〜3 行含めて一意性を確保する。
-3. 両エージェントのフロントマター（`name`, `description`, `model`, `tools`, `skills`, `memory` 等）は変更しない。
-4. 全 Edit 完了後、`Read` で両ファイルの反映結果を再確認し、構造崩れ（重複、見出し階層ズレ）が無いか目視チェックする。
+3. 3 エージェントのフロントマター（`name`, `description`, `model`, `tools`, `skills`, `memory` 等）は変更しない。
+4. 全 Edit 完了後、`Read` で 3 ファイルの反映結果を再確認し、構造崩れ（重複、見出し階層ズレ）が無いか目視チェックする。共通指針として重複反映した項目は、両エージェントで文言が一致していることも確認する。
 
 ### ステップ8: 結果報告
 
@@ -164,14 +194,16 @@ disable-model-invocation: true
 ```
 implementation-agents を更新しました
 
-反映先: implementation-plan-creator.md / code-implementer.md
+反映先: implementation-plan-creator.md / code-implementer.md / test-implementer.md
 反映元: <ナレッジパス>
-反映項目数: plan-creator N件 / code-implementer M件
-スキップ項目数: K件（理由は前段で提示済み）
+反映項目数: plan-creator N件 / code-implementer M件 / test-implementer L件 / 共通指針（複数反映） K件
+スキップ項目数: S件（理由は前段で提示済み）
 
 # 反映した知見の見出し
 - [plan-creator] ...
 - [code-implementer] ...
+- [test-implementer] ...
+- [共通指針: code-implementer + test-implementer] ...
 ```
 
 ナレッジファイル側は **編集しない**。蓄積ルール上、ナレッジ側のローテーションは別タスクで行う。
@@ -183,5 +215,5 @@ implementation-agents を更新しました
 - **既存記述との重複回避**: 既に書かれている指針と同じことを別言語で言わない。補強の場合は既存箇所を編集する。
 - **フロントマター不可侵**: `tools`, `skills`, `memory` 等のメタ情報は本スキルで触らない。
 - **承認なき反映は禁止**: `AskUserQuestion` で明示承認を得るまで `Edit` を呼ばない。
-- **両エージェントを混同しない**: 設計判断は plan-creator に、実装判断は code-implementer に。同じ教訓を両方に重複追記しない（「両方」指定の場合のみ文言を調整して別々に反映）。
+- **3 エージェントを混同しない**: 設計判断は plan-creator に、本体コード実装の判断は code-implementer に、テスト実装の判断は test-implementer に振り分ける。共通指針として複数エージェントへ重複反映する場合は、対象エージェント全てに同じ文言で反映し、文言を対称に保つ（片方だけ更新するドリフトを避ける）。振り分け先が単独のエージェントで完結する教訓を無理に共通化しない。
 - **ナレッジファイルは編集しない**: 読み取りのみ。ローテーション・統合は別タスク。
