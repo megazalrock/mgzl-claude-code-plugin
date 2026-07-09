@@ -3,6 +3,7 @@ name: implementation-plan-investigator
 description: Use this agent when you need to investigate unclear points in implementation plan documents (!`echo $MGZL_DIR`/implementations/*.md). This agent should be launched for each individual unclear item that requires investigation.
 tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
 color: blue
+model: opus
 skills:
   - ast-grep
   - api:ask-implementations

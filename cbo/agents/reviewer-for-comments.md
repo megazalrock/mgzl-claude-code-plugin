@@ -3,6 +3,7 @@ name: reviewer-for-comments
 description: Reviews "quality of code comments" — checks whether comments match the implementation, flags broken or stale references, and points out redundant or low-value commentary. Does not evaluate the correctness or design of the code itself.
 tools: Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__ide__getDiagnostics, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
 color: green
+model: opus
 skills:
   - ast-grep
 ---

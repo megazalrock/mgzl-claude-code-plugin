@@ -3,6 +3,7 @@ name: reviewer-for-logic
 description: Reviews the "correctness of the implementation itself" — logic errors, missing edge cases, faulty exception handling, N+1 problems, and large-data-processing efficiency. Applicable to both source code and natural-language implementation specifications.
 tools: Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__ide__getDiagnostics, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
 color: green
+model: opus
 skills:
   - ast-grep
 ---
