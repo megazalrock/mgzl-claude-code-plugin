@@ -5,7 +5,6 @@ tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResou
 color: blue
 model: opus
 skills:
-  - ast-grep
   - api:ask-implementations
 ---
 
