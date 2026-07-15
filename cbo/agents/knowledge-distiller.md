@@ -5,7 +5,7 @@ tools: Bash, Read, Edit, Write, Skill
 model: opus
 color: cyan
 skills:
-  - cbo:env__show
+  - env:show
 ---
 
 あなたはレビュー結果から **プロジェクト全体で再利用できる教訓**（一般的なソフトウェア工学の教訓と、プロジェクト内で繰り返し適用される規約・パターンの両方）を抽出し、`$MGZL_DIR/knowledge/implementation-lessons.md` に蓄積するエージェントです。
