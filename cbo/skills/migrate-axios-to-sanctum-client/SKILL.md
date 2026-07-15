@@ -1,6 +1,6 @@
 ---
 name: migrate-axios-to-sanctum-client
-description: Nuxt アプリの API 呼び出しを `$axios` から `useSanctumClient`（ofetch）へ移行する際の変換パターン集。api/ 配下の API composable の書き換え（`toLaravelQuery` による配列クエリの `ids[]` 変換・AbortSignal 透過）、呼び出し元 catch の `AxiosError` 判定から `HttpError` ユーティリティ（`is`/`isCanceled`/`data`）への置換、`FetchError` フィクスチャへのテスト追従、`legacy-axios-files.js` の許可リスト更新までを一貫して扱う。「$axios移行」「useSanctumClient化」「axios廃止」「legacy-axios-files」などの依頼時に使用する。
+description: Nuxt アプリの API 呼び出しを `$axios` から `useSanctumClient`（ofetch）へ移行する際の変換パターン集。api/ 配下の API composable の書き換え（`toLaravelQuery` による配列クエリの `ids[]` 変換・AbortSignal 透過）、呼び出し元 catch の `AxiosError` 判定から `HttpError` ユーティリティ（`is`/`isCanceled`/`data`）への置換、`mockNuxtImport` + `sanctumClientStub` によるテスト傍受と `FetchError` フィクスチャへのテスト追従、`legacy-axios-files.js` の許可リスト更新までを一貫して扱う。「$axios移行」「useSanctumClient化」「axios廃止」「legacy-axios-files」などの依頼時に使用する。
 ---
 
 # $axios → useSanctumClient 移行ガイド
@@ -12,7 +12,7 @@ axios は段階的に廃止中で、API 通信は `useSanctumClient()`（nuxt-au
 移行はワイヤ互換・挙動等価のリファクタリングとして行う。等価性が崩れやすいのは次の3点で、本ガイドはこの3点を中心に変換パターンを示す。
 
 1. **クエリ形式** — ofetch のシリアライザ（ufo）は配列を Laravel が解釈できない形式で送る（後述）
-2. **レスポンスのアンラップ** — `$axios.$get` も `client` もパース済みボディを直接返すので、`const { data } = await ...` の形はそのまま維持できる
+2. **レスポンスのアンラップ** — `$axios.$get` も `client` もパース済みボディを直接返す。戻り値の `{ data }` / `{ isSuccess }` / `res.data` は API エンベロープのフィールドであって axios の `response.data` ではないため、分割代入・参照の形はそのまま維持する
 3. **中断シグナル** — `AbortSignal` は fetch にそのまま透過するが、中断時のエラー表現が変わる
 
 ## 移行の進め方
@@ -22,7 +22,7 @@ axios は段階的に廃止中で、API 通信は `useSanctumClient()`（nuxt-au
 3. **呼び出し元（component / store）の catch を `HttpError` へ置換する**
 4. **テストを追従させる**（`FetchError` フィクスチャ・クエリ検証形式）
 5. **`legacy-axios-files.js` から移行済みファイルを削除する**（テストファイルも忘れずに）
-6. **検証**: 対象のユニットテストと lint、型チェックを実行する
+6. **検証**: 対象のユニットテストと lint、型チェックを実行する。あわせて当該ドメインに `$axios` の残存がないこと（`grep -rn '\$axios' api/<Domain>`）と、`'axios'` の static/dynamic import がゼロであることを確認する
 
 ## API 層の変換
 
@@ -72,15 +72,34 @@ const { data } = await client<GetArrayResponse<ScheduleListResourceItem>>('/api/
 })
 ```
 
-params 型に配列プロパティが1つでも含まれるなら `toLaravelQuery` を必ず通す。スカラーのみでも、後からパラメータが増えたときの事故を防げるので params オブジェクトごと渡す場合は通しておくのが安全（スカラー値はそのまま素通しされる）。なお `toLaravelQuery` はネストしたオブジェクト（`filter[name]=x` 形式）には対応していない。必要になったら本体を拡張する。
+使い分けの一次ルールは次のとおり。
 
-### 更新系（POST / PUT / DELETE）
+- params が配列プロパティを含みうる → `client<T>(url, { query: toLaravelQuery(params) })` を必ず通す。`LocationQuery` を受け取る GET も配列を含みうるため適用対象
+- スカラーのみ → `client<T>(url, { query: params })` と素通しでよい
+
+補足: スカラーのみでも `toLaravelQuery` を通して害はなく（スカラー値はそのまま素通しされる）、後からパラメータが増えたときの事故を防げる。なお `toLaravelQuery` はネストしたオブジェクト（`filter[name]=x` 形式）には対応していない。必要になったら本体を拡張する。
+
+### 更新系（POST / PUT / PATCH / DELETE）
 
 リクエストボディは `body`、メソッドは `method` で指定する（先行例: `api/Users/UseUpdateUser.ts`）。
 
 ```ts
 await client(`/api/users/${userId}`, { method: 'PUT', body: params })
 ```
+
+`$axios` ヘルパーとの対応は次のとおり。
+
+- `$axios.$post<T>(url, body)` → `client<T>(url, { method: 'POST', body })`
+- `$axios.$post<T>(url)`（body なし） → `client<T>(url, { method: 'POST' })`
+- `$axios.$put<T>(url, payload)` → `client<T>(url, { method: 'PUT', body: payload })`
+- `$axios.$patch<T>(url, data)` → `client<T>(url, { method: 'PATCH', body: data })`
+- `$axios.$patch<T>(url)`（body なし） → `client<T>(url, { method: 'PATCH' })`
+- `$axios.$delete<T>(url)`（body なし） → `client<T>(url, { method: 'DELETE' })`
+
+注意点が2つある。
+
+- **型引数に `void` を渡さない**: 戻り値を使わない更新系で `client<void>` と書くと ESLint `no-invalid-void-type` に抵触する。ジェネリックを省略して `await client(url, {...})` とする
+- **body なしリクエストの対応は不要**: iPhone で body なし DELETE が動かない問題は `plugins/sanctum.ts`（`sanctum:request` フックで `t=1` を付与）が client 層で吸収済み。各 composable 側での対応は不要
 
 ### AbortSignal
 
@@ -153,6 +172,33 @@ ofetch は中断時も **`FetchError`（`cause` に `AbortError`）として rej
 
 ## テストの追従
 
+### クライアントの傍受（sanctumClientStub）
+
+`$axios` はメソッド差し替えで傍受できたが、`useSanctumClient()` が返す `$sanctumClient` は Nuxt provide の **`configurable: false` な getter** かつ**関数呼び出し**のため、同じ手法では傍受できない。各テストファイルの先頭で `mockNuxtImport` により `useSanctumClient` ごと差し替え、共通の `sanctumClientStub`（`composables/utils/api/__tests__/utils/StubApi/setupStubApi.ts`。既存の `registerEndpoint` / handlers を再利用）へ橋渡しする。
+
+```ts
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { registerEndpoint, sanctumClientStub } from '~/composables/utils/api/__tests__/utils/StubApi/setupStubApi'
+import { useXxx } from '../UseXxx'
+
+mockNuxtImport('useSanctumClient', () => () => sanctumClientStub)
+
+describe('useXxx', () => {
+  const handler = vi.fn()
+  registerEndpoint('/api/xxx/:id', { method: 'POST', handler: handler.mockImplementation(() => ({ isSuccess: true })) })
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('...', async () => {
+    const { xxx } = useXxx()
+    const actual = await xxx(1, { foo: 'bar' })
+    expect(actual).toBe(true)
+    expect(handler.mock.calls[0]![0].body).toEqual({ foo: 'bar' })              // body 検証
+    expect(handler.mock.calls[0]![0].meta.routeParameters).toEqual({ id: '1' }) // path param 検証
+    // GET のクエリは handler.mock.calls[0]![0].params（URLSearchParams）で検証する
+  })
+})
+```
+
 ### エラーフィクスチャ
 
 `AxiosError` を組み立てていたテストは、共通ファクトリ `test/fixtures/schedules/fetchError.fixture.ts` の `makeFetchError` / `makeAbortedFetchError` へ置き換える。レスポンスボディの置き場所が `response.data` から `data` へ変わる点に注意。
@@ -180,6 +226,8 @@ expect(params?.get('ids')).toBe('1,2')
 
 // After — toLaravelQuery が ids を Laravel 互換の `ids[]` キーへ変換していることを検証
 expect(params?.getAll('ids[]')).toStrictEqual(['1', '2'])
+// ブラケットなしキーが混入していないことも確認する
+expect(params?.has('ids')).toBe(false)
 ```
 
 配列パラメータを持つ API には、この `key[]` 形式で送られることを検証するテストがなければ追加する。`toLaravelQuery` の通し忘れは型エラーにならず本番の Laravel 側でだけ壊れるため、テストが唯一の防波堤になる。
@@ -212,7 +260,9 @@ expect(params?.getAll('ids[]')).toStrictEqual(['1', '2'])
 ## 参考実装
 
 - 移行 PR の実例: CraftBank/arrangement-front#7604（稼働表の GET 3本 + 呼び出し元 3箇所 + テスト追従の一式）
-- 更新系の先行例: `api/Users/UseUpdateUser.ts`（PUT + body）、`api/Users/UsePostSendInvitation.ts`
+- ドメイン一括移行の先行例: `api/Users` 全 15 ファイル（更新系は `api/Users/UseUpdateUser.ts`（PUT + body）、`api/Users/UsePostSendInvitation.ts` など）
 - 判定ユーティリティ本体: `utils/http/httpError.ts`、`utils/http/query.ts`（いずれも TSDoc に設計意図あり）
+- テスト傍受スタブ: `composables/utils/api/__tests__/utils/StubApi/setupStubApi.ts`（`sanctumClientStub` / `registerEndpoint`）
 - エラーフィクスチャ: `test/fixtures/schedules/fetchError.fixture.ts`
+- body なしリクエスト対策: `plugins/sanctum.ts`（`sanctum:request` フック）
 - 許可リストと lint ルール: `eslint-custom-rules/legacy-axios-files.js`、`eslint-custom-rules/no-nuxt-app-axios.js`
