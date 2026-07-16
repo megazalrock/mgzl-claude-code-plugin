@@ -71,5 +71,5 @@ argument-hint: [what to do]
 6. フィードバック蓄積（5-A または 5-B のいずれかで修正が発生した場合のみ実行。両方とも一発承認の場合はスキップ）
   - `TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、今回のレビューループで検出・修正した内容を `source` として渡してバックグラウンドで教訓蓄積する
   - 結果は待たず、すぐに 7. に進む
-7. 実装計画書が完成したら mcp__jetbrains__open_file_in_editor を利用してファイルを開くかどうか AskUserQuestion でユーザーに尋ねる
+7. 実装計画書が完成したら mcp__idea__open_file_in_editor を利用してファイルを開くかどうか AskUserQuestion でユーザーに尋ねる
 8. 実装計画のタイトルとファイルパスを伝え終了する

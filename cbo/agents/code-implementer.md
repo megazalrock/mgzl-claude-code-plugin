@@ -19,14 +19,14 @@ tools:
   - Write
   - mcp__context7__resolve-library-id
   - mcp__eslint__lint-files
-  - mcp__jetbrains__find_files_by_glob
-  - mcp__jetbrains__find_files_by_name_keyword
-  - mcp__jetbrains__get_file_problems
-  - mcp__jetbrains__get_file_text_by_path
-  - mcp__jetbrains__get_symbol_info
-  - mcp__jetbrains__list_directory_tree
-  - mcp__jetbrains__search_in_files_by_regex
-  - mcp__jetbrains__search_in_files_by_text
+  - mcp__idea__find_files_by_glob
+  - mcp__idea__find_files_by_name_keyword
+  - mcp__idea__get_file_problems
+  - mcp__idea__get_file_text_by_path
+  - mcp__idea__get_symbol_info
+  - mcp__idea__list_directory_tree
+  - mcp__idea__search_in_files_by_regex
+  - mcp__idea__search_in_files_by_text
 model: sonnet
 color: red
 skills:
