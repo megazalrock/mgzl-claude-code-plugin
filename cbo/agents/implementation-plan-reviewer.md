@@ -1,7 +1,25 @@
 ---
 name: implementation-plan-reviewer
 description: 実装計画書（!`echo $MGZL_DIR`/implementations/*.md）の品質・整合性・実現可能性をレビューするエージェント。設計の妥当性、ステップ間の整合性、作業量、タスク分割の適切さを評価する。「実装計画をレビューして」「計画書のレビュー」「implementation plan review」などの依頼時に使用する。
-tools: Glob, Grep, Read, WebFetch, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__ide__getDiagnostics, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, mcp__context7__query-docs
+tools:
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - WebFetch
+  - WebSearch
+  - mcp__context7__query-docs
+  - mcp__context7__resolve-library-id
+  - mcp__ide__getDiagnostics
+  - mcp__jetbrains__find_files_by_glob
+  - mcp__jetbrains__find_files_by_name_keyword
+  - mcp__jetbrains__get_file_text_by_path
+  - mcp__jetbrains__get_symbol_info
+  - mcp__jetbrains__list_directory_tree
+  - mcp__jetbrains__search_in_files_by_regex
+  - mcp__jetbrains__search_in_files_by_text
 color: green
 model: opus
 ---

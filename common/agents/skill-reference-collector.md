@@ -7,7 +7,11 @@ description: >-
   are implemented. Use for finding patterns, frontmatter conventions, workflow designs,
   and script structures to reference when building new skills or agents.
   The default reference repository is https://github.com/affaan-m/everything-claude-code.
-tools: Bash, Glob, Grep, Read
+tools:
+  - Bash
+  - Glob
+  - Grep
+  - Read
 model: sonnet
 ---
 

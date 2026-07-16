@@ -1,7 +1,12 @@
 ---
 name: knowledge-distiller
 description: レビュー結果や直近の修正履歴から、プロジェクト全体で再利用できる教訓を抽出し $MGZL_DIR/knowledge/implementation-lessons.md に蓄積するバックグラウンド処理用エージェント。`knowledge:distill` スキルから fire-and-forget で起動される。「教訓蓄積」「知識蒸留」「distill」などの依頼時にも直接呼び出せる。
-tools: Bash, Read, Edit, Write, Skill
+tools:
+  - Bash
+  - Edit
+  - Read
+  - Skill
+  - Write
 model: opus
 color: cyan
 skills:

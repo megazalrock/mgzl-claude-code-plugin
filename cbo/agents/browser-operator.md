@@ -1,7 +1,43 @@
 ---
 name: browser-operator
 description: Playwright MCPを利用して手順書に従いブラウザ操作を実行するエージェント。まずplaywright:runnerスキルに手順書の実行を委譲し、結果を分析した後、必要に応じてplaywright:writerスキルで手順書の作成・更新・修正を行う。
-tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, Edit, Write, Skill, TaskCreate, TaskGet, TaskUpdate, TaskList, ToolSearch, mcp__playwright__browser_close, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_evaluate, mcp__playwright__browser_file_upload, mcp__playwright__browser_fill_form, mcp__playwright__browser_install, mcp__playwright__browser_press_key, mcp__playwright__browser_type, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_network_requests, mcp__playwright__browser_run_code, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_drag, mcp__playwright__browser_hover, mcp__playwright__browser_select_option, mcp__playwright__browser_tabs, mcp__playwright__browser_wait_for, Bash
+tools:
+  - Bash
+  - Edit
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
+  - ToolSearch
+  - Write
+  - mcp__playwright__browser_click
+  - mcp__playwright__browser_close
+  - mcp__playwright__browser_console_messages
+  - mcp__playwright__browser_drag
+  - mcp__playwright__browser_evaluate
+  - mcp__playwright__browser_file_upload
+  - mcp__playwright__browser_fill_form
+  - mcp__playwright__browser_handle_dialog
+  - mcp__playwright__browser_hover
+  - mcp__playwright__browser_install
+  - mcp__playwright__browser_navigate
+  - mcp__playwright__browser_navigate_back
+  - mcp__playwright__browser_network_requests
+  - mcp__playwright__browser_press_key
+  - mcp__playwright__browser_resize
+  - mcp__playwright__browser_run_code
+  - mcp__playwright__browser_select_option
+  - mcp__playwright__browser_snapshot
+  - mcp__playwright__browser_tabs
+  - mcp__playwright__browser_take_screenshot
+  - mcp__playwright__browser_type
+  - mcp__playwright__browser_wait_for
 model: sonnet
 color: yellow
 skills:

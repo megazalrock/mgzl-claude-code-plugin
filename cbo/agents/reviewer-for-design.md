@@ -1,7 +1,32 @@
 ---
 name: reviewer-for-design
 description: Reviews "where to put things and what to put there" — adherence to coding principles (DRY/KISS/SOLID/YAGNI/Composition over Inheritance), Vue/Nuxt 3 responsibility separation, and project-specific architectural constraints (fp-ts ban, no barrel files, no re-exports). Applicable to both source code and natural-language implementation specifications.
-tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__ide__getDiagnostics, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
+tools:
+  - Edit
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - LSP
+  - MCPSearch
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - TodoWrite
+  - WebFetch
+  - WebSearch
+  - mcp__context7__query-docs
+  - mcp__context7__resolve-library-id
+  - mcp__eslint__lint-files
+  - mcp__ide__getDiagnostics
+  - mcp__jetbrains__find_files_by_glob
+  - mcp__jetbrains__find_files_by_name_keyword
+  - mcp__jetbrains__get_file_problems
+  - mcp__jetbrains__get_file_text_by_path
+  - mcp__jetbrains__get_symbol_info
+  - mcp__jetbrains__list_directory_tree
+  - mcp__jetbrains__open_file_in_editor
+  - mcp__jetbrains__search_in_files_by_regex
+  - mcp__jetbrains__search_in_files_by_text
 color: green
 model: opus
 ---

@@ -1,7 +1,32 @@
 ---
 name: reviewer-for-security-performance
 description: Specialist reviewer for security and frontend-specific performance — detects hardcoded credentials, XSS / CSRF vulnerabilities, unsafe dependencies, memory leaks, and unnecessary re-renders in Vue 3 / TypeScript SPA code.
-tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, mcp__ide__getDiagnostics, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
+tools:
+  - Edit
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - LSP
+  - MCPSearch
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - TodoWrite
+  - WebFetch
+  - WebSearch
+  - mcp__context7__query-docs
+  - mcp__context7__resolve-library-id
+  - mcp__eslint__lint-files
+  - mcp__ide__getDiagnostics
+  - mcp__jetbrains__find_files_by_glob
+  - mcp__jetbrains__find_files_by_name_keyword
+  - mcp__jetbrains__get_file_problems
+  - mcp__jetbrains__get_file_text_by_path
+  - mcp__jetbrains__get_symbol_info
+  - mcp__jetbrains__list_directory_tree
+  - mcp__jetbrains__open_file_in_editor
+  - mcp__jetbrains__search_in_files_by_regex
+  - mcp__jetbrains__search_in_files_by_text
 color: green
 model: opus
 ---

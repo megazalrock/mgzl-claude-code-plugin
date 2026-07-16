@@ -6,7 +6,27 @@ description: |
   2. **Review finding fixes on test code** — Findings whose modification target is test code. Invoked from the `review:fix` skill, typically in parallel for multiple findings.
   3. **Single-shot test implementation tasks** — Any ad-hoc focused test authoring / refactoring request that should be completed with proper quality gates.
   **IMPORTANT**: Test implementation work of the above kinds must NEVER be performed directly. Always delegate to this agent so that project conventions, accumulated test-design lessons, and quality gates are applied consistently. For **production (non-test) code** implementation, use `code-implementer` instead.
-tools: Glob, Grep, Read, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, Skill, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, Edit, Write, Bash, ToolSearch, mcp__jetbrains__get_file_problems, mcp__eslint__lint-files
+tools:
+  - Bash
+  - Edit
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - ToolSearch
+  - Write
+  - mcp__context7__resolve-library-id
+  - mcp__eslint__lint-files
+  - mcp__jetbrains__find_files_by_glob
+  - mcp__jetbrains__find_files_by_name_keyword
+  - mcp__jetbrains__get_file_problems
+  - mcp__jetbrains__get_file_text_by_path
+  - mcp__jetbrains__get_symbol_info
+  - mcp__jetbrains__list_directory_tree
+  - mcp__jetbrains__search_in_files_by_regex
+  - mcp__jetbrains__search_in_files_by_text
 model: sonnet
 color: pink
 skills:

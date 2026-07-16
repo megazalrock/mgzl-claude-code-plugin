@@ -1,7 +1,31 @@
 ---
 name: reviewer-for-test-code
 description: Reviews test code quality, coverage, and structure. Evaluates whether test cases are sufficient, identifies redundant or excessive tests, and judges whether test files are appropriately structured and split. Use after writing new tests or when refactoring an existing test suite.
-tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, ListMcpResourcesTool, ReadMcpResourceTool, mcp__context7__resolve-library-id, mcp__eslint__lint-files, Edit, Skill, LSP, mcp__jetbrains__get_file_problems, mcp__jetbrains__find_files_by_glob, mcp__jetbrains__find_files_by_name_keyword, mcp__jetbrains__list_directory_tree, mcp__jetbrains__open_file_in_editor, mcp__jetbrains__get_file_text_by_path, mcp__jetbrains__search_in_files_by_regex, mcp__jetbrains__search_in_files_by_text, mcp__jetbrains__get_symbol_info, MCPSearch, mcp__context7__query-docs
+tools:
+  - Edit
+  - Glob
+  - Grep
+  - ListMcpResourcesTool
+  - LSP
+  - MCPSearch
+  - Read
+  - ReadMcpResourceTool
+  - Skill
+  - TodoWrite
+  - WebFetch
+  - WebSearch
+  - mcp__context7__query-docs
+  - mcp__context7__resolve-library-id
+  - mcp__eslint__lint-files
+  - mcp__jetbrains__find_files_by_glob
+  - mcp__jetbrains__find_files_by_name_keyword
+  - mcp__jetbrains__get_file_problems
+  - mcp__jetbrains__get_file_text_by_path
+  - mcp__jetbrains__get_symbol_info
+  - mcp__jetbrains__list_directory_tree
+  - mcp__jetbrains__open_file_in_editor
+  - mcp__jetbrains__search_in_files_by_regex
+  - mcp__jetbrains__search_in_files_by_text
 color: green
 model: opus
 ---
