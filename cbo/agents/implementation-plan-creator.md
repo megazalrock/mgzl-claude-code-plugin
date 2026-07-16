@@ -18,17 +18,22 @@ tools:
   - Write
   - mcp__context7__query-docs
   - mcp__context7__resolve-library-id
-  - mcp__idea__create_new_file
   - mcp__idea__find_files_by_glob
   - mcp__idea__find_files_by_name_keyword
   - mcp__idea__get_file_problems
+  - mcp__idea__get_file_problems
   - mcp__idea__get_file_text_by_path
+  - mcp__idea__get_inspections
+  - mcp__idea__get_project_status
   - mcp__idea__get_symbol_info
   - mcp__idea__list_directory_tree
   - mcp__idea__open_file_in_editor
-  - mcp__idea__replace_text_in_file
+  - mcp__idea__search_file
   - mcp__idea__search_in_files_by_regex
   - mcp__idea__search_in_files_by_text
+  - mcp__idea__search_regex
+  - mcp__idea__search_symbol
+  - mcp__idea__search_text
 color: orange
 model: opus
 skills:
