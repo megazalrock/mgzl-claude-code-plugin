@@ -24,7 +24,7 @@ $ARGUMENTS を以下の3つに解析する:
 
 1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定する
 2. `git diff --name-status <diff対象>` を実行してレビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
-   - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 のフロントマター出力まで保持する:
+   - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 の JSON 報告書出力まで保持する:
      - `git rev-parse <diff対象>` の結果を `base_commit` として保持（`<diff対象>` が省略された場合は `git rev-parse HEAD` を代わりに使う）
      - `git rev-parse HEAD` の結果を `head_commit` として保持
      - どちらも短縮せずフル 40 桁の SHA-1 を使う
@@ -56,24 +56,27 @@ $ARGUMENTS を以下の3つに解析する:
 6. 各タスクのサブエージェントへの入力は次のとおり:
   - 対象ファイルの差分を `git diff <diff対象> <filepath>` で取得し、**その差分のみ**を渡す
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
+  - サブエージェントへの指示に「各指摘には差分のハンク行番号に基づく `**位置**` 欄（new 側の行番号を優先）を必ず記載すること」を含める
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
 8. 全てのタスクを実行
   - 各レビュアーサブエージェントの起動時、`Agent` ツールの `model` パラメータに 5. で **タスクの対象ファイルに対して** 決定したモデル（`sonnet` または `opus`）を指定する
-9. 全てのレビュー結果をまとめる（各指摘の **報告者** フィールドに担当サブエージェント名を記載すること）。
-   - **統合レビュー結果のファイル先頭に YAML フロントマターを必ず埋める**:
-     ```yaml
-     ---
-     reporter: ClaudeCode review:diff
-     model: claude-sonnet-4-6   # 自身のモデル名を記載
-     base_commit: <BASE のフル SHA>   # Step 2 で取得したハッシュを埋める
-     head_commit: <HEAD のフル SHA>   # Step 2 で取得したハッシュを埋める
-     ---
-     ```
-     - `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）。
-     - `base_commit` / `head_commit` は `review:diff` では**必須**。Step 2 で解決したフル 40 桁の SHA-1 をそのまま埋める。
-     - 任意項目（`target`, `branch` 等）を追加するのは構わない。
-   - フォーマットは `cbo/skills/document-saver/references/format-review-result.md` を参照する。
-   - その後、 document-saver スキルで !`echo $MGZL_DIR`/reviews/ ディレクトリに保存する
-10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、統合レビュー結果に `[3]` 推奨以上（`[3]`/`[4]`/`[5]`）の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、統合レビュー結果を `source` として渡してバックグラウンドで教訓蓄積する。`[2]` 以下のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
-11. 保存したレビュー報告書を mcp__idea__open_file_in_editor を利用して開くかどうか AskUserQuestion でユーザーに尋ねる
-12. レビュー結果の保存先パスと、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）をユーザーに伝え終了する
+9. 全てのレビュー結果を統合し、正本 JSON 報告書を組み立てて保存する
+   - スキーマは `cbo/skills/document-saver/references/format-review-result-json.md` に従う。document-saver スキルは使わず Write ツールで直接保存する
+   - `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）
+   - `base_commit` / `head_commit` は Step 2 で解決したフル 40 桁 SHA-1（**必須**）
+   - 各指摘を `findings[]` の要素にする:
+     - `id` は出現順に R000, R001, ...（R + 3桁ゼロパディング連番）
+     - `reporter` に担当サブエージェント名を記載する
+     - レビュアー報告の `**位置**` 欄から `file` と `anchor` を組み立てる（`ファイル全体` → `anchor: null`、`なし` → `file: null` かつ `anchor: null`）
+     - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
+   - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（difit のコメント本文に載るため）
+   - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
+10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、正本 JSON の `findings` に `severity` が 3 以上の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、正本 JSON の内容を `source` としてそのまま渡してバックグラウンドで教訓蓄積する。`severity` 2 以下のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
+11. 保存した報告書を difit で開く
+   - `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" launch <保存した JSON の絶対パス> --diff <head_commit> <base_commit>` を実行する
+   - 出力（key=value 形式）の `url=` をユーザーに提示する
+   - `unanchored=` に指摘 ID がある場合、それらは difit に表示されないため Step 12 の報告に指摘本文を含める
+   - stderr に `error=` が出力された場合は difit 起動を諦め、保存先パスの提示にフォールバックする（レビュー自体は成功として扱う）
+   - 評価の記入方法を案内する: difit の各指摘スレッドに**返信**で `tp / fp / nit / oos`（必要なら続けて `対応：<指示>`）を記入する
+   - 前提: レビュー対象は コミット済みの HEAD（作業ツリーがクリーン）。未コミット変更があると、レビュー時の行番号と difit の表示行がずれてコメントのアンカーが誤る可能性がある
+12. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、difit の URL（起動できた場合）、difit に載らなかった指摘（`unanchored=` 対象）の本文、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）

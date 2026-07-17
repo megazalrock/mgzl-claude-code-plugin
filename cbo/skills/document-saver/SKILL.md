@@ -39,6 +39,8 @@ model: sonnet
 | 議論まとめ | [format-discussion-summary.md](references/format-discussion-summary.md) |
 | その他 | [format-general.md](references/format-general.md) |
 
+> **注**: review:diff / review:file が出力するレビュー結果は本スキルを経由せず、正本 JSON（[format-review-result-json.md](references/format-review-result-json.md)）として各スキルが直接保存する。本スキルの「レビュー結果」テンプレート（md）は review:plan 用に残っている。
+
 ### Step 3: ファイルの保存
 
 保存前にファイル名と保存先をユーザーに確認し、Writeツールで保存する。

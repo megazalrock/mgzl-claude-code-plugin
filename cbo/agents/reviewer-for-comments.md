@@ -157,6 +157,16 @@ This agent uses only three severity levels. Per the agent's scope, `[5]` and `[2
 7. **Classify** every finding using the severity scale above
 8. **Self-review** the draft report and drop anything outside comment territory (logic, design, style, security, tests)
 
+## Finding location (required)
+
+Every finding MUST include a `**位置**` line so the caller can anchor it in a diff viewer:
+
+- Use the repository-relative file path
+- Prefer the line number on the **new** (post-change) side of the diff; use the old side only for findings about deleted lines, marking it `(old)`
+- Use `start-end` for multi-line findings
+- If the finding applies to the whole file, write `{path}:ファイル全体`
+- If no single file can be identified, write `なし`
+
 ## Report template
 
 Output the report in **Japanese**, following this structure. Omit `[5]` and `[2]` sections — they do not apply to this agent.
@@ -169,6 +179,7 @@ Output the report in **Japanese**, following this structure. Omit `[5]` and `[2]
 ### ✅ 良い点
 
 ### [4] 強く推奨
+**位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [どのコメントが、どう実装とずれているか／どの参照が解決できないか]
 **理由**: [なぜ問題なのか]
 **提案**:
@@ -177,6 +188,7 @@ Output the report in **Japanese**, following this structure. Omit `[5]` and `[2]
 ```
 
 ### [3] 推奨
+**位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [冗長／不明瞭／用語不統一／タイプミス等の具体箇所]
 **理由**: [削除・修正すべき根拠]
 **提案**: [修正後のコメント、または削除案]

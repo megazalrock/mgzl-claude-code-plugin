@@ -288,6 +288,16 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 5. **Verify proper mocking** — test isolation
 6. **Self-review** the draft report — ensure each finding is appropriate and necessary
 
+## Finding location (required)
+
+Every finding MUST include a `**位置**` line so the caller can anchor it in a diff viewer:
+
+- Use the repository-relative file path
+- Prefer the line number on the **new** (post-change) side of the diff; use the old side only for findings about deleted lines, marking it `(old)`
+- Use `start-end` for multi-line findings
+- If the finding applies to the whole file, write `{path}:ファイル全体`
+- If no single file can be identified, write `なし`
+
 ## Report template
 
 Output the report in **Japanese**, following this structure:
@@ -300,6 +310,7 @@ Output the report in **Japanese**, following this structure:
 ### ✅ 良い点
 
 ### [5] 必須修正 (ブロッカー)
+**位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか]
 **提案**:

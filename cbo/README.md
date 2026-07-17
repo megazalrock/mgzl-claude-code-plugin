@@ -28,7 +28,7 @@ $MGZL_DIR/
 ├── knowledge/                # 教訓ファイル
 │   ├── implementation-plan-lessons.md  # 実装計画書作成の教訓（impl:create）
 │   └── implementation-lessons.md       # コード実装の教訓（review:diff/file・impl:execute）
-├── reviews/                  # レビュー結果
+├── reviews/                  # レビュー結果（正本 JSON・difit セッション sidecar・旧 md 報告書）
 ├── playwright_procedures/    # Playwright 手順書
 └── tmp/                      # 一時ファイル・スクリーンショット
 ```

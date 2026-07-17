@@ -103,6 +103,16 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 6. **Acknowledge good work** when present
 7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer
 
+## Finding location (required)
+
+Every finding MUST include a `**位置**` line so the caller can anchor it in a diff viewer:
+
+- Use the repository-relative file path
+- Prefer the line number on the **new** (post-change) side of the diff; use the old side only for findings about deleted lines, marking it `(old)`
+- Use `start-end` for multi-line findings
+- If the finding applies to the whole file, write `{path}:ファイル全体`
+- If no single file can be identified, write `なし`
+
 ## Report template
 
 Output the report in **Japanese**, following this structure:
@@ -115,6 +125,7 @@ Output the report in **Japanese**, following this structure:
 ### ✅ 良い点
 
 ### [5] 必須修正 (ブロッカー)
+**位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか]
 **提案**:
