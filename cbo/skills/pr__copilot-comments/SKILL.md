@@ -1,6 +1,6 @@
 ---
 name: pr:copilot-comments
-description: 指定したPRのGitHub Copilotによる未解決のレビューコメントを取得する。「Copilotの指摘を確認して」「PRのCopilotコメント」「未解決のCopilotレビューを取得」「Copilotの未解決コメントを見せて」等の依頼時に使用。PR番号を引数として受け取る。
+description: 指定したPRのGitHub Copilotによる未解決のレビューコメントを取得し、修正要否を判定する。対応不要と判断した指摘は理由をリプライしてResolvedにできる。「Copilotの指摘を確認して」「PRのCopilotコメント」「未解決のCopilotレビューを取得」「Copilotの未解決コメントを見せて」等の依頼時に使用。PR番号を引数として受け取る。
 argument-hint: <PR番号>
 allowed-tools: Bash(bun run:*)
 ---
@@ -47,7 +47,19 @@ bun run "${CLAUDE_SKILL_DIR}/scripts/fetch-copilot-comments.ts" $ARGUMENTS
         - Pinia/store 側の guard フラグ
       - **C. 過去実装との等価性**: PR が既存挙動の置き換えなら `git show <base-branch>:<path>` で過去実装を取得し、「最終的に API・store・UI に到達する状態」が同じかを比較する。
       - **D. Copilot 主張の反証探し**: 「主張が成立する根拠」と「成立しない反証」を同等に能動的に探す。検証を「指摘が成立する経路の存在確認」だけで止めない。
-   4. 判定結果を「検討結果」フォーマットでユーザーに提示して終了（修正は行わない）
+   4. 判定結果を「検討結果」フォーマットでユーザーに提示する（修正は行わない）
+
+5. **対応不要スレッドの Resolve**（「対応不要」判定が1件以上ある場合のみ）:
+   1. 検討結果の提示とあわせて、対応不要と判定したスレッドに理由をリプライして Resolved にしてよいかユーザーに確認する（PRへの書き込みが発生するため、確認なしで実行しない）
+   2. 承認されたら、対象スレッドごとに以下を実行する。`<threadId>` はスクリプト出力の `threadId` フィールドの値を使う
+
+      ```bash
+      bun run "${CLAUDE_SKILL_DIR}/scripts/resolve-thread.ts" <threadId> "<リプライ本文>"
+      ```
+
+   3. リプライ本文は「対応不要と判断した理由」を1〜3文で簡潔に書く。検討結果の「前提の検証結果」「観測可能な実害」を根拠として含める（例: `検証の結果、対応不要と判断しました。<指摘の前提>とありますが、<検証結果と実害がない根拠>のため実害はありません。`）
+   4. 各実行の出力を確認する: `error` フィールドがあればその内容を、`isResolved` が false であれば Resolve に失敗した旨をユーザーに報告する
+   5. 全スレッドの処理結果（Resolved にした件数・リプライURL・失敗があればその内容）をまとめてユーザーに報告する
 
 ## 出力フォーマット
 

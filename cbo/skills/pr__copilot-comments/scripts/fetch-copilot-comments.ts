@@ -12,6 +12,7 @@ interface ReviewComment {
 }
 
 interface ReviewThread {
+  id: string;
   isResolved: boolean;
   path: string;
   line: number | null;
@@ -50,6 +51,7 @@ interface RepoInfo {
 }
 
 interface UnresolvedThread {
+  threadId: string;
   path: string;
   line: number | null;
   startLine: number | null;
@@ -117,6 +119,7 @@ query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
       url
       reviewThreads(first: 100, after: $cursor) {
         nodes {
+          id
           isResolved
           path
           line
@@ -202,6 +205,7 @@ for (const thread of allThreads) {
   if (!copilotComment) continue;
 
   unresolvedThreads.push({
+    threadId: thread.id,
     path: thread.path,
     line: thread.line,
     startLine: thread.startLine,
