@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const CACHE_DIR = join(process.env.CLAUDE_PLUGIN_DATA ?? "/tmp", "pr_update");
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const FETCH_LIMIT = 10;
+const FETCH_LIMIT = 3;
 
 interface PR {
   number: number;
