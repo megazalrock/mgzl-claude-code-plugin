@@ -61,7 +61,14 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
 difit 起動時、正本 JSON の隣に `<報告書名（.json を除く）>.difit-session.json` が作成される:
 
 ```json
-{ "url": "http://localhost:4966", "port": 4966, "pid": 12345, "started_at": "..." }
+{
+  "url": "http://localhost:4966",
+  "port": 4966,
+  "pid": 12345,
+  "log": "/tmp/difit-review-xxxx/launch.log",
+  "started_at": "..."
+}
 ```
 
 - セッション状態であり報告書の一部ではない。stale になっていたら（プロセス死亡）再起動で上書きされる
+- `log` は difit プロセスの stdout/stderr の書き込み先。difit はブラウザタブが閉じられると全コメント＋リプライを stdout に整形出力して終了するため、`difit-review.ts wait <報告書パス>` がこのログから返信内容を回収する
