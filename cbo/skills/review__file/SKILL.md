@@ -27,6 +27,7 @@ argument-hint: [ file path ]
    - `reporter` は固定で `ClaudeCode review:file`。`model` は実行中の自身のモデル名（不明なら `unknown`）
    - `base_commit` / `head_commit` はどちらも `null`
    - 各指摘を `findings[]` の要素にする（`id` は R000 形式の連番、`reporter` に担当サブエージェント名、`**位置**` 欄から `file` / `anchor` を組み立て、`anchor.side` は `new`）
+   - レビュアー報告の `**提案**` から、フェンス外の平文を `proposals[].text`、フェンス内のコードを `proposals[].code` に分離する（一方しか無ければ他方は `null`）
    - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
    - 対象ファイル中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（difit のコメント本文に載るため）
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する

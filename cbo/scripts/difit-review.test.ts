@@ -30,7 +30,7 @@ function finding(over: Partial<Finding>): Finding {
     problem: "p",
     reason: "r",
     reporter: "@reviewer-for-logic",
-    proposals: [{ label: null, code: "x" }],
+    proposals: [{ label: null, text: null, code: "x" }],
     evaluation: { value: null, directive: null },
     ...over,
   };
@@ -66,8 +66,8 @@ describe("buildCommentPayloads", () => {
     const f = finding({
       anchor: { side: "new", line: { start: 3, end: 6 } },
       proposals: [
-        { label: "案A", code: "a" },
-        { label: "案B", code: "b" },
+        { label: "案A", text: null, code: "a" },
+        { label: "案B", text: null, code: "b" },
       ],
     });
     const { comments } = buildCommentPayloads(baseReport([f]));
@@ -87,9 +87,28 @@ describe("buildCommentPayloads", () => {
   });
 
   test("提案コード内にフェンスがある場合はより長いフェンスで囲む", () => {
-    const f = finding({ proposals: [{ label: null, code: "```md\nabc\n```" }] });
+    const f = finding({ proposals: [{ label: null, text: null, code: "```md\nabc\n```" }] });
     const { comments } = buildCommentPayloads(baseReport([f]));
     expect(comments[0].body).toContain("提案:\n````\n```md\nabc\n```\n````");
+  });
+
+  test("text のみの提案は平文で出力されフェンスが付かない", () => {
+    const f = finding({ proposals: [{ label: null, text: "説明のみの修正案", code: null }] });
+    const { comments } = buildCommentPayloads(baseReport([f]));
+    expect(comments[0].body).toContain("提案:\n説明のみの修正案");
+    expect(comments[0].body).not.toContain("```");
+  });
+
+  test("text と code の併記では code のみフェンスで囲まれる", () => {
+    const f = finding({ proposals: [{ label: null, text: "説明", code: "x" }] });
+    const { comments } = buildCommentPayloads(baseReport([f]));
+    expect(comments[0].body).toContain("提案:\n説明\n```\nx\n```");
+  });
+
+  test("旧形式（text キー無し）の提案は従来どおり code がフェンスで囲まれる", () => {
+    const f = finding({ proposals: [{ label: null, code: "x" }] });
+    const { comments } = buildCommentPayloads(baseReport([f]));
+    expect(comments[0].body).toContain("提案:\n```\nx\n```");
   });
 });
 

@@ -30,8 +30,8 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
       "reason": "なぜ問題なのか、どの原則に反するか",
       "reporter": "@reviewer-for-logic", // 担当サブエージェント名
       "proposals": [
-        { "label": null, "code": "改善後のコード例 もしくは 自然言語での修正案" }
-        // 複数案があるときは label に "案A" / "案B" を設定し要素を分ける
+        { "label": null, "text": "自然言語での修正方針。無ければ null", "code": "改善後のコード例（コードのみ）。無ければ null" }
+        // text / code の少なくとも一方は非 null。複数案があるときは label に "案A" / "案B" を設定し要素を分ける
       ],
       "evaluation": { "value": null, "directive": null }
       // value: "tp"(妥当) | "fp"(誤検知) | "nit"(些細) | "oos"(スコープ外) | null(未評価)

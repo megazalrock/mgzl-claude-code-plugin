@@ -70,6 +70,7 @@ $ARGUMENTS を以下の3つに解析する:
      - `id` は出現順に R000, R001, ...（R + 3桁ゼロパディング連番）
      - `reporter` に担当サブエージェント名を記載する
      - レビュアー報告の `**位置**` 欄から `file` と `anchor` を組み立てる（`ファイル全体` → `anchor: null`、`なし` → `file: null` かつ `anchor: null`）
+     - レビュアー報告の `**提案**` から、フェンス外の平文を `proposals[].text`、フェンス内のコードを `proposals[].code` に分離する（一方しか無ければ他方は `null`）
      - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
    - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（difit のコメント本文に載るため）
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する

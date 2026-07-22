@@ -19,7 +19,9 @@ export interface Anchor {
 }
 export interface Proposal {
   label: string | null;
-  code: string;
+  // text 導入前の旧形式報告書（code に自然言語の修正案も入る）を開けるよう optional にする
+  text?: string | null;
+  code: string | null;
 }
 export interface Evaluation {
   value: "tp" | "fp" | "nit" | "oos" | null;
@@ -221,7 +223,9 @@ export function buildCommentPayloads(
     }
     lines.push(`問題: ${f.problem}`, `理由: ${f.reason}`, `報告者: ${f.reporter}`);
     for (const p of f.proposals) {
-      lines.push(p.label === null ? "提案:" : `提案（${p.label}）:`, ...fenceCode(p.code));
+      lines.push(p.label === null ? "提案:" : `提案（${p.label}）:`);
+      if (p.text != null) lines.push(p.text);
+      if (p.code != null) lines.push(...fenceCode(p.code));
     }
     lines.push("--- 返信例: tp 対応：案A（評価値: tp / fp / nit / oos）");
     comments.push({
