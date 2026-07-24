@@ -12,7 +12,7 @@ model: sonnet
 
 $ARGUMENTS を以下の3つに解析する:
 
-- **diff 対象**（省略可）: 最初のフラグ以外の引数。branch/tag/commit を指定する
+- **diff 対象**（省略可）: 最初のフラグ以外の引数。branch/tag/commit を指定する。省略時はタスク 1. の「diff モードの決定」に従って自動決定する
 - **`--target <絞り込み指定>`**（省略可）: レビュー対象ファイルを絞り込む自然言語の指定。`--target` の直後から次のフラグまたは末尾までを値として扱う（例: 「新規ファイルのみ」「既存ファイルのみ」「認証に関係するファイルのみ」「`src/api/` 以下」）
 - **`--simple`**（省略可）: 簡易レビューモードを有効化する
 
@@ -22,17 +22,25 @@ $ARGUMENTS を以下の3つに解析する:
 
 ## タスク
 
-1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定する
-2. `git diff --name-status <diff対象>` を実行してレビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
+1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定し、**diff モード** を決定する
+   - diff 対象が指定されている場合 → **コミット比較モード**（指定された branch/tag/commit を diff 対象とする）
+   - diff 対象が未指定の場合、以下を上から順に判定して最初に該当したモードを使う:
+     1. `git diff --cached --name-status` の出力が空でない → **staged モード**（stage された内容のみをレビューする）
+     2. `git diff --name-status` の出力が空でない → **worktree モード**（未コミットの変更を全てレビューする。stage が空なので作業ツリーの差分が未コミット変更の全てと一致する）
+     3. どちらも空 → **merge-base モード**: デフォルトブランチ（`git symbolic-ref --short refs/remotes/origin/HEAD` で解決し、失敗時は `main`、それも実在しなければ `master`）と現在のブランチのマージベースを `git merge-base HEAD <デフォルトブランチ>` で求め、その SHA を diff 対象とする（以降はコミット比較モードとして扱う）
+   - 未追跡（untracked）ファイルはどのモードでも判定・レビュー対象に含めない
+2. レビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
+   - コミット比較モード: `git diff --name-status <diff対象>` を実行する
+   - staged / worktree モード: Step 1 の判定で実行した `git diff --cached --name-status` / `git diff --name-status` の出力をそのまま使う
    - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 の JSON 報告書出力まで保持する:
-     - `git rev-parse <diff対象>` の結果を `base_commit` として保持（`<diff対象>` が省略された場合は `git rev-parse HEAD` を代わりに使う）
-     - `git rev-parse HEAD` の結果を `head_commit` として保持
+     - コミット比較モード: `git rev-parse <diff対象>` の結果を `base_commit`、`git rev-parse HEAD` の結果を `head_commit` として保持
+     - staged / worktree モード: `git rev-parse HEAD` の結果を `base_commit` と `head_commit` の両方として保持
      - どちらも短縮せずフル 40 桁の SHA-1 を使う
 3. 絞り込み指定がある場合、ステータス・ファイルパス・必要に応じて差分内容から該当性を判断し、ファイル一覧を絞り込む
 4. レビュー対象ファイル一覧（絞り込み後）が空の場合はその旨をユーザーに通知し終了
 5. **「ファイル × レビュー観点」の組み合わせごとに1つのサブエージェント呼び出し**を TaskList に1タスクとして登録する
   - タスク登録の前に、**ファイルごと**にレビュアー用モデルを決定する（差分全体の合計で判定してはならない）:
-    - `git diff --numstat <diff対象> -- <レビュー対象ファイル（絞り込み後）...>` を **1 回だけ** 実行し、各ファイルの (insertions + deletions) の合計行数を取得する
+    - `git diff --numstat <diff対象> -- <レビュー対象ファイル（絞り込み後）...>`（staged モードでは `git diff --cached --numstat -- <...>`、worktree モードでは `git diff --numstat -- <...>`）を **1 回だけ** 実行し、各ファイルの (insertions + deletions) の合計行数を取得する
     - 各ファイルについて、合計が **50 行未満** → そのファイルに紐づくタスクのモデルは `sonnet`
     - 各ファイルについて、合計が **50 行以上** → そのファイルに紐づくタスクのモデルは `opus`
     - 同一ファイルに紐づく複数観点のタスクは同じモデルを共有する
@@ -55,8 +63,10 @@ $ARGUMENTS を以下の3つに解析する:
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
 6. 各タスクのサブエージェントへの入力は次のとおり:
   - 対象ファイルの差分を取得し、**その差分のみ**を渡す:
-    - `base_commit` と `head_commit` が異なる場合: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。difit が表示する差分と行番号を一致させるため）
-    - 同一の場合（diff 対象省略で未コミット変更をレビューする場合）: `git diff -- <filepath>`（このケースは difit の表示と行番号が一致しない可能性が残る）
+    - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。difit が表示する差分と行番号を一致させるため）
+    - staged モード: `git diff --cached -- <filepath>`
+    - worktree モード: `git diff -- <filepath>`
+    - staged / worktree モードは difit の表示と行番号が一致しない可能性が残る
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
   - サブエージェントへの指示に「各指摘には差分のハンク行番号に基づく `**位置**` 欄（new 側の行番号を優先）を必ず記載すること。行番号はハンクヘッダー `@@ -a,b +c,d @@` を起点に、new 側なら `+` 行と文脈行のみを数えて算出すること」を含める
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
