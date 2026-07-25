@@ -1,0 +1,238 @@
+diff --git a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/BasicScheduleCard.vue b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/BasicScheduleCard.vue
+index 43091d37d..1cd551b56 100644
+--- a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/BasicScheduleCard.vue
++++ b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/BasicScheduleCard.vue
+@@ -9,14 +9,8 @@
+     :is-dimmed="isDimmed"
+     @drop="handleDrop"
+   >
+-    <template #title="{ scheduleCardBaseTextElement }">
++    <template #title>
+       {{ schedule.title }}
+-      <v-tooltip
+-        location="top"
+-        :activator="scheduleCardBaseTextElement"
+-      >
+-        {{ schedule.title }}
+-      </v-tooltip>
+     </template>
+     <template #footer>
+       <div
+diff --git a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/HolidayScheduleCard.vue b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/HolidayScheduleCard.vue
+index e2051f5c7..c6ae859b8 100644
+--- a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/HolidayScheduleCard.vue
++++ b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/HolidayScheduleCard.vue
+@@ -15,21 +15,20 @@
+ /**
+  * 休暇スケジュール用のScheduleCardコンポーネント
+  */
++import ScheduleCardBase from '~/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue'
+ import type {
+   DisplayAssignBoardSchedule,
+-  RowId
++  RowId,
+ } from '~/composables/stores/schedules/assign_board/type'
+ import {
+   AssignBoardStore,
+-  useAssignBoardStore,
+-  assignBoardStoreKey
+-} from '~/composables/stores/schedules/assign_board/useAssignBoardStore'
++  assignBoardStoreKey,
++  useAssignBoardStore } from '~/composables/stores/schedules/assign_board/useAssignBoardStore'
+ import { Type } from '~/utils/Type'
+-import ScheduleCardBase from '~/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue'
+ 
+ type Props = {
+-  schedule: DisplayAssignBoardSchedule;
+-  rowId: RowId,
++  schedule: DisplayAssignBoardSchedule
++  rowId: RowId
+ }
+ 
+ withDefaults(defineProps<Props>(), {})
+@@ -37,7 +36,6 @@ const { userAssign } = inject<AssignBoardStore>(assignBoardStoreKey, () => useAs
+ 
+ const {
+   draggingUser,
+-  isUsersBoardOpen
++  isUsersBoardOpen,
+ } = userAssign
+-
+ </script>
+diff --git a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue
+index 9744c08d5..0d6f2474b 100644
+--- a/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue
++++ b/components/organisms/Schedule/AssignBoard/AssignBoardContent/ScheduleCard/ScheduleCardBase.vue
+@@ -6,7 +6,7 @@
+       'schedule-card-base--dimmed': isDimmed,
+       'schedule-card-base--loading': isLoading,
+       'schedule-card-base--not-in-target-dates': !isInTargetDates,
+-      'schedule-card-base--holiday': isHolidaySchedule
++      'schedule-card-base--holiday': isHolidaySchedule,
+     }"
+     :style="scheduleColorStyle"
+     :group-key="(isDroppable ? DRAGGABLE_GROUP_KEY : undefined) as Symbol"
+@@ -18,30 +18,39 @@
+         class="schedule-card-base__content"
+         :class="{
+           'schedule-card-base__content--loading': isLoading,
+-          'schedule-card-base__content--daily': isDaily
++          'schedule-card-base__content--daily': isDaily,
+         }"
+       >
+         <div
+           class="schedule-card-base__title"
+           :style="scheduleColorStyle"
+         >
+-          <div v-if="!schedule.is_fixed" class="schedule-card-base__temporary">
+-            <span class="schedule-card-base__temporary-text">仮</span>
+-          </div>
+           <div
+-            ref="scheduleCardBaseTextRef"
+-            class="schedule-card-base__text"
+-            @click="openScheduleDetailModal"
++            v-if="!schedule.is_fixed"
++            class="schedule-card-base__temporary"
+           >
+-            <slot
+-              name="title"
+-              :schedule-card-base-text-element="scheduleCardBaseTextRef"
+-            />
++            <span class="schedule-card-base__temporary-text">仮</span>
+           </div>
++          <schedule-tooltip
++            v-slot="{ props: tooltipProps }"
++            :schedule="schedule"
++            memo
++          >
++            <div
++              class="schedule-card-base__text"
++              v-bind="tooltipProps"
++              @click="openScheduleDetailModal"
++            >
++              <slot name="title" />
++            </div>
++          </schedule-tooltip>
+         </div>
+         <slot name="footer" />
+       </div>
+-      <slot name="contents" :is-dragging-over="droppableProps?.isDraggingOver ?? false" />
++      <slot
++        name="contents"
++        :is-dragging-over="droppableProps?.isDraggingOver ?? false"
++      />
+     </template>
+   </component>
+ </template>
+@@ -54,31 +63,31 @@
+  * - ユーザーのドロップ機能
+  * - 表示範囲外に移動した際に非表示にする機能
+  */
++import Droppable from '~/components/molecules/DragAndDrop/Droppable.vue'
++import ScheduleTooltip from '~/components/organisms/Schedule/Parts/ScheduleTooltip.vue'
++import { DRAGGABLE_GROUP_KEY } from '~/composables/stores/schedules/assign_board/constants'
+ import type {
+   AssignableLabel,
+   DisplayAssignBoardSchedule,
+-  RowId
++  RowId,
+ } from '~/composables/stores/schedules/assign_board/type'
+-import { parseIsoDate } from '~/utils/date/fastParseDate'
+-import {
+-  AssignBoardStore,
+-  useAssignBoardStore,
+-  assignBoardStoreKey
+-} from '~/composables/stores/schedules/assign_board/useAssignBoardStore'
+-import { isBetweenDate } from '~/utils/date/fastDateCompare'
+-import { DRAGGABLE_GROUP_KEY } from '~/composables/stores/schedules/assign_board/constants'
+-import Droppable from '~/components/molecules/DragAndDrop/Droppable.vue'
+ import {
+-  isRowIdAttendanceHoliday
++  isRowIdAttendanceHoliday,
+ } from '~/composables/stores/schedules/assign_board/type'
++import {
++  AssignBoardStore,
++  assignBoardStoreKey,
++  useAssignBoardStore } from '~/composables/stores/schedules/assign_board/useAssignBoardStore'
+ import { getIsDetailModalAvailable } from '~/composables/stores/schedules/useEditAndDetailModalStore'
++import { isBetweenDate } from '~/utils/date/fastDateCompare'
++import { parseIsoDate } from '~/utils/date/fastParseDate'
+ 
+ type Props = {
+-  schedule: DisplayAssignBoardSchedule;
+-  isDroppable?: boolean;
+-  rowId: RowId,
+-  isLoading?: boolean,
+-  isDroppableDisabled?: boolean,
++  schedule: DisplayAssignBoardSchedule
++  isDroppable?: boolean
++  rowId: RowId
++  isLoading?: boolean
++  isDroppableDisabled?: boolean
+   isDimmed?: boolean
+ }
+ 
+@@ -86,7 +95,7 @@ const props = withDefaults(defineProps<Props>(), {
+   isLoading: false,
+   isDroppable: false,
+   isDroppableDisabled: false,
+-  isDimmed: false
++  isDimmed: false,
+ })
+ 
+ type Emits = {
+@@ -97,10 +106,8 @@ const emit = defineEmits<Emits>()
+ 
+ type SlotFunction<T = {}> = (props: T) => any
+ defineSlots<{
+-  title: SlotFunction<{
+-    scheduleCardBaseTextElement: Element | undefined
+-  }>,
+-  footer: SlotFunction,
++  title: SlotFunction
++  footer: SlotFunction
+   contents: SlotFunction<{
+     isDraggingOver?: boolean
+   }>
+@@ -110,8 +117,6 @@ const { common, modal } = inject<AssignBoardStore>(assignBoardStoreKey, () => us
+ const { isDaily, targetDates } = common
+ const { openDetailModal } = modal
+ 
+-const scheduleCardBaseTextRef = ref<Element>()
+-
+ const startDate = computed<Date>(() => parseIsoDate(props.schedule.start_datetime_iso))
+ const endDate = computed<Date>(() => parseIsoDate(props.schedule.end_datetime_iso))
+ 
+@@ -134,25 +139,24 @@ const isInTargetDates = computed<boolean>(() => {
+   const targetDateEnd = targetDates.value[targetDates.value.length - 1]!.date
+   return (
+     (
+-      isBetweenDate(startDate.value, targetDateStart, targetDateEnd) ||
+-      isBetweenDate(endDate.value, targetDateStart, targetDateEnd)
+-    ) ||
+-    (
+-      isBetweenDate(targetDateStart, startDate.value, endDate.value) ||
+-      isBetweenDate(targetDateEnd, startDate.value, endDate.value)
++      isBetweenDate(startDate.value, targetDateStart, targetDateEnd)
++      || isBetweenDate(endDate.value, targetDateStart, targetDateEnd)
++    )
++    || (
++      isBetweenDate(targetDateStart, startDate.value, endDate.value)
++      || isBetweenDate(targetDateEnd, startDate.value, endDate.value)
+     )
+   )
+ })
+ 
+ const scheduleColorStyle = computed(() => ({
+   '--schedule-color': props.schedule.schedule_color.main,
+-  '--schedule-text': props.schedule.schedule_color.font_color
++  '--schedule-text': props.schedule.schedule_color.font_color,
+ }))
+ 
+ const isHolidaySchedule = computed(() => {
+   return isRowIdAttendanceHoliday(props.rowId)
+ })
+-
+ </script>
+ 
+ <style scoped lang="scss">

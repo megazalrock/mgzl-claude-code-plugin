@@ -1,0 +1,866 @@
+diff --git a/components/organisms/Schedule/Gantt/Daily/Index.vue b/components/organisms/Schedule/Gantt/Daily/Index.vue
+index 0c5d5dbf7..68f845061 100644
+--- a/components/organisms/Schedule/Gantt/Daily/Index.vue
++++ b/components/organisms/Schedule/Gantt/Daily/Index.vue
+@@ -30,12 +30,7 @@
+             @dragover="scrollUp"
+             @dragleave="dragLeave"
+           >
+-            <div
+-              class="gantt-daily__space"
+-              :class="{
+-                'gantt-daily__space--holiday': isHoliday(targetDate),
+-              }"
+-            >
++            <div class="gantt-daily__space">
+               <unpin-all-button
+                 v-if="isGanttKindEquipment(ganttKind)"
+                 class="gantt-daily__unpin-all-button"
+@@ -74,21 +69,13 @@
+               @dragover="scrollUp"
+               @dragleave="dragLeave"
+             >
+-              <div
+-                class="gantt-daily__date"
+-                :class="{
+-                  'gantt-daily__date--holiday': isHoliday(targetDate),
+-                }"
+-              >
+-                <div class="gantt-daily__btn-area">
+-                  <date-navigation
+-                    class="gantt-daily__date-navigation"
+-                    :model-value="targetDate"
+-                    :is-short-format="sp"
+-                    @update:modelValue="changeDate"
+-                  />
++              <!--
++                日付の移動はヘッダーの日付カルーセルが担うため、この行は休日テキストの表示のみを担う。
++                休日の有無で高さが変わると現在時刻のポインタ・バーの位置がずれるため高さは固定する。
++              -->
++              <div class="gantt-daily__date">
++                <div class="gantt-daily__date-content">
+                   <holiday-text
+-                    v-if="!sp"
+                     class="gantt-daily__holiday-text"
+                     :date="targetDate"
+                   />
+@@ -100,23 +87,16 @@
+                   class="gantt-daily__pointer"
+                   :style="{ left: `${currentPosition}px` }"
+                 />
+-                <div>
+-                  <holiday-text
+-                    v-if="sp"
+-                    class="gantt-daily__holiday-text gantt-daily__holiday-text--sp"
+-                    :date="targetDate"
+-                  />
+-                  <div class="gantt-daily__time-wrapper">
+-                    <div
+-                      v-for="(hour, index) in hours"
+-                      :key="index"
+-                      class="gantt-daily__time"
+-                    >
+-                      {{ format(hour, 'H:mm') }}
+-                    </div>
+-                    <div class="gantt-daily__time">
+-                      24:00
+-                    </div>
++                <div class="gantt-daily__time-wrapper">
++                  <div
++                    v-for="(hour, index) in hours"
++                    :key="index"
++                    class="gantt-daily__time"
++                  >
++                    {{ format(hour, 'H:mm') }}
++                  </div>
++                  <div class="gantt-daily__time">
++                    24:00
+                   </div>
+                 </div>
+               </div>
+@@ -171,7 +151,6 @@ import AssigneeColumns from '~/components/organisms/Schedule/Gantt/AssigneeColum
+ import GanttRow from '~/components/organisms/Schedule/Gantt/Daily/Row.vue'
+ import UnpinAllButton from '~/components/organisms/Schedule/Gantt/UnpinAllButton.vue'
+ import UserColumn from '~/components/organisms/Schedule/Gantt/UserColumn.vue'
+-import DateNavigation from '~/components/organisms/Schedule/Parts/DateNavigation.vue'
+ import HolidayText from '~/components/organisms/Schedule/Parts/HolidayText.vue'
+ import { useDragScroll } from '~/composables/components/organisms/Schedule/Gantt/UseDragScroll'
+ import {
+@@ -193,8 +172,6 @@ import {
+   ScheduleEditAndDetailModalStoreKey,
+   useScheduleEditAndDetailModalStore,
+ } from '~/composables/stores/schedules/useEditAndDetailModalStore'
+-import type { HolidaysStore } from '~/composables/stores/schedules/UseHolidaysStore'
+-import { HOLIDAY_STORE_KEY, useHolidaysStore } from '~/composables/stores/schedules/UseHolidaysStore'
+ import type {
+   SchedulesQueryStore,
+ } from '~/composables/stores/schedules/useQueryStore'
+@@ -241,8 +218,6 @@ const ganttDailyStore = inject<GanttDailyStore>(
+   () => useGanttDailyStore(queryStore, modalStore, pinnedAssigneeStore, scheduleDndConfirmModalStore),
+   true,
+ )
+-const holidaysStore = inject<HolidaysStore>(HOLIDAY_STORE_KEY, () => useHolidaysStore(), true)
+-const { isHoliday } = holidaysStore
+ const {
+   $GANTT_DAILY_HOUR_PC_WIDTH,
+   $GANTT_DAILY_HOUR_PC_WIDTH_PER_MINUTES,
+@@ -353,7 +328,6 @@ const tableStyle = computed(() => {
+ const targetDate = ganttDailyStore.targetDate
+ const isLoading = ganttDailyStore.isLoading
+ const isSaveLoading = ganttDailyStore.isSaveLoading
+-const changeDate = ganttDailyStore.changeDate
+ const stickyHeaderRef = dragScroll.headerRef
+ const stickyUserColumnRef = dragScroll.leftSticky
+ const dragStart = dragScroll.dragStart
+@@ -371,6 +345,13 @@ $hour-pc-width: 78px;
+ $hour-sp-width: 42px;
+ $edge-pc-width: 39px;
+ $edge-sp-width: 21px;
++// 休日テキストを表示する行の高さ。休日の有無・タブ種別に依らず固定する
++$date-row-height: 56px;
++$time-row-height: 28px;
++// ユーザー列のヘッダー（__space）と時刻ヘッダーの高さを揃えるための合計値
++$header-row-height: $date-row-height + $time-row-height;
++// 現在時刻のポインタ・バーの開始位置。スケジュール行の上端より 4px 上に出す
++$current-time-top: $header-row-height - 4px;
+ 
+ .gantt-daily {
+   --pc-user-column-width: 180px;
+@@ -423,14 +404,8 @@ $edge-sp-width: 21px;
+     display: flex;
+     align-items: flex-end;
+     background-color: white;
+-    height: 84px;
++    height: $header-row-height;
+     border: solid 1px map.get($custom-colors, 'grey-3');
+-
+-    &--holiday {
+-      @media screen and (max-width: $xs) {
+-        height: 106px;
+-      }
+-    }
+   }
+ 
+   &__unpin-all-button {
+@@ -451,37 +426,27 @@ $edge-sp-width: 21px;
+     display: flex;
+     min-width: calc(#{$hour-pc-width} * 24 + #{$edge-pc-width} * 2);
+     background-color: white;
+-    height: 56px;
++    height: $date-row-height;
+     border-top: solid 1px map.get($custom-colors, 'grey-3');
+     border-right: solid 1px map.get($custom-colors, 'grey-3');
+     align-items: center;
+     @media screen and (max-width: $xs) {
+       min-width: calc(#{$hour-sp-width} * 24 + #{$edge-sp-width} * 2);
+-      &.gantt-daily__date--holiday {
+-        height: 46px;
+-      }
+     }
+   }
+ 
+-  &__btn-area {
++  // 横スクロールしてもユーザー列の右隣に留まる位置に休日テキストを固定する
++  &__date-content {
+     display: flex;
+     position: sticky;
+     padding-left: 8px;
+     left: var(--pc-user-column-width);
+     align-items: center;
+-    column-gap: 16px;
+     @media screen and (max-width: $xs) {
+-      flex-direction: column;
+-      align-items: flex-start;
+-      row-gap: 6px;
+       left: var(--sp-user-column-width);
+     }
+   }
+ 
+-  &__date-navigation {
+-    height: 32px;
+-  }
+-
+   &__holiday-text {
+     display: flex;
+     align-items: center;
+@@ -489,12 +454,6 @@ $edge-sp-width: 21px;
+     padding: 4px 8px;
+     font-size: 14px;
+     height: 24px;
+-
+-    &--sp {
+-      margin-left: 324px;
+-      margin-bottom: 8px;
+-      width: fit-content;
+-    }
+   }
+ 
+   &__time-header {
+@@ -504,7 +463,7 @@ $edge-sp-width: 21px;
+ 
+   &__pointer {
+     position: absolute;
+-    top: 80px;
++    top: $current-time-top;
+     width: 7px;
+     height: 7px;
+     border-radius: 50%;
+@@ -523,7 +482,7 @@ $edge-sp-width: 21px;
+     align-items: center;
+     justify-content: center;
+     font-size: 16px;
+-    height: 28px;
++    height: $time-row-height;
+     min-width: $hour-pc-width;
+     border-top: solid 1px map.get($custom-colors, 'grey-3');
+     border-bottom: solid 1px map.get($custom-colors, 'grey-3');
+@@ -541,7 +500,7 @@ $edge-sp-width: 21px;
+ 
+   &__bar {
+     position: absolute;
+-    top: 80px;
++    top: $current-time-top;
+     border-left: solid 1px black;
+     width: 1px;
+   }
+diff --git a/components/organisms/Schedule/Gantt/MonthlyBase.vue b/components/organisms/Schedule/Gantt/MonthlyBase.vue
+index 9f6462796..062eb1db3 100644
+--- a/components/organisms/Schedule/Gantt/MonthlyBase.vue
++++ b/components/organisms/Schedule/Gantt/MonthlyBase.vue
+@@ -30,8 +30,7 @@
+             @dragover="scrollUp"
+             @dragleave="dragLeave"
+           >
+-            <div class="gantt-monthly__space1" />
+-            <div class="gantt-monthly__space2">
++            <div class="gantt-monthly__space">
+               <unpin-all-button
+                 v-if="isKindEquipment"
+                 class="gantt-monthly__unpin-all-button"
+@@ -65,18 +64,6 @@
+         </div>
+         <div class="gantt-monthly__main">
+           <div class="gantt-monthly__sticky-top">
+-            <div class="gantt-monthly__date-picker">
+-              <date-navigation
+-                class="gantt-monthly__date-picker-inner"
+-                :model-value="startDate"
+-                :is-short-format="sp"
+-                @update:modelValue="setStartDate"
+-              >
+-                <template #label>
+-                  <span class="gantt-monthly__date-picker-label">{{ datePickerLabel }}</span>
+-                </template>
+-              </date-navigation>
+-            </div>
+             <div
+               class="gantt-monthly__dates"
+               @dragover="scrollUp"
+@@ -173,7 +160,6 @@ import ChangeFixedByDate from '~/components/organisms/Modal/Schedule/ChangeFixed
+ import AssigneeColumns from '~/components/organisms/Schedule/Gantt/AssigneeColumn/AssigneeColumns.vue'
+ import UnpinAllButton from '~/components/organisms/Schedule/Gantt/UnpinAllButton.vue'
+ import UserColumn from '~/components/organisms/Schedule/Gantt/UserColumn.vue'
+-import DateNavigation from '~/components/organisms/Schedule/Parts/DateNavigation.vue'
+ import HolidayText from '~/components/organisms/Schedule/Parts/HolidayText.vue'
+ import { useDragScroll } from '~/composables/components/organisms/Schedule/Gantt/UseDragScroll'
+ import { DATE_COUNT } from '~/composables/stores/schedules/gantt/useGanttMonthlySeparated'
+@@ -187,8 +173,6 @@ import type { GanttScheduleRowBase } from '~/types/Schedule/GanttCommon'
+ import type { GanttMonthlyBaseStoreFields } from '~/types/Schedule/GanttMonthlyBaseStore'
+ import { isGanttKindEquipment, isGanttKindUser } from '~/types/Schedule/GanttTab'
+ import type { LinkedGanttScheduleRow } from '~/types/Schedule/LinkedGanttCalendar'
+-import { fastIsSameYear } from '~/utils/date/fastDateCompare'
+-import { fastFormatDate } from '~/utils/date/fastFormatDate'
+ 
+ const DAY_OF_WEEK_JAPANESE: { [key: string]: string } = {
+   Mo: '月',
+@@ -259,7 +243,6 @@ const {
+   sharedTooltipStore,
+   hasSchedulesByDate,
+   move,
+-  setStartDate,
+ } = props.store
+ 
+ const { isHoliday } = holidaysStore
+@@ -378,15 +361,6 @@ const tableStyle = computed(() => {
+   }
+ })
+ 
+-const datePickerLabel = computed(() => {
+-  if (sp.value) {
+-    const endDateFormat = fastIsSameYear(startDate.value, endDate.value) ? 'MM/dd' : 'yyyy/MM/dd'
+-    return `${fastFormatDate(startDate.value, 'yyyy/MM/dd')} - ${fastFormatDate(endDate.value, endDateFormat)}`
+-  }
+-  const endDateFormat = fastIsSameYear(startDate.value, endDate.value) ? 'M月d日' : 'yyyy年M月d日'
+-  return `${fastFormatDate(startDate.value, 'yyyy年M月d日')} - ${fastFormatDate(endDate.value, endDateFormat)}`
+-})
+-
+ const stickyHeaderRef = dragScroll.headerRef
+ const stickyUserColumnRef = dragScroll.leftSticky
+ const dragStart = dragScroll.dragStart
+@@ -459,16 +433,7 @@ const touchMove = dragScroll.touchMove
+     }
+   }
+ 
+-  &__space1 {
+-    background-color: white;
+-    height: 44px;
+-    border-top: $border;
+-    border-left: $border;
+-    border-right: $border;
+-    width: 100%;
+-  }
+-
+-  &__space2 {
++  &__space {
+     display: flex;
+     align-items: flex-end;
+     height: 104px;
+@@ -499,28 +464,6 @@ const touchMove = dragScroll.touchMove
+     }
+   }
+ 
+-  &__date-picker {
+-    display: flex;
+-    align-items: center;
+-    width: 100%;
+-    background-color: white;
+-    height: 44px;
+-    border-top: $border;
+-  }
+-
+-  &__date-picker-inner {
+-    position: sticky;
+-    left: var(--pc-user-column-width);
+-
+-    @media screen and (max-width: $xs) {
+-      left: var(--sp-user-column-width);
+-    }
+-  }
+-
+-  &__date-picker-label {
+-    letter-spacing: normal;
+-  }
+-
+   &__dates {
+     display: flex;
+     flex-direction: row;
+diff --git a/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/ScheduleFilter.vue b/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/ScheduleFilter.vue
+index ed60cb90c..66270bfd5 100644
+--- a/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/ScheduleFilter.vue
++++ b/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/ScheduleFilter.vue
+@@ -1,9 +1,9 @@
+ <template>
+   <div class="schedule-filter">
+     <date-control
+-      v-if="(type.kind === 'calendar' || type.kind === 'shift_board') && !Type.isUndefined(date)"
++      v-if="!Type.isNull(dateControlScope) && !Type.isUndefined(date)"
+       :data-testid="TEST_ID.DATE_CONTROL"
+-      :scope="type.kind === 'shift_board' ? 'monthly' : type.scope"
++      :scope="dateControlScope"
+       :model-value="date"
+       :is-loading="isLoading"
+       @update:modelValue="(date) => emit('updateDate', date)"
+@@ -151,6 +151,7 @@ import {
+ } from '~/composables/stores/schedules/useQueryStore'
+ import { useAuth } from '~/composables/useAuth'
+ import { useLabel } from '~/composables/UseLabel'
++import { resolveDateControlScope } from '~/constants/schedule/dateControlScope'
+ import { resolveScheduleFilterVisibility } from '~/constants/schedule/scheduleFilterItemVisibility'
+ import type { PartnerTreeSelectModelValue } from '~/types/Schedule/PartnerTreeSelect'
+ import { Type } from '~/utils/Type'
+@@ -188,6 +189,10 @@ const {
+ // （resolveScheduleFilterVisibility 参照）。
+ const visibility = computed(() => resolveScheduleFilterVisibility(props.type))
+ 
++// 日付カルーセルの表示可否（null なら非表示）と scope の双方をこの 1 つの導出から決める。
++// SP 版の ScheduleHeader/index.vue も同じ resolver を参照し、条件の二重管理を避けている。
++const dateControlScope = computed(() => resolveDateControlScope(props.type))
++
+ const filter = (key: FilterKey, value: Array<number> | string | boolean | null): void => {
+   emit('changeFilter', key, value)
+ }
+diff --git a/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/__tests__/ScheduleFilter/ScheduleFilter.displayMatrix.test.ts b/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/__tests__/ScheduleFilter/ScheduleFilter.displayMatrix.test.ts
+index 66d353da4..b39a64b8d 100644
+--- a/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/__tests__/ScheduleFilter/ScheduleFilter.displayMatrix.test.ts
++++ b/components/organisms/Schedule/ScheduleHeader/ScheduleFilters/Schedule/__tests__/ScheduleFilter/ScheduleFilter.displayMatrix.test.ts
+@@ -108,7 +108,7 @@ const KIND_MATRIX_ENTRIES: KindMatrixEntry[] = [
+     label: 'white_board(user)',
+     makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_USER }),
+     expected: ({ organizationPresent }) => ({
+-      DATE_CONTROL: false,
++      DATE_CONTROL: true,
+       CLEAR_BUTTON: true,
+       STAFF_ORG_USER_SELECT: organizationPresent,
+       STAFF_SELECT_BOX: !organizationPresent,
+@@ -124,7 +124,7 @@ const KIND_MATRIX_ENTRIES: KindMatrixEntry[] = [
+     label: 'white_board(equipment)',
+     makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_EQUIPMENT }),
+     expected: ({ equipAvailable }) => ({
+-      DATE_CONTROL: false,
++      DATE_CONTROL: true,
+       CLEAR_BUTTON: true,
+       STAFF_ORG_USER_SELECT: false,
+       STAFF_SELECT_BOX: false,
+@@ -246,14 +246,14 @@ describe('ScheduleFilter', () => {
+   })
+ 
+   describe('DateControl の kind × date マトリクス', () => {
+-    // 実装は (kind === 'calendar' || kind === 'shift_board') && date !== undefined の AND 条件で
++    // 実装は resolveDateControlScope(type) !== null && date !== undefined の AND 条件で
+     // DATE_CONTROL の表示を決めている。kind 軸・date 軸のどちらか一方だけを固定して確認すると、
+     // 「date !== undefined だけの判定に退行する（kind 側のチェックが消える）」変異を検知できない。
+     // kind × date=(FIXED_DATE / undefined) の全組み合わせで表示を検証する。
+     describe.each([
+       { label: 'calendar', makeType: () => makeCalendarType({ scope: 'monthly' }), dateEligibleKind: true },
+-      { label: 'white_board(user)', makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_USER }), dateEligibleKind: false },
+-      { label: 'white_board(equipment)', makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_EQUIPMENT }), dateEligibleKind: false },
++      { label: 'white_board(user)', makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_USER }), dateEligibleKind: true },
++      { label: 'white_board(equipment)', makeType: () => makeWhiteBoardType({ ganttKind: GANTT_KIND_EQUIPMENT }), dateEligibleKind: true },
+       { label: 'shift_board', makeType: () => makeShiftBoardType(), dateEligibleKind: true },
+     ])('kind=$label', ({ makeType, dateEligibleKind }) => {
+       it.each([
+diff --git a/components/organisms/Schedule/ScheduleHeader/ScheduleModules/DateControl.vue b/components/organisms/Schedule/ScheduleHeader/ScheduleModules/DateControl.vue
+index 01c6a8375..912e5cc2f 100644
+--- a/components/organisms/Schedule/ScheduleHeader/ScheduleModules/DateControl.vue
++++ b/components/organisms/Schedule/ScheduleHeader/ScheduleModules/DateControl.vue
+@@ -2,10 +2,10 @@
+   <div class="date-control">
+     <cb-date-carousel
+       size="large"
+-      :calendar-type="scope === SCOPE_MONTHLY ? 'month' : 'date'"
++      :calendar-type="behavior.calendarType"
+       :model-value="modelValue"
+       :date-text="dateText"
+-      :now-button-text="scope === SCOPE_MONTHLY ? '今月' : '今週'"
++      :now-button-text="behavior.nowButtonText"
+       :add-info="false"
+       :disabled="isLoading"
+       @update:modelValue="updateDate"
+@@ -18,18 +18,15 @@
+ 
+ <script setup lang="ts">
+ import { CbDateCarousel } from '@craftbank/design-system'
+-import { addMonths, addWeeks, isSameWeek } from 'date-fns'
+ 
+-import { fastIsSameMonth } from '~/utils/date/fastDateCompare'
++import type { DateControlScope } from '~/constants/schedule/dateControlScope'
++import { DATE_CONTROL_BEHAVIORS } from '~/constants/schedule/dateControlScope'
+ import { fastFormatDate } from '~/utils/date/fastFormatDate'
+ import { Type } from '~/utils/Type'
+ 
+-const SCOPE_MONTHLY = 'monthly' as const
+-const SCOPE_WEEKLY = 'weekly' as const
+-
+ type Props = {
+   modelValue: Date
+-  scope: typeof SCOPE_MONTHLY | typeof SCOPE_WEEKLY
++  scope: DateControlScope
+   isLoading?: boolean
+ }
+ 
+@@ -42,57 +39,26 @@ const props = withDefaults(defineProps<Props>(), {
+   isLoading: false,
+ })
+ 
+-const { sp } = useBreakpoint()
+-
+ const emit = defineEmits<Emits>()
+ 
+-const dateText = computed(() => {
+-  return fastFormatDate(props.modelValue, sp.value ? 'M月' : 'yyyy年M月')
+-})
++// 表示文言・日付演算の scope 差分は DATE_CONTROL_BEHAVIORS へ集約している。
++const behavior = computed(() => DATE_CONTROL_BEHAVIORS[props.scope])
+ 
+-const getIsSamePeriod = (date: Date) => {
+-  if (props.scope === SCOPE_MONTHLY) {
+-    return fastIsSameMonth(props.modelValue, date)
+-  }
+-  if (props.scope === SCOPE_WEEKLY) {
+-    return isSameWeek(props.modelValue, date)
+-  }
+-  const never: never = props.scope
+-  throw new Error(`Unexpected scope: ${never}`)
+-}
++const dateText = computed(() => fastFormatDate(props.modelValue, behavior.value.dateTextFormat))
+ 
+ const updateDate = (date: Date | null) => {
+-  if (Type.isNull(date) || getIsSamePeriod(date)) {
++  if (Type.isNull(date) || behavior.value.getIsSamePeriod({ base: props.modelValue, target: date })) {
+     return
+   }
+   emit('update:modelValue', date)
+ }
+ 
+ const handleClickPrev = () => {
+-  let date: Date
+-
+-  if (props.scope === SCOPE_MONTHLY) {
+-    date = addMonths(props.modelValue, -1)
+-  } else if (props.scope === SCOPE_WEEKLY) {
+-    date = addWeeks(props.modelValue, -1)
+-  } else {
+-    const never: never = props.scope
+-    throw new Error(`Unexpected scope: ${never}`)
+-  }
+-  updateDate(date)
++  updateDate(behavior.value.shiftPeriod({ base: props.modelValue, amount: -1 }))
+ }
+ 
+ const handleClickNext = () => {
+-  let date: Date
+-  if (props.scope === SCOPE_MONTHLY) {
+-    date = addMonths(props.modelValue, 1)
+-  } else if (props.scope === SCOPE_WEEKLY) {
+-    date = addWeeks(props.modelValue, 1)
+-  } else {
+-    const never: never = props.scope
+-    throw new Error(`Unexpected scope: ${never}`)
+-  }
+-  updateDate(date)
++  updateDate(behavior.value.shiftPeriod({ base: props.modelValue, amount: 1 }))
+ }
+ 
+ const handleClickNow = () => {
+diff --git a/components/organisms/Schedule/ScheduleHeader/ScheduleModules/__tests__/DateControl.test.ts b/components/organisms/Schedule/ScheduleHeader/ScheduleModules/__tests__/DateControl.test.ts
+index 9b3b00090..dce82c8c4 100644
+--- a/components/organisms/Schedule/ScheduleHeader/ScheduleModules/__tests__/DateControl.test.ts
++++ b/components/organisms/Schedule/ScheduleHeader/ScheduleModules/__tests__/DateControl.test.ts
+@@ -93,8 +93,10 @@ describe('DateControl', () => {
+     })
+   })
+ 
+-  describe('dateText（useBreakpoint 依存）', () => {
+-    it('sp=false のとき yyyy年M月 形式で渡されること', async () => {
++  // 日付テキストは画面幅に依らず同一書式で表示する。sp の両値で同じ結果を確認することで、
++  // 画面幅による出し分けが再び持ち込まれた場合に検知する。
++  describe('dateText', () => {
++    it('sp=false のとき yyyy年MM月 形式（ゼロ埋め）で渡されること', async () => {
+       // Arrange
+       breakpointMock.mockReturnValue({ sp: false })
+ 
+@@ -104,10 +106,10 @@ describe('DateControl', () => {
+       })
+ 
+       // Assert
+-      expect(findCarousel().props('dateText')).toEqual('2026年1月')
++      expect(findCarousel().props('dateText')).toEqual('2026年01月')
+     })
+ 
+-    it('sp=true のとき M月 形式で渡されること', async () => {
++    it('sp=true のときも sp=false と同じ yyyy年MM月 形式で渡されること', async () => {
+       // Arrange
+       breakpointMock.mockReturnValue({ sp: true })
+ 
+@@ -117,7 +119,7 @@ describe('DateControl', () => {
+       })
+ 
+       // Assert
+-      expect(findCarousel().props('dateText')).toEqual('1月')
++      expect(findCarousel().props('dateText')).toEqual('2026年01月')
+     })
+   })
+ 
+diff --git a/components/organisms/Schedule/ScheduleHeader/index.vue b/components/organisms/Schedule/ScheduleHeader/index.vue
+index 7f3b62074..3c2bf8603 100644
+--- a/components/organisms/Schedule/ScheduleHeader/index.vue
++++ b/components/organisms/Schedule/ScheduleHeader/index.vue
+@@ -38,8 +38,8 @@
+     >
+       <div class="sp-header__calendar">
+         <date-control
+-          v-if="(type.kind === 'calendar' || type.kind === 'shift_board') && !Type.isUndefined(date)"
+-          :scope="type.kind === 'shift_board' ? 'monthly' : type.scope"
++          v-if="!Type.isNull(dateControlScope) && !Type.isUndefined(date)"
++          :scope="dateControlScope"
+           :model-value="date"
+           :is-loading="isLoading"
+           @update:modelValue="(date) => emit('updateDate', date)"
+@@ -95,6 +95,7 @@ import {
+   SchedulesQueryStoreKey,
+   useSchedulesQueryStore,
+ } from '~/composables/stores/schedules/useQueryStore'
++import { resolveDateControlScope } from '~/constants/schedule/dateControlScope'
+ import { Type } from '~/utils/Type'
+ 
+ import BaseHeader from './BaseHeader.vue'
+@@ -128,7 +129,7 @@ type Emits = {
+   updateDate: [date: Date]
+   clickNow: []
+ }
+-defineProps<Props>()
++const props = defineProps<Props>()
+ const emit = defineEmits<Emits>()
+ 
+ defineSlots<{
+@@ -140,6 +141,10 @@ const state = reactive<State>({
+ })
+ 
+ const { pc, sp }: Breakpoint = useBreakpoint()
++
++// SP ヘッダーの日付カルーセルの表示可否（null なら非表示）と scope。PC 版の ScheduleFilter.vue と
++// 同じ resolver を参照し、対象ページの判定が PC / SP で食い違わないようにしている。
++const dateControlScope = computed(() => resolveDateControlScope(props.type))
+ const queryStore = inject<SchedulesQueryStore>(SchedulesQueryStoreKey, () => useSchedulesQueryStore(), true)
+ 
+ const showModal = (): void => {
+diff --git a/constants/schedule/dateControlScope.ts b/constants/schedule/dateControlScope.ts
+new file mode 100644
+index 000000000..c3e353bc3
+--- /dev/null
++++ b/constants/schedule/dateControlScope.ts
+@@ -0,0 +1,106 @@
++import { addDays, addMonths, addWeeks, isSameWeek } from 'date-fns'
++
++import type { ScheduleKindType } from '~/composables/components/organisms/Schedule/ScheduleHeader/UseScheduleTab'
++import {
++  WHITE_BOARD_TYPE_DAILY,
++  WHITE_BOARD_TYPE_MONTHLY,
++  WHITE_BOARD_TYPE_MONTHLY_LINKED,
++} from '~/store/schedule/schedule_view'
++import { fastIsSameDay, fastIsSameMonth } from '~/utils/date/fastDateCompare'
++
++export const DATE_CONTROL_SCOPE_MONTHLY = 'monthly'
++export const DATE_CONTROL_SCOPE_WEEKLY = 'weekly'
++export const DATE_CONTROL_SCOPE_DAILY = 'daily'
++
++// ヘッダー日付カルーセル（DateControl）が前後ボタン・now ボタン・日付テキストで扱う期間の単位。
++export type DateControlScope
++  = | typeof DATE_CONTROL_SCOPE_MONTHLY
++    | typeof DATE_CONTROL_SCOPE_WEEKLY
++    | typeof DATE_CONTROL_SCOPE_DAILY
++
++// scope ごとに変わる日付カルーセルの表示文言と日付演算のまとまり。
++export type DateControlBehavior = {
++  calendarType: 'month' | 'date'
++  nowButtonText: string
++  dateTextFormat: string
++  // 表示中の期間と同じ期間かどうかを判定する。同一期間なら日付を更新せず再取得も走らせない。
++  getIsSamePeriod: (params: { base: Date, target: Date }) => boolean
++  // 前後ボタンで表示期間を amount 個ぶん移動した日付を返す。
++  shiftPeriod: (params: { base: Date, amount: number }) => Date
++}
++
++/**
++ * scope ごとの差分を集約した対応表。
++ *
++ * Record のキーが不足するとコンパイルエラーになるため、DateControlScope のメンバー追加時に更新漏れを
++ * 検知できる。日付テキストは PC / SP 共通の書式とする（画面幅による出し分けはしない）。
++ *
++ * 各エントリは共有される定数のため、参照元での書き換えが全画面へ波及しないよう Readonly で固定する。
++ */
++export const DATE_CONTROL_BEHAVIORS: Readonly<Record<DateControlScope, Readonly<DateControlBehavior>>> = {
++  [DATE_CONTROL_SCOPE_MONTHLY]: {
++    calendarType: 'month',
++    nowButtonText: '今月',
++    dateTextFormat: 'yyyy年MM月',
++    getIsSamePeriod: ({ base, target }) => fastIsSameMonth(base, target),
++    shiftPeriod: ({ base, amount }) => addMonths(base, amount),
++  },
++  [DATE_CONTROL_SCOPE_WEEKLY]: {
++    calendarType: 'date',
++    nowButtonText: '今週',
++    dateTextFormat: 'yyyy年MM月',
++    getIsSamePeriod: ({ base, target }) => isSameWeek(base, target),
++    shiftPeriod: ({ base, amount }) => addWeeks(base, amount),
++  },
++  [DATE_CONTROL_SCOPE_DAILY]: {
++    calendarType: 'date',
++    nowButtonText: '今日',
++    dateTextFormat: 'yyyy年MM月dd日',
++    getIsSamePeriod: ({ base, target }) => fastIsSameDay(base, target),
++    shiftPeriod: ({ base, amount }) => addDays(base, amount),
++  },
++}
++
++type CalendarScope = Extract<ScheduleKindType, { kind: 'calendar' }>['scope']
++type WhiteBoardScope = Extract<ScheduleKindType, { kind: 'white_board' }>['scope']
++
++// scope 軸の対応表。Record のキーが不足するとコンパイルエラーになるため、scope のメンバー追加時に
++// 更新漏れを検知できる。resolveDateControlScope からのみ参照する内部定数のため export しない。
++const CALENDAR_SCOPE_TO_DATE_CONTROL_SCOPE: Record<CalendarScope, DateControlScope> = {
++  monthly: DATE_CONTROL_SCOPE_MONTHLY,
++  weekly: DATE_CONTROL_SCOPE_WEEKLY,
++}
++
++// ホワイトボードの分割・連結は開始日から一定日数を表示するため、月単位で表示期間を移動する。
++const WHITE_BOARD_SCOPE_TO_DATE_CONTROL_SCOPE: Record<WhiteBoardScope, DateControlScope> = {
++  [WHITE_BOARD_TYPE_MONTHLY]: DATE_CONTROL_SCOPE_MONTHLY,
++  [WHITE_BOARD_TYPE_MONTHLY_LINKED]: DATE_CONTROL_SCOPE_MONTHLY,
++  [WHITE_BOARD_TYPE_DAILY]: DATE_CONTROL_SCOPE_DAILY,
++}
++
++/**
++ * ページ種別から日付カルーセルのスコープを解決する。日付カルーセルを持たないページでは `null` を返す。
++ *
++ * 表示可否（`v-if`）とスコープ（`:scope`）の両方をこの 1 関数から導出する。PC 版（ScheduleFilter.vue）と
++ * SP 版（ScheduleHeader/index.vue）で条件を個別に書くと、ページ追加時に片方だけ更新されて表示・非表示が
++ * 食い違うため、判定元を単一化している。
++ *
++ * 手配表（assign_board_weekly）は専用の FilterSection.vue、手配地図（dispatch）は専用の MapQuery.vue が
++ * 日付操作 UI を持つため、このカルーセルの非対象ページとして `null` を返す。
++ *
++ * switch は kind を網羅する（kind 追加時は noImplicitReturns で検知される）。
++ */
++export const resolveDateControlScope = (type: ScheduleKindType): DateControlScope | null => {
++  switch (type.kind) {
++    case 'calendar':
++      return CALENDAR_SCOPE_TO_DATE_CONTROL_SCOPE[type.scope]
++    case 'white_board':
++      return WHITE_BOARD_SCOPE_TO_DATE_CONTROL_SCOPE[type.scope]
++    case 'shift_board':
++      // 稼働表は 1 か月分を表示する（scope を持たないため月固定）
++      return DATE_CONTROL_SCOPE_MONTHLY
++    case 'assign_board_weekly':
++    case 'dispatch':
++      return null
++  }
++}
+diff --git a/pages/schedules/gantt/daily.vue b/pages/schedules/gantt/daily.vue
+index 3fb9c735a..f2f003aa6 100644
+--- a/pages/schedules/gantt/daily.vue
++++ b/pages/schedules/gantt/daily.vue
+@@ -7,10 +7,13 @@
+       ref="headerRef"
+       :type="{ kind: 'white_board', scope: WHITE_BOARD_TYPE_DAILY, ganttKind: unref(ganttDailyStore.ganttKind) }"
+       :is-loading="isLoading"
++      :date="targetDate"
+       @createClick="onCreateClick"
+       @changeFilter="filter"
+       @changeFilters="filterAll"
+       @clear="clearFilter"
++      @updateDate="changeDate"
++      @clickNow="handleClickNow"
+     />
+     <gantt-tabs
+       :kind="unref(ganttDailyStore.ganttKind)"
+@@ -155,6 +158,8 @@ const {
+   closeDetailModal,
+   openConfirmModal,
+   setGanttKind,
++  targetDate,
++  changeDate,
+ } = ganttDailyStore
+ 
+ const scheduleDetailModalApiRequestStore = useScheduleDetailModalApiRequestStore({
+@@ -189,6 +194,11 @@ const onSelectKind = (ganttKind: GanttKind) => {
+   setGanttKind(ganttKind)
+ }
+ 
++// 「今日」は今日の日付へ戻す。結果を待たない起動のため void で意図を明示する
++const handleClickNow = (): void => {
++  void changeDate(new Date())
++}
++
+ const handleUpdated = (updateResult?: UpdatedResult) => {
+   modalStore.refreshDetail(updateResult)
+   refresh()
+diff --git a/pages/schedules/gantt/monthly.vue b/pages/schedules/gantt/monthly.vue
+index f4d070663..0a8015a45 100644
+--- a/pages/schedules/gantt/monthly.vue
++++ b/pages/schedules/gantt/monthly.vue
+@@ -7,10 +7,13 @@
+       <schedule-header
+         :type="{ kind: 'white_board', scope: WHITE_BOARD_TYPE_MONTHLY, ganttKind: ganttMonthlyStore.ganttKind.value }"
+         :is-loading="isLoading"
++        :date="startDate"
+         @createClick="onCreateClick"
+         @changeFilter="filter"
+         @changeFilters="filterAll"
+         @clear="clearFilter"
++        @updateDate="setStartDate"
++        @clickNow="handleClickNow"
+       />
+       <gantt-tabs
+         :kind="ganttMonthlyStore.ganttKind.value"
+@@ -145,6 +148,8 @@ const {
+   openConfirmModal,
+   setGanttKind,
+   sharedTooltipStore,
++  startDate,
++  setStartDate,
+ } = ganttMonthlyStore
+ 
+ const scheduleDetailModalApiRequestStore = useScheduleDetailModalApiRequestStore({
+@@ -181,6 +186,11 @@ const onSelectKind = (ganttKind: GanttKind) => {
+   setGanttKind(ganttKind)
+ }
+ 
++// 表示期間は開始日から一定日数のため、「今月」は今日を開始日にして今日を含む期間へ戻す
++const handleClickNow = (): void => {
++  setStartDate(new Date())
++}
++
+ const handleUpdated = (updateResult?: UpdatedResult) => {
+   modalStore.refreshDetail(updateResult)
+   refresh()
+diff --git a/pages/schedules/gantt/monthly_merged.vue b/pages/schedules/gantt/monthly_merged.vue
+index 8fc89681f..2d943ecb7 100644
+--- a/pages/schedules/gantt/monthly_merged.vue
++++ b/pages/schedules/gantt/monthly_merged.vue
+@@ -7,10 +7,13 @@
+       <schedule-header
+         :type="{ kind: 'white_board', scope: WHITE_BOARD_TYPE_MONTHLY_LINKED, ganttKind: ganttMonthlyLinkedStore.ganttKind.value }"
+         :is-loading="isLoading"
++        :date="startDate"
+         @createClick="onCreateClick"
+         @changeFilter="filter"
+         @changeFilters="filterAll"
+         @clear="clearFilter"
++        @updateDate="setStartDate"
++        @clickNow="handleClickNow"
+       />
+       <gantt-tabs
+         :kind="ganttMonthlyLinkedStore.ganttKind.value"
+@@ -150,6 +153,8 @@ const {
+   closeDetailModal,
+   setGanttKind,
+   sharedTooltipStore,
++  startDate,
++  setStartDate,
+ } = ganttMonthlyLinkedStore
+ 
+ const scheduleDetailModalApiRequestStore = useScheduleDetailModalApiRequestStore({
+@@ -185,6 +190,11 @@ const onSelectKind = (ganttKind: GanttKind) => {
+   setGanttKind(ganttKind)
+ }
+ 
++// 表示期間は開始日から一定日数のため、「今月」は今日を開始日にして今日を含む期間へ戻す
++const handleClickNow = (): void => {
++  setStartDate(new Date())
++}
++
+ const handleUpdated = (updateResult?: UpdatedResult) => {
+   modalStore.refreshDetail(updateResult)
+   refresh()
+diff --git a/test/utils/scheduleFilter/filterChildStubs.ts b/test/utils/scheduleFilter/filterChildStubs.ts
+index ccabe55e0..c3360d936 100644
+--- a/test/utils/scheduleFilter/filterChildStubs.ts
++++ b/test/utils/scheduleFilter/filterChildStubs.ts
+@@ -1,6 +1,7 @@
+ import { defineComponent, type PropType } from 'vue'
+ 
+ import type { ScheduleTypeFilterValue } from '~/composables/stores/schedules/useQueryStore'
++import type { DateControlScope } from '~/constants/schedule/dateControlScope'
+ import type { Equipment } from '~/types/Equipment/Equipment'
+ import type { Organization } from '~/types/Organization/Organization'
+ import type { AccordionUser } from '~/types/Organization/OrganizationItem'
+@@ -82,7 +83,7 @@ export const DateControlStub = defineComponent({
+   name: 'DateControl',
+   props: {
+     modelValue: { type: Date, required: true },
+-    scope: { type: String as PropType<'monthly' | 'weekly'>, required: true },
++    scope: { type: String as PropType<DateControlScope>, required: true },
+     isLoading: { type: Boolean, default: false },
+   },
+   emits: ['update:modelValue', 'clickNow'],
+diff --git a/types/Schedule/GanttMonthlyBaseStore.ts b/types/Schedule/GanttMonthlyBaseStore.ts
+index a2fef142a..ee238177e 100644
+--- a/types/Schedule/GanttMonthlyBaseStore.ts
++++ b/types/Schedule/GanttMonthlyBaseStore.ts
+@@ -31,5 +31,4 @@ export interface GanttMonthlyBaseStoreFields<
+   isHideGanttDialog: Ref<boolean>
+   hasSchedulesByDate: (date: Date) => boolean
+   move: (event: SortableJs.SortableEvent) => void
+-  setStartDate: (date: Date | null) => void
+ }

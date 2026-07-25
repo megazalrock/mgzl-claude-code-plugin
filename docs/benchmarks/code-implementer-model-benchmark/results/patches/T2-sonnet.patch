@@ -1,0 +1,226 @@
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+index 3668b6878..23cc092c2 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+@@ -23,8 +23,11 @@
+         </template>
+       </schedule-header>
+     </div>
+-    <div class="shift-board__body">
+-      <shift-board-table />
++    <div
++      class="shift-board__body"
++      @scroll="handleBodyScroll"
++    >
++      <shift-board-table ref="shiftBoardTableRef" />
+     </div>
+     <modal-schedule-edit
+       v-if="showEditModal"
+@@ -107,6 +110,15 @@ const {
+ const { monthDate, apiParams, setMonth, load, setFilter, setFilters, clearFilters } = provideShiftBoardQueryStore()
+ const holidayStore = provideHolidaysScopedStore()
+ 
++const shiftBoardTableRef = ref<InstanceType<typeof ShiftBoardTable> | null>(null)
++
++// 稼働表を縦横にスクロールした際、ホバー中のスケジュールカードが pointerleave を発火しないまま
++// 移動しツールチップが表示され続けてしまう不具合の対処。スクロールコンテナを所有するこの
++// コンポーネントで scroll イベントを直接拾い、ShiftBoardTable が保持するツールチップ状態を閉じる
++const handleBodyScroll = (): void => {
++  shiftBoardTableRef.value?.closeTooltip()
++}
++
+ /**
+  * 表示データ・スケジュール詳細を現在の表示月・フィルタで再取得する（月切替・フィルタ変更の共通入口）
+  *
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+index da4251eec..c361ccb14 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+@@ -1,10 +1,17 @@
+ <template>
+-  <div v-if="scheduleIds.length > 0">
+-    <template
+-      v-for="scheduleId in scheduleIds"
+-      :key="scheduleId"
+-    >
+-      <slot :schedule-id="scheduleId" />
++  <div
++    v-if="scheduleIds.length > 0"
++    ref="cellRef"
++    v-bind="{ [OBSERVING_ITEM_DATA_SET_KEY]: cellKey }"
++    :style="placeholderStyle"
++  >
++    <template v-if="isRendering">
++      <template
++        v-for="scheduleId in scheduleIds"
++        :key="scheduleId"
++      >
++        <slot :schedule-id="scheduleId" />
++      </template>
+     </template>
+   </div>
+ </template>
+@@ -12,12 +19,86 @@
+ <script setup lang="ts">
+ /**
+  * scheduleIdsをキャッシュするための薄いラッパーコンポーネント
++ *
++ * 稼働表は行×日付×シフト枠のセル数が多く、全セルのスケジュールカードを常時マウントすると
++ * DOM 量が膨らみ描画負荷が高くなる。画面外（IntersectionObserverStore は親の ShiftBoardTable
++ * が provide）のセルはカードをアンマウントし、画面内に戻ったら元通り表示する。
++ * アンマウント直前に自身の高さを計測して minHeight として保持することで、セル（延いては行）の
++ * 高さが変わらずスクロール中のレイアウトシフトを防ぐ。
+  */
++import { IntersectionObserverStoreKey, OBSERVING_ITEM_DATA_SET_KEY } from '~/composables/stores/UseIntersectionObserverStore'
+ import type { ShiftBoardCell } from '~/types/Schedule/ShiftBoard'
+ 
++/**
++ * ローディング中は本コンポーネントのルート要素に親（ShiftBoardTable）側の
++ * `v-show="!isShiftBoardDataLoading"` が適用されて display: none になり、その間は
++ * boundingClientRect の幅・高さが共に 0 になる。これは実際にスクロールして画面外に
++ * 出たわけではないため、「画面外」と誤認してカードを消してしまわないよう無視する
++ */
++const getIsHiddenByDisplayNone = (rect: DOMRectReadOnly): boolean => {
++  return rect.width === 0 && rect.height === 0
++}
++
+ type Props = {
+   scheduleIds: Readonly<ShiftBoardCell['scheduleIds']>
++  /** IntersectionObserverStore に渡す一意キー。呼び出し元の `:key` 導出（row・date・shiftBoardConfig）と揃える */
++  cellKey: string
+ }
+ 
+-defineProps<Props>()
++const props = defineProps<Props>()
++
++const intersectionObserverStore = inject(IntersectionObserverStoreKey)
++
++const cellRef = ref<HTMLElement>()
++const isRendering = ref(true)
++const reservedHeight = ref(0)
++
++const placeholderStyle = computed<{ minHeight: string } | undefined>(() => {
++  if (isRendering.value) {
++    return undefined
++  }
++  return { minHeight: `${reservedHeight.value}px` }
++})
++
++const observe = (): void => {
++  if (!cellRef.value) {
++    return
++  }
++  intersectionObserverStore?.observe(props.cellKey, cellRef.value, (entry) => {
++    if (getIsHiddenByDisplayNone(entry.boundingClientRect)) {
++      return
++    }
++    if (entry.isIntersecting) {
++      isRendering.value = true
++      return
++    }
++    // 折りたたむ前に現在の高さを保持し、アンマウント後もセルの高さを維持する
++    if (cellRef.value) {
++      reservedHeight.value = cellRef.value.clientHeight
++    }
++    isRendering.value = false
++  })
++}
++
++const unobserve = (): void => {
++  intersectionObserverStore?.unobserve(props.cellKey, cellRef.value)
++}
++
++onMounted(observe)
++onUnmounted(unobserve)
++
++// フィルター・月切替等で scheduleIds（配列参照）が入れ替わった際、画面外で折りたたんでいたセルは
++// 更新前のデータで計測した高さを保持したままになる。新データで再計測してから改めて折りたたむことで
++// 古い高さを持ち越さない
++watch(() => props.scheduleIds, async () => {
++  if (isRendering.value) {
++    return
++  }
++  isRendering.value = true
++  await nextTick()
++  if (cellRef.value) {
++    reservedHeight.value = cellRef.value.clientHeight
++  }
++  isRendering.value = false
++})
+ </script>
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+index eb1c0e7d2..84b6b3cf8 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+@@ -30,6 +30,7 @@
+           v-show="!isShiftBoardDataLoading"
+           class="shift-board-table__schedules"
+           :schedule-ids="getScheduleIdsByDateAndPosition({ row, date, position: shiftBoardConfig.position })"
++          :cell-key="`${row.type}-${row.id}-${date.getTime()}-${shiftBoardConfig.position}`"
+         >
+           <template #default="{ scheduleId }">
+             <shift-board-schedule-card
+@@ -71,6 +72,8 @@ import { useShiftBoardQueryStore } from '~/composables/stores/schedules/shift_bo
+ import { useShiftBoardTableDataStore } from '~/composables/stores/schedules/shift_board/useShiftBoardTableDataStore'
+ import { getIsDetailModalAvailable, useScheduleEditAndDetailModalScopedStore } from '~/composables/stores/schedules/useEditAndDetailModalStore'
+ import { useScheduleListStore } from '~/composables/stores/schedules/useScheduleListStore'
++import type { IntersectionObserverStore } from '~/composables/stores/UseIntersectionObserverStore'
++import { IntersectionObserverStoreKey, useIntersectionObserverStore } from '~/composables/stores/UseIntersectionObserverStore'
+ import type { TooltipSchedule } from '~/types/components/organisms/Schedule/Parts/ScheduleTooltip'
+ import type { ClickCellArgs } from '~/types/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardRow'
+ import type { ShiftBoardRow as ShiftBoardRowType } from '~/types/Schedule/ShiftBoard'
+@@ -83,6 +86,12 @@ const { openEditModal, openDetailModal } = useScheduleEditAndDetailModalScopedSt
+ 
+ const { getScheduleById } = useScheduleListStore()
+ 
++// 稼働表はセル数が多く全セルのカードを常時マウントすると描画負荷が高いため、画面外セルのカードを
++// アンマウントする ShiftBoardScheduleCards に IntersectionObserverStore を provide する。
++// rootMargin で先読み範囲を持たせ、スクロール境界付近での mount/unmount のチャーンを抑える
++const intersectionObserverStore = useIntersectionObserverStore({ rootMargin: '200px' })
++provide<IntersectionObserverStore>(IntersectionObserverStoreKey, intersectionObserverStore)
++
+ const tooltipTargetSchedule = ref<TooltipSchedule | null>(null)
+ const tooltipTargetElement = ref<HTMLElement | null>(null)
+ 
+@@ -126,6 +135,15 @@ const handlePointerOutScheduleCard = () => {
+   // ToolTipが閉じる場合のアニメーションがあるので、tooltipTargetSchedule.valueは初期化しない
+   tooltipTargetElement.value = null
+ }
++
++// 稼働表のスクロールコンテナ（親の ShiftBoard.vue が所有）の scroll イベントから呼ばれる。
++// スクロール中はポインターが動かないまま対象カードが移動するため pointerleave が発火せず、
++// ツールチップが表示され続けてしまう不具合の対処として、閉じる処理を pointerleave と共通化して公開する
++defineExpose({ closeTooltip: handlePointerOutScheduleCard })
++
++onUnmounted(() => {
++  intersectionObserverStore.disconnect()
++})
+ </script>
+ 
+ <style scoped lang="scss">
+diff --git a/composables/stores/UseIntersectionObserverStore.ts b/composables/stores/UseIntersectionObserverStore.ts
+index 39a060548..6f9a59133 100644
+--- a/composables/stores/UseIntersectionObserverStore.ts
++++ b/composables/stores/UseIntersectionObserverStore.ts
+@@ -17,8 +17,11 @@ const OBSERVING_ITEM_DOM_STRING_MAP_KEY = 'observingItemId'
+ /**
+  * IntersectionObserverを使うためのStore
+  * 大量のIntersectionObserverを作成するとパフォーマンスに影響があるので、親のコンポーネントでprovideして子コンポーネントではinjectして使う
++ *
++ * @param options `IntersectionObserver` に渡すオプション。未指定時はブラウザ既定値（root: null, rootMargin: '0px', threshold: 0）と同じ挙動になり、
++ *   既存の呼び出し元の挙動は変わらない。スクロール境界付近での mount/unmount のチャーンを避けたい呼び出し元は `rootMargin` で先読み範囲を広げる
+  */
+-export function useIntersectionObserverStore() {
++export function useIntersectionObserverStore(options: IntersectionObserverInit = {}) {
+   const observerCallbackRecords: Record<string, Callback> = {}
+   const intersectionObserver = new IntersectionObserver((entries: Array<IntersectionObserverEntry>) => {
+     entries.forEach((entry: IntersectionObserverEntry) => {
+@@ -27,7 +30,7 @@ export function useIntersectionObserverStore() {
+       }
+       observerCallbackRecords[String(entry.target.dataset[OBSERVING_ITEM_DOM_STRING_MAP_KEY])]?.(entry)
+     })
+-  })
++  }, options)
+ 
+   /**
+    * 指定した要素の監視を開始する

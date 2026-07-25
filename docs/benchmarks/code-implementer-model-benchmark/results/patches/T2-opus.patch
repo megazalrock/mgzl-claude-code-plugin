@@ -1,0 +1,411 @@
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+index 3668b6878..69eadc1a3 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+@@ -274,10 +274,10 @@ onMounted(async () => {
+     margin-top: var(--cb-space-2);
+   }
+ 
++  // スクロールは ShiftBoardTable のルート要素が担う（表示領域を基準にセルの表示・非表示を判定するため）
+   &__body {
+     flex: 1 1 0;
+     min-height: 0;
+-    overflow: auto;
+     border: 1px solid rgb(var(--v-theme-system--table--border));
+   }
+ }
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue
+index eb79d530b..8449c98b0 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue
+@@ -97,7 +97,9 @@ const styles = computed<ColorStyleValues | null>(() => {
+   align-items: center;
+   justify-content: center;
+   width: 18px;
+-  height: 16px;
++  // 高さの定義元は DOM 上の親要素である ShiftBoardScheduleCards。カードをアンマウントした際に
++  // 親が確保する高さと実際の描画高さを一致させるため、両者で同じカスタムプロパティを参照する
++  height: var(--shift-board-schedule-card-height);
+   font-size: 10px;
+   border-radius: 4px;
+   background: var(--bg-color);
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+index da4251eec..aaf8bc95a 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+@@ -1,23 +1,95 @@
+ <template>
+-  <div v-if="scheduleIds.length > 0">
+-    <template
+-      v-for="scheduleId in scheduleIds"
+-      :key="scheduleId"
+-    >
+-      <slot :schedule-id="scheduleId" />
++  <div
++    v-if="scheduleIds.length > 0"
++    :ref="handleContainerRef"
++    class="shift-board-schedule-cards"
++    :style="{ '--shift-board-schedule-cards-count': scheduleIds.length.toString() }"
++  >
++    <template v-if="isVisible">
++      <template
++        v-for="scheduleId in scheduleIds"
++        :key="scheduleId"
++      >
++        <slot :schedule-id="scheduleId" />
++      </template>
+     </template>
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
+ /**
+- * scheduleIdsをキャッシュするための薄いラッパーコンポーネント
++ * 1 セル分のスケジュールカードを並べるコンテナ
++ *
++ * - scheduleIds をキャッシュするための薄いラッパーコンポーネント
++ * - 表示領域外ではカードをアンマウントして DOM 量を抑える。カードの有無で行の高さが変わらないよう、
++ *   カード枚数から算出した高さを min-height で常に確保する
+  */
++import type { ComponentPublicInstance } from 'vue'
++
++import { useShiftBoardCellVisibilityStore } from '~/composables/stores/schedules/shift_board/useShiftBoardCellVisibilityStore'
+ import type { ShiftBoardCell } from '~/types/Schedule/ShiftBoard'
++import { Type } from '~/utils/Type'
+ 
+ type Props = {
+   scheduleIds: Readonly<ShiftBoardCell['scheduleIds']>
+ }
+ 
+ defineProps<Props>()
++
++const { observe, unobserve } = useShiftBoardCellVisibilityStore()
++
++// IntersectionObserver の初回通知が届くまではカードを描画する。初期値を false にすると通知が
++// 届かない環境で全セルが空になるため、「画面外と判明したらアンマウントする」向きに倒している
++const isVisible = ref<boolean>(true)
++
++// 監視中の要素。監視の解除に監視開始時と同一の要素が必要なため、ref 解決のたびに再評価せず保持する
++let observedElement: HTMLElement | null = null
++
++const handleVisibilityChange = (value: boolean): void => {
++  isVisible.value = value
++}
++
++/**
++ * 監視対象の要素を差し替える
++ *
++ * 空セルではルート要素自体が描画されず、scheduleIds の増減で要素が生成・破棄されるため、
++ * onMounted / onUnmounted ではなく関数 ref で追随する（要素の破棄時は null で呼ばれる）
++ */
++const handleContainerRef = (element: Element | ComponentPublicInstance | null): void => {
++  const nextElement = Type.isHtmlElement(element) ? element : null
++  // 関数 ref は再描画のたびに呼ばれるため、同じ要素に対する監視の解除・再開を避ける
++  if (nextElement === observedElement) {
++    return
++  }
++  if (!Type.isNull(observedElement)) {
++    unobserve(observedElement)
++  }
++  observedElement = nextElement
++  if (!Type.isNull(nextElement)) {
++    observe({ element: nextElement, onVisibilityChange: handleVisibilityChange })
++  }
++}
+ </script>
++
++<style scoped lang="scss">
++.shift-board-schedule-cards {
++  // --shift-board-schedule-card-height はスロットに描画される ShiftBoardScheduleCard でも利用している。
++  // カードをアンマウントしたときに確保する min-height と実際の描画高さを一致させるため定義元を 1 つにしている
++  --shift-board-schedule-card-height: 16px;
++  --shift-board-schedule-cards-gap: 2px;
++  --shift-board-schedule-cards-padding: 2px;
++
++  display: flex;
++  flex-direction: column;
++  gap: var(--shift-board-schedule-cards-gap);
++  align-items: center;
++  justify-content: center;
++  padding: var(--shift-board-schedule-cards-padding);
++  // --shift-board-schedule-cards-count はカード枚数としてインラインスタイルで与えられる
++  min-height: calc(
++    var(--shift-board-schedule-card-height) * var(--shift-board-schedule-cards-count)
++    + var(--shift-board-schedule-cards-gap) * (var(--shift-board-schedule-cards-count) - 1)
++    + var(--shift-board-schedule-cards-padding) * 2
++  );
++}
++</style>
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+index eb1c0e7d2..37d373555 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+@@ -1,47 +1,52 @@
+ <template>
+-  <div class="shift-board-table">
+-    <shift-board-header
+-      class="shift-board-table__header"
+-      :dates="dates"
+-      :is-shift-board-configs-loading="isShiftBoardConfigsLoading"
+-      :is-shift-board-data-loading="isShiftBoardDataLoading"
+-    />
+-    <shift-board-row
+-      v-for="(row, index) in rows"
+-      :key="`${row.type}-${row.id}`"
+-      :shift-board-configs="displayShiftBoards"
+-      :dates="dates"
+-      class="shift-board-table__row"
+-      :no-row-border-top="index === 0"
+-      :show-border-bottom="index === rows.length - 1"
+-      :clickable-cell="isShiftBoardConfigsInitialized"
+-      @clickCell="({ date, shiftBoardConfig }: ClickCellArgs) => handleCellClick({ date, row, shiftBoardConfig })"
+-    >
+-      <template #head>
+-        <div class="shift-board-table__user-name">
+-          <cb-user-name
+-            :name="row.full_name"
+-            size="small"
+-          />
+-        </div>
+-      </template>
+-      <template #body="{ shiftBoardConfig, date }">
+-        <shift-board-schedule-cards
+-          v-show="!isShiftBoardDataLoading"
+-          class="shift-board-table__schedules"
+-          :schedule-ids="getScheduleIdsByDateAndPosition({ row, date, position: shiftBoardConfig.position })"
+-        >
+-          <template #default="{ scheduleId }">
+-            <shift-board-schedule-card
+-              :schedule-id="scheduleId"
+-              @pointerenter="(event: PointerEvent) => handlePointerOverScheduleCard({ event, schedule: getScheduleById(scheduleId) })"
+-              @pointerleave="handlePointerOutScheduleCard"
+-              @click.stop="handleScheduleCardClick({ scheduleId, date, userId: row.id })"
++  <div
++    ref="scrollContainerRef"
++    class="shift-board-table"
++    @scroll="handleHideTooltip"
++  >
++    <div class="shift-board-table__inner">
++      <shift-board-header
++        class="shift-board-table__header"
++        :dates="dates"
++        :is-shift-board-configs-loading="isShiftBoardConfigsLoading"
++        :is-shift-board-data-loading="isShiftBoardDataLoading"
++      />
++      <shift-board-row
++        v-for="(row, index) in rows"
++        :key="`${row.type}-${row.id}`"
++        :shift-board-configs="displayShiftBoards"
++        :dates="dates"
++        class="shift-board-table__row"
++        :no-row-border-top="index === 0"
++        :show-border-bottom="index === rows.length - 1"
++        :clickable-cell="isShiftBoardConfigsInitialized"
++        @clickCell="({ date, shiftBoardConfig }: ClickCellArgs) => handleCellClick({ date, row, shiftBoardConfig })"
++      >
++        <template #head>
++          <div class="shift-board-table__user-name">
++            <cb-user-name
++              :name="row.full_name"
++              size="small"
+             />
+-          </template>
+-        </shift-board-schedule-cards>
+-      </template>
+-    </shift-board-row>
++          </div>
++        </template>
++        <template #body="{ shiftBoardConfig, date }">
++          <shift-board-schedule-cards
++            v-show="!isShiftBoardDataLoading"
++            :schedule-ids="getScheduleIdsByDateAndPosition({ row, date, position: shiftBoardConfig.position })"
++          >
++            <template #default="{ scheduleId }">
++              <shift-board-schedule-card
++                :schedule-id="scheduleId"
++                @pointerenter="(event: PointerEvent) => handlePointerOverScheduleCard({ event, schedule: getScheduleById(scheduleId) })"
++                @pointerleave="handleHideTooltip"
++                @click.stop="handleScheduleCardClick({ scheduleId, date, userId: row.id })"
++              />
++            </template>
++          </shift-board-schedule-cards>
++        </template>
++      </shift-board-row>
++    </div>
+   </div>
+   <schedule-tooltip
+     v-if="tooltipTargetSchedule"
+@@ -66,6 +71,7 @@ import ShiftBoardHeader from '~/components/organisms/Schedule/ShiftBoard/ShiftBo
+ import ShiftBoardRow from '~/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardRow.vue'
+ import ShiftBoardScheduleCard from '~/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue'
+ import ShiftBoardScheduleCards from '~/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue'
++import { provideShiftBoardCellVisibilityStore } from '~/composables/stores/schedules/shift_board/useShiftBoardCellVisibilityStore'
+ import { useShiftBoardConfigStore } from '~/composables/stores/schedules/shift_board/useShiftBoardConfigStore'
+ import { useShiftBoardQueryStore } from '~/composables/stores/schedules/shift_board/useShiftBoardQueryStore'
+ import { useShiftBoardTableDataStore } from '~/composables/stores/schedules/shift_board/useShiftBoardTableDataStore'
+@@ -83,6 +89,12 @@ const { openEditModal, openDetailModal } = useScheduleEditAndDetailModalScopedSt
+ 
+ const { getScheduleById } = useScheduleListStore()
+ 
++// 表示領域の基準となるスクロールコンテナ。高さは親から制約される前提で、この要素自身がスクロールする
++const scrollContainerRef = ref<HTMLElement | null>(null)
++
++// 画面外セルのカードをアンマウントするための監視を、テーブル配下で 1 つの Observer に集約する
++provideShiftBoardCellVisibilityStore({ getScrollContainer: () => scrollContainerRef.value })
++
+ const tooltipTargetSchedule = ref<TooltipSchedule | null>(null)
+ const tooltipTargetElement = ref<HTMLElement | null>(null)
+ 
+@@ -122,15 +134,25 @@ const handlePointerOverScheduleCard = ({ event, schedule }: { event: PointerEven
+   tooltipTargetSchedule.value = schedule
+ }
+ 
+-const handlePointerOutScheduleCard = () => {
+-  // ToolTipが閉じる場合のアニメーションがあるので、tooltipTargetSchedule.valueは初期化しない
++/**
++ * ツールチップを非表示にする（カードからのポインタ離脱・テーブルのスクロールで共通）
++ *
++ * スクロールするとカード（target）だけが移動してツールチップが取り残されるため、スクロール時も閉じる。
++ * 閉じる際のアニメーションがあるので、tooltipTargetSchedule.value は初期化しない
++ */
++const handleHideTooltip = () => {
+   tooltipTargetElement.value = null
+ }
+ </script>
+ 
+ <style scoped lang="scss">
+ .shift-board-table {
+-  width: fit-content;
++  height: 100%;
++  overflow: auto;
++
++  &__inner {
++    width: fit-content;
++  }
+ 
+   &__header {
+     position: sticky;
+@@ -145,14 +167,5 @@ const handlePointerOutScheduleCard = () => {
+     align-items: center;
+     padding: 8px 12px;
+   }
+-
+-  &__schedules {
+-    display: flex;
+-    flex-direction: column;
+-    gap: 2px;
+-    align-items: center;
+-    justify-content: center;
+-    padding: 2px;
+-  }
+ }
+ </style>
+diff --git a/composables/stores/schedules/shift_board/useShiftBoardCellVisibilityStore.ts b/composables/stores/schedules/shift_board/useShiftBoardCellVisibilityStore.ts
+new file mode 100644
+index 000000000..e6648bcb4
+--- /dev/null
++++ b/composables/stores/schedules/shift_board/useShiftBoardCellVisibilityStore.ts
+@@ -0,0 +1,103 @@
++import { defineScopedStore } from '~/composables/shared/store/defineScopedStore'
++
++type OnVisibilityChange = (isVisible: boolean) => void
++
++type ObserveArgs = {
++  element: Element
++  onVisibilityChange: OnVisibilityChange
++}
++
++type SetupArgs = {
++  /**
++   * 監視の基準（IntersectionObserver の root）となるスクロールコンテナを返す
++   *
++   * スクロールコンテナはテンプレート ref であり provide 時点では未解決のため、要素そのものではなく
++   * getter を受け取り、ref が解決済みとなる onMounted で解決する
++   */
++  getScrollContainer: () => Element | null
++}
++
++const SHIFT_BOARD_CELL_VISIBILITY_STORE_KEY = 'shiftBoardCellVisibilityStore'
++
++/**
++ * 表示領域の外側に確保する先読み距離
++ *
++ * 表示領域に入る前にカードを描画しておくことで、境界付近のスクロールで mount/unmount を往復するのを防ぐ
++ */
++const ROOT_MARGIN = '200px'
++
++/**
++ * 描画済み（レイアウトを持つ）要素についての通知かどうかを返す
++ *
++ * ローディング中に `display: none` となった要素は rect が 0 の非交差として通知される。これは
++ * 「画面外」ではなく「非表示」の状態であり、画面外と同じ扱いにすると再表示の直後にカードが
++ * 欠けた状態になるため、この通知は無視して直前の表示状態を維持する
++ */
++const getIsRendered = (entry: IntersectionObserverEntry): boolean => {
++  return entry.boundingClientRect.width > 0 || entry.boundingClientRect.height > 0
++}
++
++/**
++ * 稼働表のセルが表示領域内にあるかを監視するストア
++ *
++ * - セルごとに IntersectionObserver を生成すると数が膨大になるため、テーブル全体で 1 つの Observer を共有する
++ * - root にはスクロールコンテナを使う。ビューポートを root にすると、スクロールコンテナに切り取られた要素は
++ *   {@link ROOT_MARGIN} を広げても交差扱いにならず先読みが効かないため
++ * - 汎用の `useIntersectionObserverStore` は root/rootMargin を指定できず、稼働表が必要とする先読みを
++ *   実現できないため、稼働表専用の Observer として持つ
++ */
++export const {
++  useStore: useShiftBoardCellVisibilityStore,
++  provideStore: provideShiftBoardCellVisibilityStore,
++} = defineScopedStore(SHIFT_BOARD_CELL_VISIBILITY_STORE_KEY, ({ getScrollContainer }: SetupArgs) => {
++  const onVisibilityChangeByElement = new Map<Element, OnVisibilityChange>()
++  let observer: IntersectionObserver | null = null
++
++  const handleEntries = (entries: IntersectionObserverEntry[]): void => {
++    entries.forEach((entry) => {
++      if (!getIsRendered(entry)) {
++        return
++      }
++      onVisibilityChangeByElement.get(entry.target)?.(entry.isIntersecting)
++    })
++  }
++
++  /**
++   * 要素の監視を開始する。表示状態が変わるたびに {@link ObserveArgs.onVisibilityChange} が呼ばれる
++   *
++   * Observer 生成前（mount 前）に呼ばれた要素は onMounted でまとめて監視を開始する
++   */
++  const observe = ({ element, onVisibilityChange }: ObserveArgs): void => {
++    onVisibilityChangeByElement.set(element, onVisibilityChange)
++    observer?.observe(element)
++  }
++
++  /** 要素の監視を終了する */
++  const unobserve = (element: Element): void => {
++    onVisibilityChangeByElement.delete(element)
++    observer?.unobserve(element)
++  }
++
++  // root となるスクロールコンテナのテンプレート ref は、mount 前に呼ばれる関数 ref の時点では
++  // まだ解決されていないため、ref が確定する onMounted で Observer を生成する
++  onMounted(() => {
++    const createdObserver = new IntersectionObserver(handleEntries, {
++      root: getScrollContainer(),
++      rootMargin: ROOT_MARGIN,
++    })
++    observer = createdObserver
++    onVisibilityChangeByElement.forEach((_onVisibilityChange, element) => {
++      createdObserver.observe(element)
++    })
++  })
++
++  onScopeDispose(() => {
++    observer?.disconnect()
++    onVisibilityChangeByElement.clear()
++  })
++
++  return {
++    observe,
++    unobserve,
++  }
++})

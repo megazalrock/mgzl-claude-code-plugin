@@ -1,0 +1,756 @@
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+index 3668b6878..1e59c5653 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue
+@@ -23,8 +23,11 @@
+         </template>
+       </schedule-header>
+     </div>
+-    <div class="shift-board__body">
+-      <shift-board-table />
++    <div
++      ref="shiftBoardBodyRef"
++      class="shift-board__body"
++    >
++      <shift-board-table :scroll-container="shiftBoardBodyRef" />
+     </div>
+     <modal-schedule-edit
+       v-if="showEditModal"
+@@ -69,6 +72,7 @@ import type { FilterCondition } from '~/composables/stores/schedules/useQuerySto
+ import { SCHEDULE_DETAIL_MODAL_API_REQUEST_STORE, type ScheduleDetailModalApiRequestStore, useScheduleDetailModalApiRequestStore } from '~/composables/stores/schedules/UseScheduleDetailModalApiRequestStore'
+ import { provideScheduleListStore } from '~/composables/stores/schedules/useScheduleListStore'
+ import { fullViewModeStoreKey, useFullViewModeStore } from '~/composables/stores/UseFullViewModeStore'
++import { provideIntersectionObserverStore } from '~/composables/stores/UseIntersectionObserverStore'
+ import type { UpdatedResult } from '~/types/composables/components/organisms/Schedule/Edit/UpdateResult'
+ import { asyncDebounce, DebounceCancelledError } from '~/utils/debounce'
+ import { HttpError } from '~/utils/http/httpError'
+@@ -76,6 +80,10 @@ import { Type } from '~/utils/Type'
+ 
+ const { pc } = useBreakpoint()
+ const { $toastNext, $bugsnag } = useNuxtApp()
++
++// スクロールコンテナ要素。ShiftBoardTable.vue へ scroll-container prop として渡す
++// （prop 化の設計意図は ShiftBoardTable.vue の Props コメントを参照）
++const shiftBoardBodyRef = ref<HTMLElement | null>(null)
+ const {
+   isPartnerOnly,
+   isClientAndPartner,
+@@ -106,6 +114,7 @@ const {
+ } = provideScheduleEditAndDetailModalScopedStore()
+ const { monthDate, apiParams, setMonth, load, setFilter, setFilters, clearFilters } = provideShiftBoardQueryStore()
+ const holidayStore = provideHolidaysScopedStore()
++const { disconnect } = provideIntersectionObserverStore()
+ 
+ /**
+  * 表示データ・スケジュール詳細を現在の表示月・フィルタで再取得する（月切替・フィルタ変更の共通入口）
+@@ -244,6 +253,11 @@ onMounted(async () => {
+   void fetchHolidays()
+   await Promise.all([initShiftBoards(), reload()])
+ })
++
++onUnmounted(() => {
++  // provide 時に生成した共有 IntersectionObserver を破棄し、リークを防ぐ
++  disconnect()
++})
+ </script>
+ 
+ <style scoped lang="scss">
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.testIds.ts b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.testIds.ts
+new file mode 100644
+index 000000000..9e6e05a4e
+--- /dev/null
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.testIds.ts
+@@ -0,0 +1,3 @@
++export const TEST_ID = {
++  CARDS: 'schedule-cards',
++} as const
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+index da4251eec..5cbacce18 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCards.vue
+@@ -1,23 +1,120 @@
+ <template>
+-  <div v-if="scheduleIds.length > 0">
+-    <template
+-      v-for="scheduleId in scheduleIds"
+-      :key="scheduleId"
+-    >
+-      <slot :schedule-id="scheduleId" />
++  <div
++    v-if="scheduleIds.length > 0"
++    ref="shiftBoardScheduleCardsRef"
++    class="shift-board-schedule-cards"
++    :data-testid="TEST_ID.CARDS"
++    v-bind="intersectionObserverData"
++    :style="ghostStyle"
++  >
++    <template v-if="!isGhost">
++      <template
++        v-for="scheduleId in scheduleIds"
++        :key="scheduleId"
++      >
++        <slot :schedule-id="scheduleId" />
++      </template>
+     </template>
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
+ /**
+- * scheduleIdsをキャッシュするための薄いラッパーコンポーネント
++ * scheduleIdsをキャッシュし、画面外の場合にアンロードするラッパーコンポーネント
+  */
++import { OBSERVING_ITEM_DATA_SET_KEY, useIntersectionObserverScopedStore } from '~/composables/stores/UseIntersectionObserverStore'
+ import type { ShiftBoardCell } from '~/types/Schedule/ShiftBoard'
++import { Type } from '~/utils/Type'
++
++import { TEST_ID } from './ShiftBoardScheduleCards.testIds'
+ 
+ type Props = {
+   scheduleIds: Readonly<ShiftBoardCell['scheduleIds']>
++  // セルを一意に識別するキー。IntersectionObserver の observe/unobserve 時の id として使われる
++  cellKey?: string
+ }
+ 
+-defineProps<Props>()
++const props = defineProps<Props>()
++
++const { observe, unobserve } = useIntersectionObserverScopedStore()
++
++const shiftBoardScheduleCardsRef = ref<HTMLElement | null>(null)
++
++const isGhost = ref<boolean>(false)
++const cachedHeight = ref<number | null>(null)
++
++const ghostStyle = computed(() => {
++  if (!isGhost.value || Type.isNull(cachedHeight.value)) {
++    return {}
++  }
++  return {
++    '--cached-height': `${cachedHeight.value}px`,
++  }
++})
++
++const intersectionObserverData = computed(() => {
++  if (Type.isUndefined(props.cellKey)) {
++    return undefined
++  }
++  return {
++    [OBSERVING_ITEM_DATA_SET_KEY]: props.cellKey,
++  }
++})
++
++// 解除には observe 時と同じ id・要素の組が必要だが、unmount 時の onUnmounted では
++// template ref が既に null に戻っているため、観測中の組をここに保持する
++let observing: { id: string, element: HTMLElement } | null = null
++
++const stopObserving = () => {
++  if (Type.isNull(observing)) {
++    return
++  }
++  unobserve(observing.id, observing.element)
++  observing = null
++}
++
++const startObserving = ({ id, element }: { id: string, element: HTMLElement }) => {
++  observe(id, element, ({ isIntersecting, boundingClientRect }) => {
++    // 親の v-show（ローディング中の非表示）による display:none でも isIntersecting=false で
++    // 発火するが、画面外に出たわけではないため無視する（display:none 中は height が 0 になる）
++    if (!isIntersecting && boundingClientRect.height === 0) {
++      return
++    }
++    isGhost.value = !isIntersecting
++    if (!isIntersecting) {
++      // isGhost = true になると v-if="!isGhost" で slot が破棄され実高さが測れなくなるため、
++      // 破棄される直前のこのタイミングで実高さを確保しておく
++      cachedHeight.value = boundingClientRect.height
++    }
++  })
++  observing = { id, element }
++}
++
++// scheduleIds の空→非空で v-if の要素が後から生成されるセルがあるため、
++// onMounted ではなく template ref の watch で要素の出現・消滅に追従して観測を付け替える
++watch([shiftBoardScheduleCardsRef, () => props.cellKey], ([element, id]) => {
++  stopObserving()
++  if (Type.isNull(element)) {
++    // scheduleIds が空になり root ごと消滅したタイミングで isGhost・cachedHeight をリセットする。
++    // これにより、再度非空になった際に古い高さの空箱が IntersectionObserver の初回コールバックまで
++    // 持ち越されるのを防ぐ
++    isGhost.value = false
++    cachedHeight.value = null
++    return
++  }
++  if (!Type.isUndefined(id) && Type.isHtmlElement(element)) {
++    startObserving({ id, element })
++  }
++}, { flush: 'post' })
++
++onBeforeUnmount(() => {
++  // onUnmounted では template ref が既に null に戻り解除漏れになるため onBeforeUnmount で解除する
++  stopObserving()
++})
+ </script>
++
++<style lang="scss" scoped>
++.shift-board-schedule-cards {
++  height: var(--cached-height, initial);
++}
++</style>
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+index eb1c0e7d2..b70004f25 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue
+@@ -8,7 +8,7 @@
+     />
+     <shift-board-row
+       v-for="(row, index) in rows"
+-      :key="`${row.type}-${row.id}`"
++      :key="getRowKey(row)"
+       :shift-board-configs="displayShiftBoards"
+       :dates="dates"
+       class="shift-board-table__row"
+@@ -30,6 +30,7 @@
+           v-show="!isShiftBoardDataLoading"
+           class="shift-board-table__schedules"
+           :schedule-ids="getScheduleIdsByDateAndPosition({ row, date, position: shiftBoardConfig.position })"
++          :cell-key="`${getRowKey(row)}-${date.getTime()}-${shiftBoardConfig.position}`"
+         >
+           <template #default="{ scheduleId }">
+             <shift-board-schedule-card
+@@ -76,6 +77,14 @@ import type { ClickCellArgs } from '~/types/components/organisms/Schedule/ShiftB
+ import type { ShiftBoardRow as ShiftBoardRowType } from '~/types/Schedule/ShiftBoard'
+ import { Type } from '~/utils/Type'
+ 
++type Props = {
++  // スクロールを検知する対象要素。ShiftBoard.vue のスクロールコンテナ（.shift-board__body）を
++  // prop で受け取ることで、DOM 走査（parentElement）による親レイアウトへの暗黙結合を避ける
++  scrollContainer: HTMLElement | null
++}
++
++const props = defineProps<Props>()
++
+ const { displayShiftBoards, isLoading: isShiftBoardConfigsLoading, isInitialized: isShiftBoardConfigsInitialized } = useShiftBoardConfigStore()
+ const { monthDate } = useShiftBoardQueryStore()
+ const { rows, getScheduleIdsByDateAndPosition, isLoading: isShiftBoardDataLoading } = useShiftBoardTableDataStore()
+@@ -93,6 +102,9 @@ const dates = computed<Date[]>(() => {
+   })
+ })
+ 
++// 行の同一性キー。行の :key とセルの cell-key の導出元を揃え、片方だけ変更されるドリフトを防ぐ
++const getRowKey = (row: DeepReadonly<ShiftBoardRowType>) => `${row.type}-${row.id}`
++
+ const handleCellClick = ({ date, row, shiftBoardConfig }: ClickCellArgs & { row: DeepReadonly<ShiftBoardRowType> }) => {
+   openEditModal({
+     date,
+@@ -126,6 +138,24 @@ const handlePointerOutScheduleCard = () => {
+   // ToolTipが閉じる場合のアニメーションがあるので、tooltipTargetSchedule.valueは初期化しない
+   tooltipTargetElement.value = null
+ }
++
++const handleScroll = () => {
++  tooltipTargetElement.value = null
++  // 強制的にツールチップを非表示にしたいので、tooltipTargetScheduleも初期化する
++  tooltipTargetSchedule.value = null
++}
++
++// 親の template ref は親の初回レンダー時点では null のため、mount 時点では props.scrollContainer が
++// null の可能性が高い。watch の old/new 参照で古い要素から解除・新しい要素へ登録することで、
++// prop の変化への追従と「登録と同一参照での解除」を両立する
++watch(() => props.scrollContainer, (newContainer, oldContainer) => {
++  oldContainer?.removeEventListener('scroll', handleScroll)
++  newContainer?.addEventListener('scroll', handleScroll, { passive: true })
++}, { immediate: true })
++
++onBeforeUnmount(() => {
++  props.scrollContainer?.removeEventListener('scroll', handleScroll)
++})
+ </script>
+ 
+ <style scoped lang="scss">
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardScheduleCards.test.ts b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardScheduleCards.test.ts
+new file mode 100644
+index 000000000..ff45e4f5d
+--- /dev/null
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardScheduleCards.test.ts
+@@ -0,0 +1,271 @@
++import { mount } from '@vue/test-utils'
++import { h, nextTick } from 'vue'
++
++import { makeTestId, makeTestIdStartsWith } from '~/__utils__/makeTestId'
++import { type IntersectionObserverStore, OBSERVING_ITEM_DATA_SET_KEY } from '~/composables/stores/UseIntersectionObserverStore'
++import { Type } from '~/utils/Type'
++
++import { TEST_ID } from '../ShiftBoardScheduleCards.testIds'
++import ShiftBoardScheduleCards from '../ShiftBoardScheduleCards.vue'
++
++// useIntersectionObserverScopedStore が inject する injection key は defineScopedStore 内部の
++// ローカル変数（非公開 Symbol）であり、テストコードから provide して差し替えることができない。
++// そのため vi.mock でモジュールごと差し替える（差し替え範囲は下記 vi.mock 内コメント参照）
++const { observeMock, unobserveMock } = vi.hoisted(() => {
++  return {
++    observeMock: vi.fn<IntersectionObserverStore['observe']>(),
++    unobserveMock: vi.fn<IntersectionObserverStore['unobserve']>(),
++  }
++})
++
++// モジュールの他 export（OBSERVING_ITEM_DATA_SET_KEY 等）は ...actual で本物を維持しつつ、
++// useIntersectionObserverScopedStore の戻り値だけを observe / unobserve のモックに差し替える
++vi.mock('~/composables/stores/UseIntersectionObserverStore', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('~/composables/stores/UseIntersectionObserverStore')>()
++  return {
++    ...actual,
++    useIntersectionObserverScopedStore: () => ({
++      observe: observeMock,
++      unobserve: unobserveMock,
++    }),
++  }
++})
++
++type Props = InstanceType<typeof ShiftBoardScheduleCards>['$props']
++
++const SLOT_ITEM_TEST_ID_PREFIX = 'slot-item-'
++const OBSERVER_ID = 'observer-1'
++const NEW_OBSERVER_ID = 'observer-2'
++const SCHEDULE_ID = 100
++
++const createWrapper = (props: Partial<Props> = {}) => {
++  return mount(ShiftBoardScheduleCards, {
++    props: {
++      scheduleIds: [],
++      ...props,
++    },
++    slots: {
++      default: ({ scheduleId }: { scheduleId: number }) => h('div', { 'data-testid': `${SLOT_ITEM_TEST_ID_PREFIX}${scheduleId}` }),
++    },
++  })
++}
++
++// scheduleIds と cellKey を指定してマウントし、template ref の watch（flush: 'post'）による
++// observe 登録が完了するまで待つ
++const mountObserved = async (props: Partial<Props> = {}): Promise<ReturnType<typeof createWrapper>> => {
++  const wrapper = createWrapper({
++    scheduleIds: [SCHEDULE_ID],
++    cellKey: OBSERVER_ID,
++    ...props,
++  })
++  await nextTick()
++  return wrapper
++}
++
++// observe に登録された最新のコールバックを isIntersecting/height で発火し、post-flush の再描画を待つ
++const fireObserveCallback = async ({ isIntersecting, height }: { isIntersecting: boolean, height: number }): Promise<void> => {
++  const callback = observeMock.mock.calls.at(-1)?.[2]
++  if (Type.isUndefined(callback)) {
++    throw new Error('observe callback was not registered')
++  }
++  // SUT の startObserving コールバックが参照するのは isIntersecting と boundingClientRect.height のみのため、
++  // IntersectionObserverEntry の他プロパティは省略した最小実装で代替する
++  callback({ isIntersecting, boundingClientRect: { height } } as IntersectionObserverEntry)
++  await nextTick()
++}
++
++const getCardsElement = (wrapper: ReturnType<typeof createWrapper>): HTMLElement => wrapper.get<HTMLElement>(makeTestId(TEST_ID.CARDS)).element
++
++describe('ShiftBoardScheduleCards.vue', () => {
++  beforeEach(() => {
++    vi.clearAllMocks()
++  })
++
++  describe('描画', () => {
++    it('scheduleIds が空の場合、root 要素が描画されない', () => {
++      // Arrange & Act
++      const wrapper = createWrapper({ scheduleIds: [] })
++
++      // Assert
++      expect(wrapper.find(makeTestId(TEST_ID.CARDS)).exists()).toBe(false)
++    })
++
++    it('scheduleIds が複数件の場合、id ごとに slot が描画される', () => {
++      // Arrange & Act
++      const wrapper = createWrapper({ scheduleIds: [100, 200] })
++
++      // Assert
++      const slotTestIds = wrapper
++        .findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))
++        .map(slotItem => slotItem.attributes('data-testid'))
++      expect(slotTestIds).toStrictEqual(['slot-item-100', 'slot-item-200'])
++    })
++  })
++
++  describe('cellKey', () => {
++    it('未指定の場合、observing 属性が付与されず observe も呼ばれない', async () => {
++      // Arrange & Act
++      const wrapper = createWrapper({ scheduleIds: [SCHEDULE_ID] })
++      await nextTick()
++
++      // Assert
++      expect(wrapper.attributes(OBSERVING_ITEM_DATA_SET_KEY)).toBeUndefined()
++      expect(observeMock).not.toHaveBeenCalled()
++    })
++
++    it('指定した場合、observing 属性が付与され observe がルート要素で 1 回呼ばれる', async () => {
++      // Arrange & Act
++      const wrapper = await mountObserved()
++
++      // Assert
++      expect(wrapper.attributes(OBSERVING_ITEM_DATA_SET_KEY)).toBe(OBSERVER_ID)
++      expect(observeMock).toHaveBeenCalledTimes(1)
++      expect(observeMock).toHaveBeenCalledWith(OBSERVER_ID, getCardsElement(wrapper), expect.any(Function))
++      expect(unobserveMock).not.toHaveBeenCalled()
++    })
++  })
++
++  describe('observe コールバック発火時の ghost 化', () => {
++    it('isIntersecting:false かつ height>0 で発火すると、slot が非表示になり root は残存し --cached-height が設定される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++
++      // Act
++      await fireObserveCallback({ isIntersecting: false, height: 120 })
++
++      // Assert
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(0)
++      expect(wrapper.find(makeTestId(TEST_ID.CARDS)).exists()).toBe(true)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('120px')
++    })
++
++    it('ghost 化後に isIntersecting:true で発火すると、slot が復帰し --cached-height が解除される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      await fireObserveCallback({ isIntersecting: false, height: 120 })
++
++      // Act
++      // isIntersecting:true 復帰時は height を参照しないため、height の値はアサーション対象外の任意値
++      await fireObserveCallback({ isIntersecting: true, height: 0 })
++
++      // Assert
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(1)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('')
++    })
++
++    it('isIntersecting:false かつ height===0 で発火しても無視され、slot が維持される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++
++      // Act
++      await fireObserveCallback({ isIntersecting: false, height: 0 })
++
++      // Assert
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(1)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('')
++    })
++
++    it('ghost 中に isIntersecting:false かつ height===0 で発火しても無視され、--cached-height が 0px に汚染されない', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      await fireObserveCallback({ isIntersecting: false, height: 120 })
++
++      // Act
++      await fireObserveCallback({ isIntersecting: false, height: 0 })
++
++      // Assert
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(0)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('120px')
++    })
++
++    it('復帰後に異なる高さで再度 ghost 化すると、--cached-height が新しい高さに更新される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      await fireObserveCallback({ isIntersecting: false, height: 120 })
++      await fireObserveCallback({ isIntersecting: true, height: 0 })
++
++      // Act
++      await fireObserveCallback({ isIntersecting: false, height: 200 })
++
++      // Assert
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(0)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('200px')
++    })
++  })
++
++  describe('観測の付け替え / unmount', () => {
++    it('scheduleIds が非空から空になると、observe 時と同一の要素で unobserve が呼ばれ、再 observe はされない', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      const initialElement = getCardsElement(wrapper)
++
++      // Act
++      await wrapper.setProps({ scheduleIds: [] })
++
++      // Assert
++      expect(unobserveMock).toHaveBeenCalledTimes(1)
++      expect(unobserveMock).toHaveBeenCalledWith(OBSERVER_ID, initialElement)
++      expect(observeMock).toHaveBeenCalledTimes(1)
++    })
++
++    it('scheduleIds が空から非空に戻ると、新しい root 要素で observe が再登録される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      const initialElement = getCardsElement(wrapper)
++      await wrapper.setProps({ scheduleIds: [] })
++
++      // Act
++      await wrapper.setProps({ scheduleIds: [SCHEDULE_ID] })
++
++      // Assert
++      expect(observeMock).toHaveBeenCalledTimes(2)
++      const secondObservedElement = observeMock.mock.calls[1]?.[1]
++      if (Type.isUndefined(secondObservedElement)) {
++        throw new Error('2 回目の observe 呼び出しが登録されていません')
++      }
++      expect(secondObservedElement).not.toBe(initialElement)
++    })
++
++    it('ghost 化した状態で scheduleIds が空→非空に戻ると、ghost 状態と --cached-height がリセットされる', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      await fireObserveCallback({ isIntersecting: false, height: 120 })
++      await wrapper.setProps({ scheduleIds: [] })
++
++      // Act
++      await wrapper.setProps({ scheduleIds: [SCHEDULE_ID] })
++
++      // Assert: stale な ghost 状態が持ち越されず、slot が復帰し --cached-height も解除される
++      expect(wrapper.findAll(makeTestIdStartsWith(SLOT_ITEM_TEST_ID_PREFIX))).toHaveLength(1)
++      expect(getCardsElement(wrapper).style.getPropertyValue('--cached-height')).toBe('')
++    })
++
++    it('cellKey が別の値に変わると、旧 id で unobserve され新 id で同一要素に再 observe される', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      const element = getCardsElement(wrapper)
++
++      // Act
++      await wrapper.setProps({ cellKey: NEW_OBSERVER_ID })
++
++      // Assert
++      expect(unobserveMock).toHaveBeenCalledTimes(1)
++      expect(unobserveMock).toHaveBeenCalledWith(OBSERVER_ID, element)
++      expect(observeMock).toHaveBeenCalledTimes(2)
++      expect(observeMock).toHaveBeenLastCalledWith(NEW_OBSERVER_ID, element, expect.any(Function))
++      expect(wrapper.attributes(OBSERVING_ITEM_DATA_SET_KEY)).toBe(NEW_OBSERVER_ID)
++    })
++
++    it('unmount すると、観測時と同一の要素で unobserve が呼ばれる', async () => {
++      // Arrange
++      const wrapper = await mountObserved()
++      const initialElement = getCardsElement(wrapper)
++
++      // Act
++      wrapper.unmount()
++
++      // Assert
++      expect(unobserveMock).toHaveBeenCalledWith(OBSERVER_ID, initialElement)
++    })
++  })
++})
+diff --git a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardTable.test.ts b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardTable.test.ts
+index a0027f86e..14d637aca 100644
+--- a/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardTable.test.ts
++++ b/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/__tests__/ShiftBoardTable.test.ts
+@@ -8,12 +8,14 @@
+ import { mount } from '@vue/test-utils'
+ import { parseISO } from 'date-fns'
+ import type { DeepReadonly } from 'vue'
+-import { computed, ref } from 'vue'
++import { computed, nextTick, ref } from 'vue'
+ 
+ import { makeTestId, makeTestIdStartsWith } from '~/__utils__/makeTestId'
++import ScheduleTooltip from '~/components/organisms/Schedule/Parts/ScheduleTooltip.vue'
+ import ShiftBoardScheduleCard from '~/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardScheduleCard.vue'
+ import ShiftBoardTable from '~/components/organisms/Schedule/ShiftBoard/ShiftBoardTable/ShiftBoardTable.vue'
+ import type { ScheduleEditAndDetailModalStore } from '~/composables/stores/schedules/useEditAndDetailModalStore'
++import type { IntersectionObserverStore } from '~/composables/stores/UseIntersectionObserverStore'
+ import { makeGanttSchedule } from '~/test/fixtures/schedules/gantt/gantt.fixture'
+ import type { ScheduleListResourceItem } from '~/types/Schedule/Schedule'
+ import type { ShiftBoardCell, ShiftBoardConfig, ShiftBoardRow as ShiftBoardRowType } from '~/types/Schedule/ShiftBoard'
+@@ -62,6 +64,19 @@ const {
+   }
+ })
+ 
++// useIntersectionObserverScopedStore（useStore 側）は本物を維持しつつ、ShiftBoardScheduleCards.vue が
++// 分割代入で参照する observe / unobserve を no-op に差し替える（provide なしで throw させない）
++vi.mock('~/composables/stores/UseIntersectionObserverStore', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('~/composables/stores/UseIntersectionObserverStore')>()
++  return {
++    ...actual,
++    useIntersectionObserverScopedStore: () => ({
++      observe: vi.fn<IntersectionObserverStore['observe']>(),
++      unobserve: vi.fn<IntersectionObserverStore['unobserve']>(),
++    }),
++  }
++})
++
+ // useShiftBoardConfigStore（useStore 側）は本物を維持しつつ、ShiftBoardTable.vue が分割代入で
+ // 参照する displayShiftBoards / isLoading / isInitialized のみ差し替える
+ vi.mock('~/composables/stores/schedules/shift_board/useShiftBoardConfigStore', async (importOriginal) => {
+@@ -127,8 +142,14 @@ vi.mock('~/composables/stores/schedules/useScheduleListStore', async (importOrig
+   }
+ })
+ 
+-const mountComponent = () => {
++type Props = InstanceType<typeof ShiftBoardTable>['$props']
++
++const mountComponent = (props: Partial<Props> = {}) => {
+   return mount(ShiftBoardTable, {
++    props: {
++      scrollContainer: null,
++      ...props,
++    },
+     global: {
+       stubs: {
+         ShiftBoardHeader: true,
+@@ -259,6 +280,88 @@ describe('ShiftBoardTable.vue', () => {
+     })
+   })
+ 
++  describe('スケジュールカードのツールチップ表示', () => {
++    // monthDate モックは 2026-06 固定。eachDayOfInterval が返す各日はローカル 00:00 のため
++    // parseISO('2026-06-17')（ローカル 00:00）と getTime() が一致する
++    const targetDate = parseISO('2026-06-17')
++    const SCHEDULE_ID = 100
++
++    beforeEach(() => {
++      // 対象日・position 1 のセルにのみスケジュールを 1 件配置し、他セルは空のままにする
++      getScheduleIdsByDateAndPositionMock.mockImplementation(({ date, position }) => {
++        if (date.getTime() === targetDate.getTime() && position === 1) {
++          return [SCHEDULE_ID]
++        }
++        return []
++      })
++      getScheduleByIdMock.mockReturnValue(makeGanttSchedule({ id: SCHEDULE_ID, is_visible_detail: true }))
++    })
++
++    // 対象セル内の ShiftBoardScheduleCard（stub）に pointerenter を発火する。@pointerenter は
++    // スタブのルート要素へフォールスルー属性として付与されるため、DOM 経由で実際のハンドラが発火する
++    const pointerEnterScheduleCard = (wrapper: ReturnType<typeof mountComponent>) => {
++      return wrapper
++        .find(makeTestId(`${TEST_ID.BODY_CELL}-${targetDate.getTime()}-1`))
++        .findComponent(ShiftBoardScheduleCard)
++        .trigger('pointerenter')
++    }
++
++    it('カードの pointerenter でツールチップが表示され、scrollContainer prop のスクロールで非表示になる', async () => {
++      // Arrange
++      const scrollContainer = document.createElement('div')
++      const wrapper = mountComponent({ scrollContainer })
++      await pointerEnterScheduleCard(wrapper)
++      // スクロールで非表示になることを検証する前提として、ツールチップの表示を確認する
++      expect(wrapper.findComponent(ScheduleTooltip).exists()).toBe(true)
++
++      // Act
++      scrollContainer.dispatchEvent(new Event('scroll'))
++      await nextTick()
++
++      // Assert
++      expect(wrapper.findComponent(ScheduleTooltip).exists()).toBe(false)
++    })
++
++    it('scrollContainer が null から要素へ変化すると、変化後の要素のスクロールでツールチップが非表示になる', async () => {
++      // Arrange
++      // 実画面では親（ShiftBoard.vue）の template ref が mount 後に解決されるため、
++      // mount 時点の prop は null で、prop 変化（null → 要素）を経てリスナーが登録される
++      const scrollContainer = document.createElement('div')
++      const wrapper = mountComponent({ scrollContainer: null })
++      await pointerEnterScheduleCard(wrapper)
++      // prop 変化前はリスナー未登録であることを、スクロールしてもツールチップが消えないことで確認する
++      scrollContainer.dispatchEvent(new Event('scroll'))
++      await nextTick()
++      expect(wrapper.findComponent(ScheduleTooltip).exists()).toBe(true)
++
++      // Act
++      await wrapper.setProps({ scrollContainer })
++      scrollContainer.dispatchEvent(new Event('scroll'))
++      await nextTick()
++
++      // Assert
++      expect(wrapper.findComponent(ScheduleTooltip).exists()).toBe(false)
++    })
++
++    it('アンマウント時に scrollContainer prop の scroll リスナーが解除される', () => {
++      // Arrange
++      const scrollContainer = document.createElement('div')
++      const addEventListenerSpy = vi.spyOn(scrollContainer, 'addEventListener')
++      const removeEventListenerSpy = vi.spyOn(scrollContainer, 'removeEventListener')
++      const wrapper = mountComponent({ scrollContainer })
++
++      // Act
++      wrapper.unmount()
++
++      // Assert
++      // 別参照の関数で removeEventListener を呼ぶ退行では実際にはリスナーが残るため、
++      // 登録されたハンドラと同一参照で解除されることまで検証する
++      const registeredHandler = addEventListenerSpy.mock.calls.at(0)?.at(1)
++      expect(registeredHandler).toBeInstanceOf(Function)
++      expect(removeEventListenerSpy).toHaveBeenCalledWith('scroll', registeredHandler)
++    })
++  })
++
+   describe('シフト枠定義（ShiftBoardConfig）未ロード時', () => {
+     it('セルに data-testid が付与されず、セルをクリックしても openEditModal を呼ばない', async () => {
+       // Arrange
+diff --git a/components/organisms/Schedule/ShiftBoard/__tests__/ShiftBoard.test.ts b/components/organisms/Schedule/ShiftBoard/__tests__/ShiftBoard.test.ts
+index 44665a658..533cdc232 100644
+--- a/components/organisms/Schedule/ShiftBoard/__tests__/ShiftBoard.test.ts
++++ b/components/organisms/Schedule/ShiftBoard/__tests__/ShiftBoard.test.ts
+@@ -3,6 +3,7 @@
+ import { flushPromises, mount } from '@vue/test-utils'
+ import { endOfMonth, parseISO, startOfMonth } from 'date-fns'
+ import { computed, defineComponent, inject, ref } from 'vue'
++import type { PropType } from 'vue'
+ 
+ import { useBreakpointMock } from '~/test/mocks/useBreakpoint.mock'
+ import ShiftBoard from '~/components/organisms/Schedule/ShiftBoard/ShiftBoard.vue'
+@@ -12,6 +13,7 @@ import { makeAbortedFetchError, makeFetchError } from '~/test/fixtures/schedules
+ import providePlugins from '~/test/utils/ProvidePlugins'
+ import type { UpdatedResult } from '~/types/composables/components/organisms/Schedule/Edit/UpdateResult'
+ import type { GetScheduleShiftBoardParams, ShiftBoardRow, ShiftBoardSummary } from '~/types/Schedule/ShiftBoard'
++import { Type } from '~/utils/Type'
+ /* eslint-enable simple-import-sort/imports */
+ 
+ const {
+@@ -186,9 +188,20 @@ const FullViewModeToggleButtonStub = defineComponent({
+ let injectedApiRequestStore: ScheduleDetailModalApiRequestStore | undefined
+ 
+ // ShiftBoardTable は setup で useShiftBoardConfigStore()（useStore 側）を呼ぶが、
+-// 本テストは provideShiftBoardConfigStore をモック化していて provide されないため stub する
++// 本テストは provideShiftBoardConfigStore をモック化していて provide されないため stub する。
++// scrollContainer prop を宣言し、ShiftBoard.vue が渡す実際のスクロールコンテナ要素
++// （.shift-board__body）を wrapper.findComponent(...).props('scrollContainer') で検証できるようにする。
+ const ShiftBoardTableStub = defineComponent({
+   name: 'ShiftBoardTable',
++  props: {
++    scrollContainer: {
++      // ShiftBoardTable.vue の Props（scrollContainer: HTMLElement | null）に合わせるための型注釈。
++      // 初回レンダー時は親の template ref（shiftBoardBodyRef）が未解決で null が渡るため、
++      // Vue の prop 型検証で null を許容できるよう required は false にする
++      type: Object as PropType<HTMLElement | null>,
++      required: false,
++    },
++  },
+   setup() {
+     injectedApiRequestStore = inject(SCHEDULE_DETAIL_MODAL_API_REQUEST_STORE, undefined)
+     return {}
+@@ -514,4 +527,21 @@ describe('ShiftBoard.vue', () => {
+       expect(fetchMock).toHaveBeenCalledTimes(2)
+     })
+   })
++
++  describe('ShiftBoardTable への scrollContainer prop 伝播', () => {
++    it('ShiftBoard.vue が実際のスクロールコンテナ要素（.shift-board__body）を scrollContainer prop として ShiftBoardTable へ渡す', async () => {
++      // Arrange & Act
++      const wrapper = mountComponent()
++      await flushPromises()
++
++      // Assert
++      // ShiftBoardTable.vue は scrollContainer prop から実際のスクロールコンテナ要素を受け取る契約のため、
++      // stub に渡された値が .shift-board__body 要素と同一参照であることを固定する
++      const scrollBodyElement = wrapper.find('.shift-board__body').element
++      if (!Type.isHtmlElement(scrollBodyElement)) {
++        throw new Error('.shift-board__body 要素が取得できませんでした')
++      }
++      expect(wrapper.findComponent(ShiftBoardTableStub).props('scrollContainer')).toBe(scrollBodyElement)
++    })
++  })
+ })
