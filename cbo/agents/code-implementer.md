@@ -34,7 +34,7 @@ tools:
   - mcp__idea__search_regex
   - mcp__idea__search_symbol
   - mcp__idea__search_text
-model: sonnet
+model: opus
 color: red
 skills:
   - vue-tsc-runner
