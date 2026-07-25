@@ -8,19 +8,7 @@
 - **公開予定**: なし（個人利用のみ）
 - **プラグイン形式**: [Claude Code Plugin 標準構造](https://code.claude.com/docs/en/plugins) に準拠
 
-## ディレクトリ構成
-
-```
-.claude-plugin/                    # marketplace.json（マーケットプレイス定義）
-common/                            # "mgzl" プラグイン（汎用ツール）
-cbo/                               # "cbo" プラグイン（開発ワークフロー支援）
-```
-
-## 開発コマンド
-
-```bash
-bun install          # 依存関係のインストール
-```
+ディレクトリ名とプラグイン名は不一致: `common/` = mgzl プラグイン、`cbo/` = cbo プラグイン
 
 ## 開発ルール
 
