@@ -1,7 +1,7 @@
 ---
 name: review:fix
 description: レビュー報告書の指摘を並列修正。対象は ID（R000 形式）または自然言語（「3以上」「テストファイルのみ」等）で指定可能
-argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] | -y で確認をスキップ
+argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] [-y で確認をスキップ]
 ---
 
 ## コンテキスト
