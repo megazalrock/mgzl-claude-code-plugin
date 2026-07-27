@@ -2,6 +2,7 @@
 name: branch-name-maker
 description: 新しいブランチ名を考え候補を挙げる。「ブランチ名を考えて」「新規ブランチ名」などの依頼時に使用
 argument-hint: [task name]
+model: sonnet
 disable-model-invocation: true
 ---
 
