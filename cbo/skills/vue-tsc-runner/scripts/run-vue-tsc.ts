@@ -3,12 +3,32 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const rawArgs = process.argv.slice(2);
 const isAllMode = rawArgs.includes("--all");
 const isDebug = rawArgs.includes("--debug");
-const targetPaths = rawArgs.filter((a) => a !== "--all" && a !== "--debug");
+
+// vue-tsc --pretty false のエラー行は cwd 相対パス形式のため、絶対パスや "./" 付きの
+// パスは includes 照合に一致せず偽陰性になる。入口で cwd 相対へ正規化する。
+function normalizeTargetPath(p: string): string {
+  const rel = relative(process.cwd(), resolve(p));
+  if (rel.startsWith("..")) {
+    process.stderr.write(`[vue-tsc-runner] path is outside the project: ${p}\n`);
+    process.exit(1);
+  }
+  if (rel === "") {
+    process.stderr.write(
+      `[vue-tsc-runner] project root cannot be a target path (omit paths to check all files): ${p}\n`
+    );
+    process.exit(1);
+  }
+  return rel;
+}
+
+const targetPaths = rawArgs
+  .filter((a) => a !== "--all" && a !== "--debug")
+  .map((p) => normalizeTargetPath(p));
 
 function debugLog(message: string): void {
   if (isDebug) {
