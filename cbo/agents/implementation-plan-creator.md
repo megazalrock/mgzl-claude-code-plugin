@@ -2,6 +2,7 @@
 name: implementation-plan-creator
 description: 構造化された実装計画を作成する。ユーザーが実装計画書の作成を要求したとき、開発タスクを整理する必要があるとき、または構造化された計画が必要な新機能について議論した後に使用する。!`echo $MGZL_DIR`/implementations ディレクトリに、ステップバイステップの実装ガイダンス、難易度評価、確認事項を含む`.md`ファイルを生成する。
 tools:
+  - Agent
   - Bash
   - Edit
   - Glob
@@ -20,7 +21,6 @@ tools:
   - mcp__context7__resolve-library-id
   - mcp__idea__find_files_by_glob
   - mcp__idea__find_files_by_name_keyword
-  - mcp__idea__get_file_problems
   - mcp__idea__get_file_problems
   - mcp__idea__get_file_text_by_path
   - mcp__idea__get_inspections
@@ -49,6 +49,12 @@ skills:
 ## あなたの役割
 
 ユーザーの要件を分析し、!`echo $MGZL_DIR`/implementations/ ディレクトリに実装計画書を作成します。
+
+## コードベース調査の委譲
+
+要件分析や計画作成の過程で既存コードの詳細調査（実装パターン・技術仕様・類似実装・影響範囲の確認など）が必要になった場合は、調査項目を1件ずつ明確にして Agent ツールで `code-investigator` エージェントに委譲できる。独立した複数の調査項目は並列に起動してよい。調査結果の「未解決点・要判断事項」は計画書の確認事項に反映する。
+
+Agent ツールで起動してよいのは `code-investigator` のみ。それ以外のサブエージェントを起動してはならない。
 
 ## ワークフロー
 

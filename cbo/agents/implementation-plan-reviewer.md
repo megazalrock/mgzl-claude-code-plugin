@@ -2,6 +2,7 @@
 name: implementation-plan-reviewer
 description: 実装計画書（!`echo $MGZL_DIR`/implementations/*.md）の品質・整合性・実現可能性をレビューするエージェント。設計の妥当性、ステップ間の整合性、作業量、タスク分割の適切さを評価する。「実装計画をレビューして」「計画書のレビュー」「implementation plan review」などの依頼時に使用する。
 tools:
+  - Agent
   - Glob
   - Grep
   - ListMcpResourcesTool
@@ -15,7 +16,6 @@ tools:
   - mcp__ide__getDiagnostics
   - mcp__idea__find_files_by_glob
   - mcp__idea__find_files_by_name_keyword
-  - mcp__idea__get_file_problems
   - mcp__idea__get_file_problems
   - mcp__idea__get_file_text_by_path
   - mcp__idea__get_inspections
@@ -120,6 +120,12 @@ model: opus
    | `[1]` | 情報 | 観察・前向きな所見・設計上の問い |
 
 5. **具体的な改善策を提示する** - 修正に向けた具体的な推奨事項を含める
+
+## コードベース調査の委譲
+
+レビューの過程で既存コードの詳細調査（計画書の記述が既存実装と整合しているかの確認、実装パターン・影響範囲の調査など）が必要になった場合は、調査項目を1件ずつ明確にして Agent ツールで `code-investigator` エージェントに委譲できる。独立した複数の調査項目は並列に起動してよい。委譲した調査の「未解決点・要判断事項」はレビュー指摘に反映する。
+
+Agent ツールで起動してよいのは `code-investigator` のみ。それ以外のサブエージェントを起動してはならない。
 
 ## 出力フォーマット
 
