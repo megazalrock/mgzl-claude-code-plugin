@@ -28,7 +28,7 @@ $MGZL_DIR/
 ├── knowledge/                # 教訓ファイル
 │   ├── implementation-plan-lessons.md  # 実装計画書作成の教訓（impl:create）
 │   └── implementation-lessons.md       # コード実装の教訓（review:diff/file・impl:execute）
-├── reviews/                  # レビュー結果（正本 JSON・difit セッション sidecar・旧 md 報告書）
+├── reviews/                  # レビュー結果（正本 JSON・reviewview / difit セッション sidecar・旧 md 報告書）
 ├── playwright_procedures/    # Playwright 手順書
 └── tmp/                      # 一時ファイル・スクリーンショット
 ```
@@ -68,3 +68,13 @@ $MGZL_DIR/
   }
 }
 ```
+
+## reviewview（レビュー UI）の設定
+
+`review:diff` は、AI の指摘を人間にトリアージさせるために reviewview の MCP サーバーを使う。`review:fix` は reviewview から判定を取り込み、修正結果を `report_fix` で報告する。`review:open` のみ引き続き difit（diff ビューア）を使う。
+
+サーバー定義は `cbo/.mcp.json` の `reviewview` エントリにあるが、`args` は**ローカルにビルドした reviewview の絶対パス**を指しているため、環境に合わせて書き換える。`packages/server/dist/main.js` がビルド済みである必要がある。
+
+レビューの状態（指摘・判定・差分スナップショット）は**レビュー対象リポジトリ**の `.reviewview/state.db` に保存される。指摘本文とファイル全文が含まれるため、対象リポジトリの `.gitignore` に `.reviewview/` を追加すること。
+
+MCP サーバーが接続されていない場合、`review:diff` は**レビューを開始せずに冒頭で停止**する（レビューだけ実行して報告書を残すフォールバックはしない）。`review:fix` は reviewview の sidecar がある報告書を扱うときのみ同様に停止する。

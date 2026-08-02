@@ -1,19 +1,26 @@
 # レビュー結果 正本 JSON スキーマ
 
-review:diff / review:file / review:open が出力するレビュー報告書の正本フォーマット。
+review:diff / review:open が出力するレビュー報告書の正本フォーマット（削除済みの旧 review:file が出力した報告書も同形式）。
 document-saver スキルは経由せず、各スキルが Write ツールで !`echo $MGZL_DIR`/reviews/ に直接保存する。
 
 - ファイル名: `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`
 - タイムスタンプ取得: `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"`
 
+人間に指摘を提示する UI は 2 系統ある:
+
+- **reviewview**（現行）— review:diff が使う。MCP ツール経由でトリアージを往復する
+- **difit**（旧経路）— review:open が使う。コメントスレッドへの返信で評価を受け取る
+
+review:fix はどちらの経路からも評価を回収できる。
+
 ## スキーマ
 
 ```jsonc
 {
-  "reporter": "ClaudeCode review:diff",  // 実行主体。review:file は "ClaudeCode review:file"、review:open の変換は元 md の reporter を引き継ぐ
+  "reporter": "ClaudeCode review:diff",  // 実行主体。review:open の変換は元 md の reporter を引き継ぐ
   "model": "claude-sonnet-4-6",          // 実行モデル名。不明なら "unknown"
-  "base_commit": "abc...def",            // diff 対象のフル 40 桁 SHA-1。review:file 由来は null
-  "head_commit": "abc...def",            // レビュー時 HEAD のフル 40 桁 SHA-1。review:file 由来は null
+  "base_commit": "abc...def",            // diff 対象のフル 40 桁 SHA-1。旧 review:file 由来の報告書は null
+  "head_commit": "abc...def",            // レビュー時 HEAD のフル 40 桁 SHA-1。旧 review:file 由来の報告書は null
   "created_at": "2026-07-17T09:30:00+09:00",
   "target": null,                        // 任意: --target の絞り込み指定など。無ければ null
   "good_points": ["..."],                // 良い点。無ければ []
@@ -44,8 +51,136 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
 
 ## 編集規則
 
-- 正本 JSON は原則イミュータブル。例外として、エージェント（review:fix）は difit から取得した人間の評価を **`evaluation` フィールドにのみ** 書き戻してよい
-- 人間が `evaluation` を直接編集することも有効（difit を使わない場合の副経路）
+- 正本 JSON は原則イミュータブル。例外として、エージェント（review:fix）は reviewview または difit から取得した人間の評価を **`evaluation` フィールドにのみ** 書き戻してよい
+- 人間が `evaluation` を直接編集することも有効（UI を使わない場合の副経路）
+
+---
+
+# reviewview 経路（review:diff）
+
+## reviewview への投入
+
+正本 JSON を保存したあと、`mcp__reviewview__start_review` の `findings[]` に変換して投入する。
+変換規則はここが正本。
+
+### severity
+
+| 正本 JSON | reviewview | ラベル（body に書く） |
+|---|---|---|
+| 5 | `error` | 必須修正 (ブロッカー) |
+| 4 | `error` | 強く推奨 |
+| 3 | `warn` | 推奨 |
+| 2 | `info` | 軽微 |
+| 1 | `info` | 情報 |
+
+reviewview の 3 段階では 5 と 4、2 と 1 が潰れるため、元の数値とラベルは必ず body の先頭行に残す。
+
+### category
+
+`reporter` から `@reviewer-for-` を除いた短縮名を渡す（`logic` / `design` / `security-performance` / `comments` / `test-code`）。reviewview の UI にバッジ表示される。
+`get_triage` は `category` を返さないため、突合キーには使わない。
+
+### anchor → file / side / startLine / endLine
+
+| 正本 JSON | reviewview |
+|---|---|
+| `anchor: { side, line: N }` | `side`、`startLine: N`、`endLine: N` |
+| `anchor: { side, line: { start, end } }` | `side`、`startLine: start`、`endLine: end` |
+| `anchor: null`（`file` あり） | 下記「ファイル全体への指摘」を参照 |
+| `file: null` | **投入しない**。下記「投入しない指摘」を参照 |
+
+`file` はリポジトリルート相対パスにする。`./` 始まりは除去し、絶対パスはリポジトリルート相対に直す。
+`/` 始まり・`./` 始まり・`..` を含むパスは投入できず、**1 件でも不正なパスがあると `start_review` 全体が失敗する**。
+
+**ファイル全体への指摘（`anchor: null`）**: 差分が取れる場合は、そのファイルの差分の最初のハンクヘッダー `@@ -a,b +c,d @@` から `side: "new"` / `startLine: endLine: c` を作る（削除のみのファイルは `side: "old"` / `a`）。差分が取れない場合は `side: "new"` / `1` / `1`。いずれの場合も body に `【ファイル全体への指摘 / アンカーは便宜的】` の行を入れる。
+
+**投入しない指摘**: `file` が `null` の指摘は reviewview に登録できない（`file` は必須・1 文字以上）。正本 JSON には残したまま reviewview からは除外し、`request_triage` の `message` に要約を、スキルの最終報告に本文を載せる。sidecar の `not_submitted` にも R-ID を記録する。
+
+### body
+
+reviewview の UI は body を**プレーンテキスト（`whitespace-pre-wrap`）として描画する**。
+markdown は解釈されないため、**コードをフェンス（バッククォート 3 つ）で囲んではならない**（そのまま文字として表示される）。改行とインデントは保たれるので、コードはラベル行の直後にそのまま貼る。
+
+```
+{id} [{severity}] {ラベル} — {problem の要旨を1文で}
+{problem の全文（要旨で言い尽くしているなら行ごと省略）}
+【ファイル全体への指摘 / アンカーは便宜的】
+根拠: {reason}
+提案: {proposals[0].text}
+提案コード:
+{proposals[0].code}
+提案（案B）: {proposals[1].text}
+提案（案B）コード:
+{proposals[1].code}
+```
+
+- 1 行目は R-ID と重要度で始め、続けて主張を 1 文で書く。R-ID を先頭に置くのは、sidecar が失われたときに `get_triage` の結果を正本 JSON へ突合するためのフォールバックになるから
+- `proposals[].label` が非 null のときだけ `（案A）` のようにラベルを付ける。`text` / `code` が null の行は出さない
+- `報告者:` 行は入れない（`category` として渡すため）
+- 秘密情報（トークン・鍵など）は転記しない。body は対象リポジトリの `.reviewview/state.db` に永続化される
+- 旧経路（difit）の本文はコードフェンス付きのままである。**フェンスの有無が経路によって異なる**点に注意する
+
+### autoCloseReason
+
+必ず渡す。指摘のアンカー ±3 行の外側のセグメントが自動折りたたみされ、その理由として UI の折りたたみバーに表示される。
+
+| 呼び出し元 | 文言 |
+|---|---|
+| review:diff（`--target` なし） | `AI が指摘していない範囲` |
+| review:diff（`--target` あり） | `AI が指摘していない範囲（--target: {指定} で絞り込み済み）` |
+
+## 人間のトリアージ（reviewview）
+
+各指摘は reviewview の受信箱に 1 カードとして表示される。人間は次の 3 つを入力する:
+
+- **判定ボタン**（`修正する` / `スコープ外` / `偽陽性`）→ `triage`
+- **理由**の入力欄 → `triageReason`
+- **コメント**欄（「AIへ渡ります」）→ `comments[]`（`author: "human"`）
+
+入力し終えたら画面上部の送信ボタンを押す。送信すると `status` が `submitted` になり判定が確定する（**一方向。取り消せない**）。コメントは送信後も追記できる。
+
+`get_triage` の応答 → 正本 JSON の `evaluation` への変換:
+
+| reviewview の `triage` | `evaluation.value` |
+|---|---|
+| `fix` | `tp` |
+| `false_positive` | `fp` |
+| `out_of_scope` | `oos` |
+| `null` | `null`（未判定） |
+
+`evaluation.directive` は、`comments[]` のうち `author === "human"` の `body` を時系列順に改行連結し、`triageReason` が非 null ならその末尾に `判定理由: {triageReason}` を足す。どちらも無ければ `null`。
+
+`nit`（些細）に相当する判定は reviewview には無い。difit 経路・md 報告書・`evaluation` の直接編集でのみ現れる値として残す。
+
+## sidecar ファイル（reviewview セッション情報）
+
+reviewview へ投入したとき、正本 JSON の隣に `<報告書名（.json を除く）>.reviewview-session.json` を Write ツールで作成する:
+
+```json
+{
+  "review_id": "r-1a2b3c4d",
+  "url": "http://localhost:53421/review/r-1a2b3c4d",
+  "created_at": "2026-08-02T10:00:00+09:00",
+  "base": "3f2a...",
+  "head": "9c1d...",
+  "finding_ids": { "R000": "f-1a2b3c4d", "R001": "f-5e6f7a8b" },
+  "orphaned": ["R003"],
+  "not_submitted": ["R007"]
+}
+```
+
+- `review_id` は永続。レビューのデータは対象リポジトリの `.reviewview/state.db` に残るので、別セッションからでも `get_triage` で判定を取得できる
+- **`url` は投入したセッション限定**。MCP モードの HTTP サーバーは空きポートで起動し、Claude Code が切断すると終了する
+- `finding_ids` は `start_review` 直後に `get_triage` を 1 回だけ呼んで作った R-ID → reviewview の finding id の対応表。`start_review` は finding id を返さないため、この 1 回で確定させる
+- `head` は作業ツリーを対象にした場合 `null`
+- `orphaned` は差分の行に紐付かなかった R-ID、`not_submitted` は `file: null` などで投入しなかった R-ID
+- セッション状態であり報告書の一部ではない。報告書一覧を出す処理では除外する
+
+---
+
+# 旧経路: difit（review:open）
+
+review:open は difit（diff ビューア）で報告書を開く。以下はその経路の仕様。
 
 ## 人間の評価記入（difit スレッドへの返信）
 

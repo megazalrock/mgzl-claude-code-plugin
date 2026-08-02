@@ -41,4 +41,4 @@ description: 直近のセッション内容から汎用教訓をバックグラ�
 
 - `$MGZL_DIR` の検証はエージェント側で行うため、このスキルでは事前検証しない
 - このスキル自体は教訓ファイルを直接読み書きしない（全てサブエージェントに委ねる）
-- 他のスキル（`impl:create` / `impl:execute` / `review:diff` / `review:file`）は内部的にこのスキルを呼ばず、直接 `@knowledge-distiller` サブエージェントを起動する。このスキルはユーザー手動起動用のエントリポイント
+- 他のスキル（`impl:create` / `impl:execute` / `review:diff`）は内部的にこのスキルを呼ばず、直接 `@knowledge-distiller` サブエージェントを起動する。このスキルはユーザー手動起動用のエントリポイント

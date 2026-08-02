@@ -24,7 +24,7 @@ model: sonnet
 3. 報告書を読み、`base_commit` / `head_commit` を確認する
   - 両方に SHA がある場合: `git cat-file -e <sha>^{commit}` で双方の存在を確認する。存在しない SHA がある場合（rebase / GC 後）はその旨を報告して中止する
     - 存在すれば `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" launch <報告書の絶対パス> --diff <head_commit> <base_commit>`
-  - 両方 `null` の場合（review:file 由来）: `findings[].file` の代表値（通常は全指摘で共通）を対象に
+  - 両方 `null` の場合（旧 review:file 由来の報告書）: `findings[].file` の代表値（通常は全指摘で共通）を対象に
     `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" launch <報告書の絶対パス> --file <対象ファイルの相対パス>`
     を実行する。報告書作成後にファイルが変更されていると行がズレる可能性がある旨をユーザーに伝える
 4. `--save` が指定されていた場合、JSON 報告書には不要である旨を伝える（既に正本のため。処理は継続する）

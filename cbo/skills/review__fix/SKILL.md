@@ -18,19 +18,46 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
 1. レビュー報告書のファイルを特定する
   - 引数に報告書パスが指定された場合は、それを選択
   - 指定されていない場合は、現在のセッションで作成・参照したレビュー報告書を選択
-  - それも無い場合は、 `!`echo $MGZL_DIR`/reviews/` 配下の報告書（`.json` と `.md`。`.difit-session.json` は除外）の最新 5 件を取得し、AskUserQuestion でユーザーに選択させる
+  - それも無い場合は、 `!`echo $MGZL_DIR`/reviews/` 配下の報告書（`.json` と `.md`。`.reviewview-session.json` と `.difit-session.json` は除外）の最新 5 件を取得し、AskUserQuestion でユーザーに選択させる
 
 2. 修正対象の指摘 ID リストを特定する
-  - **報告書が JSON の場合**、指摘の抽出前に difit から人間の評価を取り込む:
-    1. 報告書と同じディレクトリの sidecar `<報告書名（.json を除く）>.difit-session.json` を探す。無ければ difit からの取得はスキップし、正本 JSON の `evaluation` に記入済みの値をそのまま使う
-    2. sidecar があれば `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" comments <sidecar の port>` を実行する
-    3. 成功したら、各スレッドの `messages[0]`（エージェントの指摘。body 先頭の R-ID で `findings` と突合する）より後のメッセージを人間の返信として解釈する:
+  - **報告書が JSON の場合**、指摘の抽出前に人間の評価を取り込む。報告書と同じディレクトリの sidecar を探し、`<報告書名（.json を除く）>.reviewview-session.json`（reviewview 経路）→ `<報告書名（.json を除く）>.difit-session.json`（difit 経路 / review:open 由来）の順に判定する
+    - **どちらも無い場合**: 外部からの取り込みはスキップし、正本 JSON の `evaluation` に記入済みの値をそのまま使う
+
+    #### reviewview 経路（`.reviewview-session.json` がある場合）
+
+    1. 利用可能なツールに `mcp__reviewview__get_triage` が存在するか確認する。**存在しなければ後続の処理を一切行わずに即座に停止**し、reviewview の MCP サーバーが接続されていないため判定を取り込めないこと、`cbo/.mcp.json` の `reviewview` エントリのパス・`packages/server/dist/main.js` のビルド・Claude Code の再起動を確認することをユーザーに報告して終了する（判定を取り込めないまま修正を走らせない）
+    2. sidecar の `review_id` で `mcp__reviewview__get_triage({ reviewId })` を **1 回だけ** 呼ぶ（ポーリングしない）
+       - 「review が見つかりません」で失敗した場合は sidecar が stale（別リポジトリで開いた・`.reviewview/state.db` を削除した）。sidecar を無視して正本 JSON の `evaluation` を使い、必要なら review:diff を再実行してレビューを作り直すよう案内する
+       - 応答に「未還元の learnings が N 件あります」が付いていても、このスキルでは何もしない
+    3. 応答の `status` で分岐する:
+       - `submitted` → 判定は確定値。4. へ進む
+       - `open` → 人間がまだ送信していない（編集途中でありうる）。AskUserQuestion で提示する:
+         - 「reviewview を開いて判定する」→ `mcp__reviewview__request_triage({ reviewId })` を呼び、返った `url` を提示して**停止**する（判定を送信したあと review:fix を再実行してもらう）
+         - 「現在の判定のまま続行する」→ 4. へ進む。未確定である旨をタスク 3 の実行確認とタスク 9 の最終レポートに明記する
+         - 「中止する」→ 終了する
+    4. `get_triage` の `findings[]` を正本 JSON の指摘に突合する:
+       - sidecar の `finding_ids`（`R000` → reviewview の finding id）を第一の突合キーにする
+       - sidecar に無い finding は `body` 先頭の `R\d{3}` で突合し、それでも決まらなければ (`file`, `side`, `startLine`, `endLine`) の一致で突合する
+       - `get_triage` の返す順序は (file, start_line, id) 順であり投入順とは一致しない。**順序に依存した突合をしてはならない**
+       - 突合できなかった finding はタスク 9 の最終レポートに列挙する（正本 JSON は変更しない）
+    5. 突合できた指摘ごとに `evaluation` を組み立てる（変換規則は `cbo/skills/document-saver/references/format-review-result-json.md` の「人間のトリアージ（reviewview）」に従う）:
+       - `value`: `fix`→`tp` / `false_positive`→`fp` / `out_of_scope`→`oos` / `null`→`null`
+       - `directive`: `comments[]` のうち `author === "human"` の `body` を時系列順に改行連結し、`triageReason` が非 null なら末尾に `判定理由: {triageReason}` を足す。どちらも無ければ `null`
+    6. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
+    7. `R000` → reviewview の finding id の対応表を、タスク 6 の `report_fix` 用にセッション中保持する
+    8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、タスク 9 で「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
+
+    #### difit 経路（`.difit-session.json` のみがある場合）
+
+    1. `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" comments <sidecar の port>` を実行する
+    2. 成功したら、各スレッドの `messages[0]`（エージェントの指摘。body 先頭の R-ID で `findings` と突合する）より後のメッセージを人間の返信として解釈する:
        - 先頭トークンが `tp` / `fp` / `nit` / `oos` → `evaluation.value`
        - `対応：` 以降のテキスト → `evaluation.directive`
        - 評価値の無い返信 → 全文を `evaluation.directive`
        - 同一スレッドに複数の返信がある場合は最後の返信を採用する
-    4. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
-    5. `error=` で失敗した（difit が落ちている）場合: 正本 JSON 内の `evaluation` に記入済みの値があればそれをそのまま使う。評価が必要なのに全指摘未評価なら、AskUserQuestion で「review:open で difit を再起動して評価を記入する / 未評価のまま続行する / 中止する」を提示する
+    3. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
+    4. `error=` で失敗した（difit が落ちている）場合: 正本 JSON 内の `evaluation` に記入済みの値があればそれをそのまま使う。評価が必要なのに全指摘未評価なら、AskUserQuestion で「review:open で difit を再起動して評価を記入する / 未評価のまま続行する / 中止する」を提示する
   - JSON 報告書では、以降の手順の読み替えを行う:
     - 「`### R*` 指摘」→ `findings[]` の要素
     - 見出しの重要度 `[N]` → `severity`
@@ -38,7 +65,10 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     - 対象ファイルの判断 → `file` フィールド（本文からの推測は不要）
     - `評価：` の値 → `evaluation.value`、`対応：` の記述 → `evaluation.directive`（human_directive として扱う）
     - 複数案フラグ → `proposals` の要素数が 2 以上（採用案の識別子は `proposals[].label`）
-  - 候補集合を決定する: 引数に `R000` 形式の ID が 1 つ以上指定されている場合はその集合、無い場合は報告書内の全 `### R*` 指摘
+  - 候補集合を決定する:
+    - 引数に `R000` 形式の ID が 1 つ以上指定されている → その集合
+    - 無く、**reviewview 経路で判定を取り込めた** → `evaluation.value` が `tp` の指摘のみ（`fp` / `oos` は reviewview の運用規約により修正も反論もしない）。`tp` が 0 件なら判定の内訳を報告して終了する
+    - 無く、判定を取り込めなかった（sidecar 無し・difit 経路・md 報告書） → 報告書内の全 `### R*` 指摘
   - 自然言語の絞り込み指定がある場合は、候補集合の各指摘セクションについて以下の材料から該当性を判断し、候補集合を絞り込む
     - 見出しの重要度 `[N]` とラベル（例: 「3以上」→ `[3]`/`[4]`/`[5]`）
     - `**問題**`/`**提案**` 本文が対象としているファイル・内容（例: 「テストファイルのみ」。指摘セクションに専用のファイルパス欄は無いため本文記述から判断する）
@@ -46,7 +76,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     - 各指摘の見出し行末尾の `評価：` の値（例: 「未評価のみ」→ 空欄、「tp のみ」）
     - 見出し行末尾には `評価：` の値に続けて `対応：{人間の自由記述指示}` が書かれている場合がある。自然言語絞り込みの判定では `評価：` 値だけを見て、`対応：` の内容は絞り込み条件には使わない（あくまで修正エージェントへの追加指示として扱う）
     - 絞り込み結果が 0 件の場合は、指定をどう解釈したかとともにユーザーに報告して中止する
-  - ID も自然言語指定も無い場合は、報告書から全 `### R*` 見出しを抽出し、AskUserQuestion の multiSelect で対象を選ばせる
+  - ID も自然言語指定も無い場合は、上で決定した候補集合を AskUserQuestion の multiSelect で選ばせる（reviewview 経路では `tp` の指摘のみが候補になる）
   - 各 ID について、報告書から `### R000 [N] ラベル` セクションを切り出し、`**問題**`/`**理由**`/`**報告者**`/`**提案**` の本文を構造化して保持する
     - 見出し行末尾の `評価：{値}` に続けて `対応：{テキスト}` が記入されている場合は、`対応：` 以降のテキストを **人間指示（human_directive）** として抽出して保持する（改行までを取り込む）。無ければ `null`
     - `**提案**` 本文が `**案A**` / `**案B**` の太字ラベルで **2 個以上** に分割されているかを検出し、**複数案フラグ** として保持する
@@ -89,6 +119,11 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     - 各タスクの TaskUpdate でステータスを `in_progress` に変更
     - 各タスクについて上記判定基準に従い、`@test-implementer` または `@code-implementer` サブエージェントを **並列に起動** して修正（判定はタスク単位で個別に行うため、同一並列バッチ内で両種が混在してよい）
     - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
+  - **reviewview 経路で判定を取り込んだ場合のみ**、各修正タスクが完了するたびに、対応する reviewview の finding id が判っている指摘について `mcp__reviewview__report_fix({ findingId, message })` を **1 件ずつ** 呼ぶ（まとめて最後に呼ばない）
+    - `message` にはサブエージェントの報告から「何をどう直したか」を 1〜3 行に要約して書く（人間の画面に AI コメントとして表示される）
+    - すでにコミット済みなら `commitSha` も渡す
+    - finding id が判らない指摘（突合失敗）・difit 経路・md 報告書はスキップする
+    - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 9 の最終レポートに列挙する
 
   サブエージェントに渡すプロンプトは以下の構造で統一する（`@code-implementer` / `@test-implementer` どちらの場合も本文は共通）:
 
@@ -98,7 +133,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   ## 指摘内容
   {切り出した指摘セクション全文}
 
-  ## 人間からの追加指示（difit 返信または `対応：` 欄より）  <!-- human_directive が非 null の指摘に限り挿入 -->
+  ## 人間からの追加指示（reviewview のコメント／difit 返信／`対応：` 欄より）  <!-- human_directive が非 null の指摘に限り挿入 -->
   {human_directive の文字列をそのまま貼り付ける}
 
   この指示を最優先で解釈してください。`**提案**` のコード例と食い違う場合は、こちらの指示を優先します。
@@ -144,11 +179,14 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     ## 修正完了
     - 修正済み: R000, R001, R005
     - スキップ: なし
+    - reviewview へ修正報告: R000, R001（R005 は finding id 不明のため未報告）
     - 修正完了後レビュー: 指摘 N 件 / 修正 M 回
     ```
+  - `reviewview へ修正報告` の行は reviewview 経路で判定を取り込んだ場合のみ出力する
 
 ## 注意事項
 - タスクの進捗はいつでも TaskList で確認可能
-- 人間の評価・指示の入力経路: JSON 報告書は difit スレッドへの返信（または `evaluation` フィールドの直接編集）、md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
+- 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、review:open 経由なら difit スレッドへの返信、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
+- reviewview で `out_of_scope`（スコープ外）/ `false_positive`（偽陽性）と判定された指摘には反論せず、修正もしない
 - 見出し行末尾の記入順は `評価：{値} 対応：{自由記述}` とする運用。`対応：` は必要な時だけ人間が記入する（`**提案**` に複数案があるときの採用案指定、または実装方針の追加指示）。エージェントはこの欄も編集しない
 - 同じファイルへの修正が複数指摘で発生する可能性があるため、衝突が頻発する場合は ID を絞って複数回に分けて呼び出す

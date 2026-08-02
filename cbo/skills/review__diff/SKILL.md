@@ -22,6 +22,11 @@ $ARGUMENTS を以下の3つに解析する:
 
 ## タスク
 
+0. **前提チェック**: 利用可能なツールに `mcp__reviewview__start_review` が存在するか確認する
+   - 存在しない場合は、**後続の処理を一切行わずに即座に停止**し、以下をユーザーに報告して終了する:
+     - reviewview の MCP サーバーが接続されていないため、このスキルは実行できないこと
+     - 確認手順: `cbo/.mcp.json` の `reviewview` エントリのパスが正しいか、reviewview の `packages/server/dist/main.js` がビルド済みか、Claude Code を再起動して MCP サーバーが接続されたか
+   - reviewview を使わずにレビューだけ実行して報告書を残すフォールバックはしない（レビュアーを起動する前にここで落とす）
 1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定し、**diff モード** を決定する
    - diff 対象が指定されている場合 → **コミット比較モード**（指定された branch/tag/commit を diff 対象とする）
    - diff 対象が未指定の場合、以下を上から順に判定して最初に該当したモードを使う:
@@ -63,10 +68,10 @@ $ARGUMENTS を以下の3つに解析する:
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
 6. 各タスクのサブエージェントへの入力は次のとおり:
   - 対象ファイルの差分を取得し、**その差分のみ**を渡す:
-    - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。difit が表示する差分と行番号を一致させるため）
+    - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。reviewview が表示する差分と行番号を一致させるため）
     - staged モード: `git diff --cached -- <filepath>`
     - worktree モード: `git diff -- <filepath>`
-    - staged / worktree モードは difit の表示と行番号が一致しない可能性が残る
+    - staged モードのみ、reviewview が表示する差分（`git diff HEAD`）と行番号が一致しない可能性が残る（Step 11 で判定する）
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
   - サブエージェントへの指示に「各指摘には差分のハンク行番号に基づく `**位置**` 欄（new 側の行番号を優先）を必ず記載すること。行番号はハンクヘッダー `@@ -a,b +c,d @@` を起点に、new 側なら `+` 行と文脈行のみを数えて算出すること」を含める
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
@@ -82,20 +87,27 @@ $ARGUMENTS を以下の3つに解析する:
      - レビュアー報告の `**位置**` 欄から `file` と `anchor` を組み立てる（`ファイル全体` → `anchor: null`、`なし` → `file: null` かつ `anchor: null`）
      - レビュアー報告の `**提案**` から、フェンス外の平文を `proposals[].text`、フェンス内のコードを `proposals[].code` に分離する（一方しか無ければ他方は `null`）
      - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
-   - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（difit のコメント本文に載るため）
+   - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（reviewview の指摘本文に載り、対象リポジトリの `.reviewview/state.db` に永続化されるため）
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
 10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、正本 JSON の `findings` に `severity` が 3 以上の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、正本 JSON の内容を `source` としてそのまま渡してバックグラウンドで教訓蓄積する。`severity` 2 以下のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
-11. 保存した報告書を difit で開く
-   - `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" launch <保存した JSON の絶対パス> --diff <head_commit> <base_commit>` を実行する
-   - 出力（key=value 形式）の `url=` をユーザーに提示する
-   - `unanchored=` に指摘 ID がある場合、それらは difit に表示されないため Step 13 の報告に指摘本文を含める
-   - `adjusted=` に `R000:new:12->new:15` 形式のエントリがある場合、それらは指摘の行番号が diff の表示範囲外だったため最寄りの表示行に自動補正された指摘。Step 13 の報告に補正一覧を含める
-   - stderr に `error=` が出力された場合は difit 起動を諦め、保存先パスの提示にフォールバックする（レビュー自体は成功として扱い、Step 12 はスキップする）
-   - 評価の記入方法を案内する: difit の各指摘スレッドに**返信**で `tp / fp / nit / oos`（必要なら続けて `対応：<指示>`）を記入し、記入し終えたらブラウザのタブを閉じる（タブを閉じると difit が終了し、返信内容が自動回収される）
-12. difit の終了待ちをバックグラウンドで開始する（difit 起動に成功した場合のみ）
-   - `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" wait <保存した JSON の絶対パス>` を Bash ツールの `run_in_background: true` で起動し、完了を待たずに Step 13 に進む
-   - 後でこのタスクの完了通知を受け取ったら、出力に応じて対応する:
-     - `status=exited` かつ `comments=captured` → 出力末尾のコメントブロックを解釈する（各スレッドの先頭が指摘本文、`Reply N (著者)` 以降が人間のリプライ）。指摘 ID ごとに評価値（`tp / fp / nit / oos`）・`対応：` 指示・自由記述を整理してユーザーに報告し、修正に進む場合は review:fix の実行を提案する。正本 JSON への `evaluation` 書き戻しは行わない（review:fix の責務）
-     - `status=exited` かつ `comments=none` → リプライ無しで difit が終了した旨を短く報告する
-     - `status=timeout` → difit が開いたままである旨を短く報告する（評価は後から review:fix でも取り込める）
-13. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、difit の URL（起動できた場合）、difit に載らなかった指摘（`unanchored=` 対象）の本文、行番号を補正した指摘（`adjusted=` 対象）の一覧、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）
+11. 保存した報告書を reviewview に投入する
+   - `base` / `head` を diff モードに応じて決める（reviewview は `git diff <base> [<head>]` を表示する。pathspec は渡せないため差分全体が表示される）:
+     - コミット比較モード / merge-base モード: `base` = `base_commit`、`head` = `head_commit`（Step 6 で各サブエージェントに渡した差分と完全に一致する）
+     - worktree モード: `base` = `head_commit`、`head` は **渡さない**（`git diff HEAD` = ステージ + 未ステージ。worktree モードはステージが空なのでレビューした差分と一致する）
+     - staged モード: `git diff --name-only`（未ステージの変更）を確認する
+       - 出力が空 → ステージ内容と作業ツリーが一致するので worktree モードと同じ渡し方をする
+       - 出力が空でない → reviewview には `git diff --cached` を再現する手段が無い。`base` = `head_commit` / `head` なしで投入したうえで、**「reviewview に表示される差分はステージ + 未ステージであり、レビュー対象（ステージのみ）と行番号がずれる場合がある」旨を `request_triage` の `message` と Step 13 の報告に必ず明記する**（ずれた指摘は Step 12 の orphan として現れる）
+   - `findings` の組み立て（body / severity / category / anchor / 投入しない指摘 / autoCloseReason）は `cbo/skills/document-saver/references/format-review-result-json.md` の「reviewview への投入」に従う
+   - `autoCloseReason` は必ず渡す
+   - `mcp__reviewview__start_review` が**実行時エラー**を返した場合（差分が空・ref を解決できない・`file` パスが不正）は、レビュー結果は既に保存済みなのでエラー内容をそのまま報告し、保存先パスを提示して終了する（Step 12 はスキップ）
+12. 投入結果を確認し、人間にトリアージを依頼する
+   - `mcp__reviewview__get_triage({ reviewId })` を **1 回だけ** 呼び、各 finding の `body` 先頭の `R\d{3}` を使って `R000` → reviewview の finding id の対応表を作る（`start_review` は finding id を返さないため）
+     - 応答に「未還元の learnings が N 件あります」が付いていても、このスキルでは何もしない
+     - ここでポーリングはしない。判定の取り込みは review:fix の責務
+   - `start_review` の `orphanedFindingIds` を対応表で R-ID に変換する。空でない場合、それらの指摘は差分の行に紐付いておらず、reviewview 上では差分の文脈もディープリンクも無しで受信箱にだけ表示される
+     - `side` の取り違え・base/head の取り違え・staged モードの行ズレが典型。行番号を検算し、明らかな誤りがあれば正本 JSON を直したうえで Step 11 からやり直す（再投入は新しいレビューになるので、先に検算を済ませる）
+     - 誤りが無ければそのまま続行し、R-ID を Step 13 の報告に列挙する
+   - sidecar `<保存した JSON のパス（.json を除く）>.reviewview-session.json` を Write ツールで保存する（内容は format-review-result-json.md の「sidecar ファイル（reviewview セッション情報）」に従う）
+   - `mcp__reviewview__request_triage({ reviewId, message })` を呼ぶ。`message` には severity ごとの件数内訳、特に見てほしい点、reviewview に載せられなかった指摘（`file: null`）の要約、staged モードの行ズレ注意を書く
+   - 返った `url` をユーザーに提示する。**`get_triage` をポーリングしてはならない**
+13. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、reviewview の URL、reviewview に載せられなかった指摘（`file: null`）の本文、差分行に紐付かなかった指摘（orphan）の R-ID 一覧、staged モードで行番号がずれる可能性がある場合はその旨、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）、**reviewview で判定を送信したあと review:fix を実行すれば判定を取り込んで修正できること**
