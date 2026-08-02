@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "reviewview": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/Users/otto/workspace/reviewview/packages/server/dist/main.js",
+        "mcp",
+        "--cwd",
+        "${CLAUDE_PROJECT_DIR:-.}"
+      ]
+    }
+  }
+}
