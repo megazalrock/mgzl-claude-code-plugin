@@ -247,19 +247,18 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 
 ## Detection checklist
 
-#### [5] 必須修正 (ブロッカー)
+#### [3] ブロッキング
 - [ ] Tests with no assertions that always pass
 - [ ] Tests that have drifted from the implementation and give false confidence
 - [ ] Entire test suite is non-functional (e.g., setup failure prevents execution)
 
-#### [4] 強く推奨
+#### [2] 推奨
 - [ ] Critical coverage gap on important branches or main use cases
 - [ ] Date-dependent test that will definitely break (direct `new Date()` / `Date.now()`, `parse(..., new Date())`, etc.)
 - [ ] Missing `vi.useRealTimers()` after `vi.useFakeTimers()` — pollutes other tests
 - [ ] Argument-symmetric function tested on only one side (the other side's branch deletion would go undetected)
 - [ ] "Unchanged" invariance asserted via `toEqual` where a same-shape replacement would silently pass — use `toBe`
 
-#### [3] 推奨
 - [ ] Redundant or duplicate test cases; tests that could be consolidated with `it.each` / `describe.each`
 - [ ] Test-file bloat (heuristic: 300+ lines or 20+ cases) — split by feature
 - [ ] Insufficient coverage of edge cases / failure modes
@@ -269,15 +268,11 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 - [ ] Inconsistent assertion granularity within the same operation category (some cases verify full structure, others only a subset)
 - [ ] Module-level single-slot variable (`let scope`, `let controller`, etc.) used to hold an `afterEach` cleanup target — convert to an array
 
-#### [2] 軽微
+#### [1] 軽微
 - [ ] Room to improve `describe` block structure
 - [ ] Better test-case naming
 - [ ] Snapshot tests that produce no real value
 - [ ] Characterization test pinning a counter-intuitive current behavior without a comment explaining *why* / *operational premise* / *future fix candidate*
-
-#### [1] 情報
-- [ ] Design questions
-- [ ] Notes on good test patterns
 
 ## Review process
 
@@ -309,7 +304,7 @@ Output the report in **Japanese**, following this structure:
 
 ### ✅ 良い点
 
-### [5] 必須修正 (ブロッカー)
+### [3] ブロッキング
 **位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか]
@@ -318,17 +313,11 @@ Output the report in **Japanese**, following this structure:
 // 改善後のコード例。フェンス内にはコードのみを書く。自然言語の説明だけで足りる場合はフェンスごと省略
 ```
 
-### [4] 強く推奨
+### [2] 推奨
 [同様の形式]
 
-### [3] 推奨
+### [1] 軽微
 [同様の形式]
-
-### [2] 軽微
-[同様の形式]
-
-### [1] 情報
-- [質問・観察・情報共有事項]
 
 ## 📚 参考情報
 - [関連するベストプラクティスへのリンク等]
@@ -336,21 +325,21 @@ Output the report in **Japanese**, following this structure:
 
 ## Approval rule
 
-Total verdict = highest severity present (or `[1]` if no findings).
+Total verdict = highest severity present (`指摘なし` if there are no findings).
 
-- Any `[5]` → merge blocked (fix required)
-- Only `[4]` → conditional (mergeable but fix strongly recommended)
-- `[3]` or below only → approved
+- Any `[3]` → merge blocked (fix required)
+- Only `[2]` → conditional (mergeable but fix recommended)
+- `[1]` only, or no findings → approved
 
 ### Severity reference
 
 | Score | Label | Meaning | Examples |
 |---|---|---|---|
-| `[5]` | 必須修正 (ブロッカー) | Tests cannot guarantee implementation correctness | Always-passing tests, tests drifted from implementation, non-functional suite |
-| `[4]` | 強く推奨 | High-impact quality issue to fix before merge | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration, one-sided test of a symmetric-argument function, invariance asserted with `toEqual` |
-| `[3]` | 推奨 | Affects maintainability / reliability | Redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue, parametrization / assertion granularity inconsistency, single-slot `afterEach` cleanup target |
-| `[2]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot, uncommented characterization test |
-| `[1]` | 情報 | Informational only, no fix required | Design question, good-pattern note |
+| `[3]` | ブロッキング | Tests cannot guarantee implementation correctness | Always-passing tests, tests drifted from implementation, non-functional suite |
+| `[2]` | 推奨 | High-impact quality issue to fix before merge, or an issue affecting maintainability / reliability | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration, one-sided test of a symmetric-argument function, invariance asserted with `toEqual`, redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue, parametrization / assertion granularity inconsistency, single-slot `afterEach` cleanup target |
+| `[1]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot, uncommented characterization test |
+
+Design questions and good-pattern notes are **not** findings. Put good-pattern notes in the ✅ 良い点 section and drop the rest.
 
 ## Project-specific guidelines
 

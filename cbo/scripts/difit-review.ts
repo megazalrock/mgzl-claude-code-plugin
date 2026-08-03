@@ -29,7 +29,7 @@ export interface Evaluation {
 }
 export interface Finding {
   id: string;
-  severity: 1 | 2 | 3 | 4 | 5;
+  severity: 1 | 2 | 3;
   file: string | null;
   anchor: Anchor | null;
   problem: string;
@@ -69,12 +69,14 @@ export interface AdjustedAnchor {
 }
 
 const SEVERITY_LABELS: Record<number, string> = {
-  5: "必須修正 (ブロッカー)",
-  4: "強く推奨",
-  3: "推奨",
-  2: "軽微",
-  1: "情報",
+  3: "ブロッキング",
+  2: "推奨",
+  1: "軽微",
 };
+
+// 3 段階化以前に保存された 5 段階の報告書を開いたときにラベルが undefined にならないようにする。
+// 旧 3 は新 2 を意味するなど数値だけでは新旧を判別できないため、旧報告書の重要度は再現しない
+const UNKNOWN_SEVERITY_LABEL = "重要度不明（旧形式）";
 
 // コメント本文は difit 側で markdown レンダリングされるため、提案コードはフェンスで囲む。
 // コード自体がフェンスを含む場合に備え、フェンス長は内容中の最長バックティック連続 + 1 とする
@@ -217,7 +219,9 @@ export function buildCommentPayloads(
       }
       position = snapped;
     }
-    const lines: string[] = [`${f.id} [${f.severity}] ${SEVERITY_LABELS[f.severity]}`];
+    const lines: string[] = [
+      `${f.id} [${f.severity}] ${SEVERITY_LABELS[f.severity] ?? UNKNOWN_SEVERITY_LABEL}`,
+    ];
     if (f.anchor === null) {
       lines.push("【ファイル全体への指摘】");
     }

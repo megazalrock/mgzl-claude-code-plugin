@@ -77,20 +77,18 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
 ## Detection checklist
 
-#### [5] 必須修正 (ブロッカー)
+#### [3] ブロッキング
 - [ ] Hardcoded credentials
 - [ ] Possible XSS vulnerability
 - [ ] Unhandled fatal exception that surfaces secrets or breaks security boundaries
 
-#### [4] 強く推奨
+#### [2] 推奨
 - [ ] CSRF vulnerability
 - [ ] Unsafe dependency
-
-#### [3] 推奨
 - [ ] Memory-leak risk
 - [ ] Unnecessary re-renders
 
-#### [2] 軽微
+#### [1] 軽微
 - [ ] Minor performance improvements
 
 ## Review process
@@ -98,7 +96,7 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 1. **Read the change for intent** — understand what the code is supposed to do
 2. **Security scan** — look for credential exposure, XSS, CSRF, and similar vulnerabilities
 3. **Performance analysis** — look for memory leaks, unnecessary re-renders, and inefficient render-path work
-4. **Classify findings** using the severity scale `[5]`–`[1]`
+4. **Classify findings** using the severity scale `[3]`–`[1]`
 5. **Provide concrete suggestions** with code examples
 6. **Acknowledge good work** when present
 7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer
@@ -124,7 +122,7 @@ Output the report in **Japanese**, following this structure:
 
 ### ✅ 良い点
 
-### [5] 必須修正 (ブロッカー)
+### [3] ブロッキング
 **位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか]
@@ -133,17 +131,11 @@ Output the report in **Japanese**, following this structure:
 // 改善後のコード例。フェンス内にはコードのみを書く。自然言語の説明だけで足りる場合はフェンスごと省略
 ```
 
-### [4] 強く推奨
+### [2] 推奨
 [同様の形式]
 
-### [3] 推奨
+### [1] 軽微
 [同様の形式]
-
-### [2] 軽微
-[同様の形式]
-
-### [1] 情報
-- [質問・観察・情報共有事項]
 
 ## 📚 参考情報
 - [関連するベストプラクティスへのリンク等]
@@ -151,21 +143,21 @@ Output the report in **Japanese**, following this structure:
 
 ## Approval rule
 
-Total verdict = highest severity present (or `[1]` if no findings).
+Total verdict = highest severity present (`指摘なし` if there are no findings).
 
-- Any `[5]` → merge blocked (fix required)
-- Only `[4]` → conditional (mergeable but fix strongly recommended)
-- `[3]` or below only → approved
+- Any `[3]` → merge blocked (fix required)
+- Only `[2]` → conditional (mergeable but fix recommended)
+- `[1]` only, or no findings → approved
 
 ### Severity reference
 
 | Score | Label | Meaning | Examples |
 |---|---|---|---|
-| `[5]` | 必須修正 (ブロッカー) | Directly causes a security incident or production failure | Credential exposure, XSS vulnerability, unhandled fatal exception |
-| `[4]` | 強く推奨 | Significant security impact, must be fixed before merge | CSRF vulnerability, unsafe dependency |
-| `[3]` | 推奨 | Affects performance | Memory leak, unnecessary re-render |
-| `[2]` | 軽微 | Optional improvement | Minor performance refinement |
-| `[1]` | 情報 | Informational, no fix required | Design question, positive note |
+| `[3]` | ブロッキング | Directly causes a security incident or production failure | Credential exposure, XSS vulnerability, unhandled fatal exception |
+| `[2]` | 推奨 | Significant security impact that must be fixed before merge, or a performance problem | CSRF vulnerability, unsafe dependency, memory leak, unnecessary re-render |
+| `[1]` | 軽微 | Optional improvement | Minor performance refinement |
+
+Design questions and positive notes are **not** findings. Put positive notes in the ✅ 良い点 section and drop the rest.
 
 ## Constraints
 

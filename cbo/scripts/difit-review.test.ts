@@ -24,7 +24,7 @@ function baseReport(findings: Finding[]): Report {
 function finding(over: Partial<Finding>): Finding {
   return {
     id: "R000",
-    severity: 3,
+    severity: 2,
     file: "src/a.ts",
     anchor: { side: "new", line: 10 },
     problem: "p",
@@ -44,7 +44,7 @@ describe("buildCommentPayloads", () => {
     expect(comments[0].type).toBe("thread");
     expect(comments[0].filePath).toBe("src/a.ts");
     expect(comments[0].position).toEqual({ side: "new", line: 10 });
-    expect(comments[0].body.startsWith("R000 [3] 推奨")).toBe(true);
+    expect(comments[0].body.startsWith("R000 [2] 推奨")).toBe(true);
     expect(comments[0].author).toBe("@reviewer-for-logic");
   });
 
@@ -236,7 +236,7 @@ describe("extractCommentsOutput", () => {
       "📝 Comments from review session:",
       "=".repeat(50),
       "src/a.ts:L9",
-      "R000 [3] 推奨",
+      "R000 [2] 推奨",
       "Reply 1 (reviewer)",
       "tp 対応：案A",
       "=".repeat(50),

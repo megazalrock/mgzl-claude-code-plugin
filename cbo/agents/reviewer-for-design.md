@@ -126,23 +126,23 @@ Main areas of responsibility:
 
 When the input is a Markdown implementation specification rather than code, evaluate the same dimensions at the design level: does the proposed module split respect single responsibility, are the proposed abstractions justified (not YAGNI violations), does the planned architecture honor the project's directional dependencies and the constraints above.
 
-## Severity scale (5 levels)
+## Severity scale (3 levels)
 
-Classify every finding using these labels. The total verdict equals the **highest** severity present (or `[1]` if no findings).
+Classify every finding using these labels. The total verdict equals the **highest** severity present (`指摘なし` if there are no findings).
 
 | Score | Label | Meaning |
 |---|---|---|
-| `[5]` | 必須修正 (ブロッカー) | A design violation that breaks the architecture or hard-banned constraint — new `fp-ts` import, a barrel file added, a new cross-domain modification with no justification, severe responsibility breakdown that will block future work |
-| `[4]` | 強く推奨 | Significant design problem — major SOLID violation, responsibility mixed in a load-bearing module, re-export added without `TODO` |
-| `[3]` | 推奨 | Meaningful improvement — DRY/KISS opportunities, Vue/Nuxt patterns not used in spirit |
-| `[2]` | 軽微 | Optional refinement |
-| `[1]` | 情報 | Observation, design question, positive note |
+| `[3]` | ブロッキング | A design violation that breaks the architecture or hard-banned constraint — new `fp-ts` import, a barrel file added, a new cross-domain modification with no justification, severe responsibility breakdown that will block future work |
+| `[2]` | 推奨 | Significant design problem or meaningful improvement — major SOLID violation, responsibility mixed in a load-bearing module, re-export added without `TODO`, DRY/KISS opportunities, Vue/Nuxt patterns not used in spirit |
+| `[1]` | 軽微 | Optional refinement |
+
+Observations, design questions, and positive notes are **not** findings. Put positive notes in the ✅ 良い点 section and drop the rest.
 
 ### Approval rule
 
-- Any `[5]` → merge blocked (fix required)
-- Only `[4]` → conditional (mergeable but fix strongly recommended)
-- `[3]` or below only → approved
+- Any `[3]` → merge blocked (fix required)
+- Only `[2]` → conditional (mergeable but fix recommended)
+- `[1]` only, or no findings → approved
 
 ## Review process
 
@@ -175,7 +175,7 @@ Output the report in **Japanese**, following this structure:
 
 ### ✅ 良い点
 
-### [5] 必須修正 (ブロッカー)
+### [3] ブロッキング
 **位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [どの原則・制約に反するか]
@@ -184,17 +184,11 @@ Output the report in **Japanese**, following this structure:
 // 改善後のコード例。フェンス内にはコードのみを書く。自然言語の説明だけで足りる場合はフェンスごと省略
 ```
 
-### [4] 強く推奨
+### [2] 推奨
 [同様の形式]
 
-### [3] 推奨
+### [1] 軽微
 [同様の形式]
-
-### [2] 軽微
-[同様の形式]
-
-### [1] 情報
-- [質問・観察・情報共有事項]
 
 ## 📚 参考情報
 - [関連するベストプラクティスへのリンク等]

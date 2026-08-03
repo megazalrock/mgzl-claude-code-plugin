@@ -127,23 +127,23 @@ Focus on **algorithmic** problems. UI-specific performance (re-renders, memory l
 
 When the input is a Markdown implementation specification rather than code, evaluate the same dimensions at the design-intent level: does the described logic cover the necessary branches and edge cases, is the described error-handling strategy complete, does the proposed approach scale to expected data volumes.
 
-## Severity scale (5 levels)
+## Severity scale (3 levels)
 
-Classify every finding using these labels. The total verdict equals the **highest** severity present (or `[1]` if no findings).
+Classify every finding using these labels. The total verdict equals the **highest** severity present (`指摘なし` if there are no findings).
 
 | Score | Label | Meaning |
 |---|---|---|
-| `[5]` | 必須修正 (ブロッカー) | A correctness defect that will cause incorrect behavior or production breakage — wrong condition, swallowed critical error, guaranteed N+1 in a hot path |
-| `[4]` | 強く推奨 | A likely correctness issue or significant unhandled edge case — should be fixed before merge |
-| `[3]` | 推奨 | Plausible edge case, possible performance concern on growing data |
-| `[2]` | 軽微 | Minor improvement to robustness |
-| `[1]` | 情報 | Observation, design question, positive note |
+| `[3]` | ブロッキング | A correctness defect that will cause incorrect behavior or production breakage — wrong condition, swallowed critical error, guaranteed N+1 in a hot path |
+| `[2]` | 推奨 | A likely correctness issue, a significant unhandled edge case, a plausible edge case, or a possible performance concern on growing data — should be fixed before merge |
+| `[1]` | 軽微 | Minor improvement to robustness |
+
+Observations, design questions, and positive notes are **not** findings. Put positive notes in the ✅ 良い点 section and drop the rest.
 
 ### Approval rule
 
-- Any `[5]` → merge blocked (fix required)
-- Only `[4]` → conditional (mergeable but fix strongly recommended)
-- `[3]` or below only → approved
+- Any `[3]` → merge blocked (fix required)
+- Only `[2]` → conditional (mergeable but fix recommended)
+- `[1]` only, or no findings → approved
 
 ## Review process
 
@@ -176,7 +176,7 @@ Output the report in **Japanese**, following this structure:
 
 ### ✅ 良い点
 
-### [5] 必須修正 (ブロッカー)
+### [3] ブロッキング
 **位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか、どの入力で何が壊れるか]
@@ -185,17 +185,11 @@ Output the report in **Japanese**, following this structure:
 // 改善後のコード例。フェンス内にはコードのみを書く。自然言語の説明だけで足りる場合はフェンスごと省略
 ```
 
-### [4] 強く推奨
+### [2] 推奨
 [同様の形式]
 
-### [3] 推奨
+### [1] 軽微
 [同様の形式]
-
-### [2] 軽微
-[同様の形式]
-
-### [1] 情報
-- [質問・観察・情報共有事項]
 
 ## 📚 参考情報
 - [関連するベストプラクティスへのリンク等]
