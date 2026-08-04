@@ -91,14 +91,14 @@ $ARGUMENTS を以下の3つに解析する:
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
 10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、正本 JSON の `findings` に `severity` が 2 以上の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、正本 JSON の内容を `source` としてそのまま渡してバックグラウンドで教訓蓄積する。`severity` 1 のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
 11. 保存した報告書を reviewview に投入する
+   - 投入対象の findings（`file: null` の指摘を除いた全指摘）が **0 件** の場合は reviewview へ投入しない（reviewview の `findings` は 1 件以上必須。0 件の投入はバリデーションエラーになる）。Step 12 をスキップし、Step 13 で正本 JSON の保存先パスと、指摘が無かった旨（`file: null` で載せられなかった指摘があればその本文）を報告して終了する
    - `base` / `head` を diff モードに応じて決める（reviewview は `git diff <base> [<head>]` を表示する。pathspec は渡せないため差分全体が表示される）:
      - コミット比較モード / merge-base モード: `base` = `base_commit`、`head` = `head_commit`（Step 6 で各サブエージェントに渡した差分と完全に一致する）
      - worktree モード: `base` = `head_commit`、`head` は **渡さない**（`git diff HEAD` = ステージ + 未ステージ。worktree モードはステージが空なのでレビューした差分と一致する）
      - staged モード: `git diff --name-only`（未ステージの変更）を確認する
        - 出力が空 → ステージ内容と作業ツリーが一致するので worktree モードと同じ渡し方をする
        - 出力が空でない → reviewview には `git diff --cached` を再現する手段が無い。`base` = `head_commit` / `head` なしで投入したうえで、**「reviewview に表示される差分はステージ + 未ステージであり、レビュー対象（ステージのみ）と行番号がずれる場合がある」旨を `request_triage` の `message` と Step 13 の報告に必ず明記する**（ずれた指摘は Step 12 の orphan として現れる）
-   - `findings` の組み立て（body / severity / category / anchor / 投入しない指摘 / autoCloseReason）は `cbo/skills/document-saver/references/format-review-result-json.md` の「reviewview への投入」に従う
-   - `autoCloseReason` は必ず渡す
+   - `findings` の組み立て（body / severity / category / anchor / 投入しない指摘）は `cbo/skills/document-saver/references/format-review-result-json.md` の「reviewview への投入」に従う
    - `mcp__reviewview__start_review` が**実行時エラー**を返した場合（差分が空・ref を解決できない・`file` パスが不正）は、レビュー結果は既に保存済みなのでエラー内容をそのまま報告し、保存先パスを提示して終了する（Step 12 はスキップ）
 12. 投入結果を確認し、人間にトリアージを依頼する
    - `mcp__reviewview__get_triage({ reviewId })` を **1 回だけ** 呼び、各 finding の `body` 先頭の `R\d{3}` を使って `R000` → reviewview の finding id の対応表を作る（`start_review` は finding id を返さないため）
