@@ -5,7 +5,6 @@ const VARS = [
   "APP_HOST",
   "API_REPO_PATH",
   "CDS_REPO_PATH",
-  "OPENAPI_FILE",
 ] as const;
 
 for (const name of VARS) {
