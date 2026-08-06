@@ -21,7 +21,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - それも無い場合は、 `!`echo $MGZL_DIR`/reviews/` 配下の報告書（`.json` と `.md`。`.reviewview-session.json` と `.difit-session.json` は除外）の最新 5 件を取得し、AskUserQuestion でユーザーに選択させる
 
 2. 修正対象の指摘 ID リストを特定する
-  - **報告書が JSON の場合**、指摘の抽出前に人間の評価を取り込む。報告書と同じディレクトリの sidecar を探し、`<報告書名（.json を除く）>.reviewview-session.json`（reviewview 経路）→ `<報告書名（.json を除く）>.difit-session.json`（difit 経路 / review:open 由来）の順に判定する
+  - **報告書が JSON の場合**、指摘の抽出前に人間の評価を取り込む。報告書と同じディレクトリの sidecar を探し、`<報告書名（.json を除く）>.reviewview-session.json`（reviewview 経路）→ `<報告書名（.json を除く）>.difit-session.json`（difit 経路。過去に difit で開いた報告書のみ）の順に判定する
     - **どちらも無い場合**: 外部からの取り込みはスキップし、正本 JSON の `evaluation` に記入済みの値をそのまま使う
 
     #### reviewview 経路（`.reviewview-session.json` がある場合）
@@ -57,7 +57,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
        - 評価値の無い返信 → 全文を `evaluation.directive`
        - 同一スレッドに複数の返信がある場合は最後の返信を採用する
     3. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
-    4. `error=` で失敗した（difit が落ちている）場合: 正本 JSON 内の `evaluation` に記入済みの値があればそれをそのまま使う。評価が必要なのに全指摘未評価なら、AskUserQuestion で「review:open で difit を再起動して評価を記入する / 未評価のまま続行する / 中止する」を提示する
+    4. `error=` で失敗した（difit が落ちている）場合: 正本 JSON 内の `evaluation` に記入済みの値があればそれをそのまま使う。評価が必要なのに全指摘未評価なら、AskUserQuestion で「未評価のまま続行する / 中止する」を提示する
   - JSON 報告書では、以降の手順の読み替えを行う:
     - 「`### R*` 指摘」→ `findings[]` の要素
     - 見出しの重要度 `[N]` → `severity`
@@ -186,7 +186,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
 
 ## 注意事項
 - タスクの進捗はいつでも TaskList で確認可能
-- 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、review:open 経由なら difit スレッドへの返信、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
+- 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、difit 経路なら difit スレッドへの返信、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
 - reviewview で `out_of_scope`（スコープ外）/ `false_positive`（偽陽性）と判定された指摘には反論せず、修正もしない
 - 見出し行末尾の記入順は `評価：{値} 対応：{自由記述}` とする運用。`対応：` は必要な時だけ人間が記入する（`**提案**` に複数案があるときの採用案指定、または実装方針の追加指示）。エージェントはこの欄も編集しない
 - 同じファイルへの修正が複数指摘で発生する可能性があるため、衝突が頻発する場合は ID を絞って複数回に分けて呼び出す

@@ -393,7 +393,7 @@ async function waitForExit(target: string, timeoutSeconds: number): Promise<void
   const { pid, log } = session;
   if (typeof pid !== "number") fail("セッションに pid がありません");
   if (typeof log !== "string") {
-    fail("セッションに log がありません（旧形式）。review:open で difit を開き直してください");
+    fail("セッションに log がありません（旧形式）。difit を起動し直してください");
   }
   const deadline = Date.now() + timeoutSeconds * 1000;
   while (isAlive(pid)) {

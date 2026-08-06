@@ -1,6 +1,6 @@
 # レビュー結果 正本 JSON スキーマ
 
-review:diff / review:open が出力するレビュー報告書の正本フォーマット（削除済みの旧 review:file が出力した報告書も同形式）。
+review:diff が出力するレビュー報告書の正本フォーマット（削除済みの旧 review:file が出力した報告書も同形式）。
 document-saver スキルは経由せず、各スキルが Write ツールで !`echo $MGZL_DIR`/reviews/ に直接保存する。
 
 - ファイル名: `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`
@@ -9,7 +9,7 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
 人間に指摘を提示する UI は 2 系統ある:
 
 - **reviewview**（現行）— review:diff が使う。MCP ツール経由でトリアージを往復する
-- **difit**（旧経路）— review:open が使う。コメントスレッドへの返信で評価を受け取る
+- **difit**（旧経路）— 過去に difit で開いた報告書のみ。コメントスレッドへの返信で評価を受け取る
 
 review:fix はどちらの経路からも評価を回収できる。
 
@@ -17,7 +17,7 @@ review:fix はどちらの経路からも評価を回収できる。
 
 ```jsonc
 {
-  "reporter": "ClaudeCode review:diff",  // 実行主体。review:open の変換は元 md の reporter を引き継ぐ
+  "reporter": "ClaudeCode review:diff",  // 実行主体
   "model": "claude-sonnet-4-6",          // 実行モデル名。不明なら "unknown"
   "base_commit": "abc...def",            // diff 対象のフル 40 桁 SHA-1。旧 review:file 由来の報告書は null
   "head_commit": "abc...def",            // レビュー時 HEAD のフル 40 桁 SHA-1。旧 review:file 由来の報告書は null
@@ -166,9 +166,9 @@ reviewview へ投入したとき、正本 JSON の隣に `<報告書名（.json 
 
 ---
 
-# 旧経路: difit（review:open）
+# 旧経路: difit
 
-review:open は difit（diff ビューア）で報告書を開く。以下はその経路の仕様。
+difit（diff ビューア）で報告書を開くスキルは削除済み。過去に difit で開いた報告書の sidecar が残っている場合にのみ、review:fix がこの経路で評価を回収する。
 
 ## 人間の評価記入（difit スレッドへの返信）
 
@@ -193,5 +193,5 @@ difit 起動時、正本 JSON の隣に `<報告書名（.json を除く）>.dif
 }
 ```
 
-- セッション状態であり報告書の一部ではない。stale になっていたら（プロセス死亡）再起動で上書きされる
+- セッション状態であり報告書の一部ではない。difit のプロセスが死んでいれば stale になる（起動するスキルが無いため再作成されない）
 - `log` は difit プロセスの stdout/stderr の書き込み先。difit はブラウザタブが閉じられると全コメント＋リプライを stdout に整形出力して終了するため、`difit-review.ts wait <報告書パス>` がこのログから返信内容を回収する

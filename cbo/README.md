@@ -69,7 +69,7 @@ $MGZL_DIR/
 
 ## reviewview（レビュー UI）の設定
 
-`review:diff` は、AI の指摘を人間にトリアージさせるために reviewview の MCP サーバーを使う。`review:fix` は reviewview から判定を取り込み、修正結果を `report_fix` で報告する。`review:open` のみ引き続き difit（diff ビューア）を使う。
+`review:diff` は、AI の指摘を人間にトリアージさせるために reviewview の MCP サーバーを使う。`review:fix` は reviewview から判定を取り込み、修正結果を `report_fix` で報告する。
 
 サーバー定義は `cbo/.mcp.json` の `reviewview` エントリにあるが、`args` は**ローカルにビルドした reviewview の絶対パス**を指しているため、環境に合わせて書き換える。`packages/server/dist/main.js` がビルド済みである必要がある。
 
