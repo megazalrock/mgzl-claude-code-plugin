@@ -18,11 +18,11 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
 1. レビュー報告書のファイルを特定する
   - 引数に報告書パスが指定された場合は、それを選択
   - 指定されていない場合は、現在のセッションで作成・参照したレビュー報告書を選択
-  - それも無い場合は、 `!`echo $MGZL_DIR`/reviews/` 配下の報告書（`.json` と `.md`。`.reviewview-session.json` と `.difit-session.json` は除外）の最新 5 件を取得し、AskUserQuestion でユーザーに選択させる
+  - それも無い場合は、 `!`echo $MGZL_DIR`/reviews/` 配下の報告書（`.json` と `.md`。`*-session.json` の sidecar は除外）の最新 5 件を取得し、AskUserQuestion でユーザーに選択させる
 
 2. 修正対象の指摘 ID リストを特定する
-  - **報告書が JSON の場合**、指摘の抽出前に人間の評価を取り込む。報告書と同じディレクトリの sidecar を探し、`<報告書名（.json を除く）>.reviewview-session.json`（reviewview 経路）→ `<報告書名（.json を除く）>.difit-session.json`（difit 経路。過去に difit で開いた報告書のみ）の順に判定する
-    - **どちらも無い場合**: 外部からの取り込みはスキップし、正本 JSON の `evaluation` に記入済みの値をそのまま使う
+  - **報告書が JSON の場合**、指摘の抽出前に人間の評価を取り込む。報告書と同じディレクトリに sidecar `<報告書名（.json を除く）>.reviewview-session.json` があるか確認する
+    - **無い場合**: 外部からの取り込みはスキップし、正本 JSON の `evaluation` に記入済みの値をそのまま使う
 
     #### reviewview 経路（`.reviewview-session.json` がある場合）
 
@@ -48,16 +48,6 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     7. `R000` → reviewview の finding id の対応表を、タスク 6 の `report_fix` 用にセッション中保持する
     8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、タスク 9 で「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
 
-    #### difit 経路（`.difit-session.json` のみがある場合）
-
-    1. `bun run "${CLAUDE_PLUGIN_ROOT}/scripts/difit-review.ts" comments <sidecar の port>` を実行する
-    2. 成功したら、各スレッドの `messages[0]`（エージェントの指摘。body 先頭の R-ID で `findings` と突合する）より後のメッセージを人間の返信として解釈する:
-       - 先頭トークンが `tp` / `fp` / `nit` / `oos` → `evaluation.value`
-       - `対応：` 以降のテキスト → `evaluation.directive`
-       - 評価値の無い返信 → 全文を `evaluation.directive`
-       - 同一スレッドに複数の返信がある場合は最後の返信を採用する
-    3. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
-    4. `error=` で失敗した（difit が落ちている）場合: 正本 JSON 内の `evaluation` に記入済みの値があればそれをそのまま使う。評価が必要なのに全指摘未評価なら、AskUserQuestion で「未評価のまま続行する / 中止する」を提示する
   - JSON 報告書では、以降の手順の読み替えを行う:
     - 「`### R*` 指摘」→ `findings[]` の要素
     - 見出しの重要度 `[N]` → `severity`
@@ -68,7 +58,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - 候補集合を決定する:
     - 引数に `R000` 形式の ID が 1 つ以上指定されている → その集合
     - 無く、**reviewview 経路で判定を取り込めた** → `evaluation.value` が `tp` の指摘のみ（`fp` / `oos` は reviewview の運用規約により修正も反論もしない）。`tp` が 0 件なら判定の内訳を報告して終了する
-    - 無く、判定を取り込めなかった（sidecar 無し・difit 経路・md 報告書） → 報告書内の全 `### R*` 指摘
+    - 無く、判定を取り込めなかった（sidecar 無し・md 報告書） → 報告書内の全 `### R*` 指摘
   - 自然言語の絞り込み指定がある場合は、候補集合の各指摘セクションについて以下の材料から該当性を判断し、候補集合を絞り込む
     - 見出しの重要度 `[N]` とラベル（例: 「2以上」→ `[2]`/`[3]`）
     - `**問題**`/`**提案**` 本文が対象としているファイル・内容（例: 「テストファイルのみ」。指摘セクションに専用のファイルパス欄は無いため本文記述から判断する）
@@ -122,7 +112,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - **reviewview 経路で判定を取り込んだ場合のみ**、各修正タスクが完了するたびに、対応する reviewview の finding id が判っている指摘について `mcp__reviewview__report_fix({ findingId, message })` を **1 件ずつ** 呼ぶ（まとめて最後に呼ばない）
     - `message` にはサブエージェントの報告から「何をどう直したか」を 1〜3 行に要約して書く（人間の画面に AI コメントとして表示される）
     - すでにコミット済みなら `commitSha` も渡す
-    - finding id が判らない指摘（突合失敗）・difit 経路・md 報告書はスキップする
+    - finding id が判らない指摘（突合失敗）・md 報告書はスキップする
     - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 9 の最終レポートに列挙する
 
   サブエージェントに渡すプロンプトは以下の構造で統一する（`@code-implementer` / `@test-implementer` どちらの場合も本文は共通）:
@@ -133,7 +123,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   ## 指摘内容
   {切り出した指摘セクション全文}
 
-  ## 人間からの追加指示（reviewview のコメント／difit 返信／`対応：` 欄より）  <!-- human_directive が非 null の指摘に限り挿入 -->
+  ## 人間からの追加指示（reviewview のコメント／`対応：` 欄より）  <!-- human_directive が非 null の指摘に限り挿入 -->
   {human_directive の文字列をそのまま貼り付ける}
 
   この指示を最優先で解釈してください。`**提案**` のコード例と食い違う場合は、こちらの指示を優先します。
@@ -186,7 +176,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
 
 ## 注意事項
 - タスクの進捗はいつでも TaskList で確認可能
-- 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、difit 経路なら difit スレッドへの返信、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
+- 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
 - reviewview で `out_of_scope`（スコープ外）/ `false_positive`（偽陽性）と判定された指摘には反論せず、修正もしない
 - 見出し行末尾の記入順は `評価：{値} 対応：{自由記述}` とする運用。`対応：` は必要な時だけ人間が記入する（`**提案**` に複数案があるときの採用案指定、または実装方針の追加指示）。エージェントはこの欄も編集しない
 - 同じファイルへの修正が複数指摘で発生する可能性があるため、衝突が頻発する場合は ID を絞って複数回に分けて呼び出す

@@ -6,12 +6,7 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
 - ファイル名: `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`
 - タイムスタンプ取得: `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"`
 
-人間に指摘を提示する UI は 2 系統ある:
-
-- **reviewview**（現行）— review:diff が使う。MCP ツール経由でトリアージを往復する
-- **difit**（旧経路）— 過去に difit で開いた報告書のみ。コメントスレッドへの返信で評価を受け取る
-
-review:fix はどちらの経路からも評価を回収できる。
+人間に指摘を提示する UI は **reviewview**。review:diff が MCP ツール経由でトリアージを往復し、review:fix がその判定を回収する。
 
 ## スキーマ
 
@@ -51,7 +46,7 @@ review:fix はどちらの経路からも評価を回収できる。
 
 ## 編集規則
 
-- 正本 JSON は原則イミュータブル。例外として、エージェント（review:fix）は reviewview または difit から取得した人間の評価を **`evaluation` フィールドにのみ** 書き戻してよい
+- 正本 JSON は原則イミュータブル。例外として、エージェント（review:fix）は reviewview から取得した人間の評価を **`evaluation` フィールドにのみ** 書き戻してよい
 - 人間が `evaluation` を直接編集することも有効（UI を使わない場合の副経路）
 
 ---
@@ -115,7 +110,6 @@ markdown は解釈されないため、**コードをフェンス（バックク
 - `proposals[].label` が非 null のときだけ `（案A）` のようにラベルを付ける。`text` / `code` が null の行は出さない
 - `報告者:` 行は入れない（`category` として渡すため）
 - 秘密情報（トークン・鍵など）は転記しない。body は対象リポジトリの `.reviewview/state.db` に永続化される
-- 旧経路（difit）の本文はコードフェンス付きのままである。**フェンスの有無が経路によって異なる**点に注意する
 
 ## 人間のトリアージ（reviewview）
 
@@ -138,7 +132,7 @@ markdown は解釈されないため、**コードをフェンス（バックク
 
 `evaluation.directive` は、`comments[]` のうち `author === "human"` の `body` を時系列順に改行連結し、`triageReason` が非 null ならその末尾に `判定理由: {triageReason}` を足す。どちらも無ければ `null`。
 
-`nit`（些細）に相当する判定は reviewview には無い。difit 経路・md 報告書・`evaluation` の直接編集でのみ現れる値として残す。
+`nit`（些細）に相当する判定は reviewview には無い。md 報告書・`evaluation` の直接編集でのみ現れる値として残す。
 
 ## sidecar ファイル（reviewview セッション情報）
 
@@ -163,35 +157,3 @@ reviewview へ投入したとき、正本 JSON の隣に `<報告書名（.json 
 - `head` は作業ツリーを対象にした場合 `null`
 - `orphaned` は差分の行に紐付かなかった R-ID、`not_submitted` は `file: null` などで投入しなかった R-ID
 - セッション状態であり報告書の一部ではない。報告書一覧を出す処理では除外する
-
----
-
-# 旧経路: difit
-
-difit（diff ビューア）で報告書を開くスキルは削除済み。過去に difit で開いた報告書の sidecar が残っている場合にのみ、review:fix がこの経路で評価を回収する。
-
-## 人間の評価記入（difit スレッドへの返信）
-
-各指摘は difit 上で 1 スレッドとして表示される（body 先頭に `R000` 形式の ID）。
-評価はスレッドへの**返信**で記入する:
-
-- 先頭トークンが `tp` / `fp` / `nit` / `oos` → `evaluation.value` として解釈される
-- `対応：` 以降のテキスト → `evaluation.directive` として解釈される（例: `tp 対応：案A`）
-- 評価値の無い返信 → 全文が directive として解釈される
-
-## sidecar ファイル（difit セッション情報）
-
-difit 起動時、正本 JSON の隣に `<報告書名（.json を除く）>.difit-session.json` が作成される:
-
-```json
-{
-  "url": "http://localhost:4966",
-  "port": 4966,
-  "pid": 12345,
-  "log": "/tmp/difit-review-xxxx/launch.log",
-  "started_at": "..."
-}
-```
-
-- セッション状態であり報告書の一部ではない。difit のプロセスが死んでいれば stale になる（起動するスキルが無いため再作成されない）
-- `log` は difit プロセスの stdout/stderr の書き込み先。difit はブラウザタブが閉じられると全コメント＋リプライを stdout に整形出力して終了するため、`difit-review.ts wait <報告書パス>` がこのログから返信内容を回収する
