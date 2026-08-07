@@ -213,7 +213,7 @@ Goal / Architecture / Tech Stack / Global Constraints の 4 点を必須ヘッ�
 する設計であり、`cbo/agents/implementation-plan-creator.md:266`
 （プロジェクト既定原則の例外は計画書へ明文化し、計画書を単一の正とする）の実体化にあたる。
 
-- [ ] **Step 1: テンプレート冒頭を 4 項目構成へ差し替える**
+- [x] **Step 1: テンプレート冒頭を 4 項目構成へ差し替える**
 
 既存の `## 概要` を以下へ置き換える。`## 実装計画の実行時のルール`（固定テキスト）は残す。
 
@@ -232,7 +232,7 @@ Goal / Architecture / Tech Stack / Global Constraints の 4 点を必須ヘッ�
 事前確定された方針から、値は逐語でコピーする。全ステップの要件に暗黙的に含まれる]
 ```
 
-- [ ] **Step 2: エージェント側に Global Constraints の収集元を明記する**
+- [x] **Step 2: エージェント側に Global Constraints の収集元を明記する**
 
 `cbo/agents/implementation-plan-creator.md` のワークフローに、Global Constraints へ
 書き出す対象を明示する。
@@ -241,7 +241,7 @@ Goal / Architecture / Tech Stack / Global Constraints の 4 点を必須ヘッ�
 - ユーザーから事前確定された方針（`:265` の「設計上の判断根拠」に相当するもの）
 - バージョン下限・依存制限・命名規則・プラットフォーム要件は**値を逐語でコピー**し、要約しない
 
-- [ ] **Step 3: 既存ルールとの重複を解消する**
+- [x] **Step 3: 既存ルールとの重複を解消する**（結論: **併存**。表は判断根拠、`Global Constraints` は制約そのものと役割分担を明記した）
 
 `cbo/agents/implementation-plan-creator.md:265-266` の記述を確認し、
 Global Constraints 節と役割が重複する部分があれば「Global Constraints へ書く」旨へ寄せる。
