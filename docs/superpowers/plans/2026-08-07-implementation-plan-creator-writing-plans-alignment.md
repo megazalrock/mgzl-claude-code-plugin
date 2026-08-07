@@ -87,7 +87,7 @@
 これを規定している（"assuming the engineer has zero context for our codebase and questionable
 taste" / "Assume they don't know good test design very well"）。
 
-- [ ] **Step 1: `## 想定読者` 節を新設する**
+- [x] **Step 1: `## 想定読者` 節を新設する**
 
 以下の内容を含めること。原文の直訳ではなく、本プロジェクトの実行構成に翻訳して書く。
 
@@ -99,7 +99,7 @@ taste" / "Assume they don't know good test design very well"）。
 - 実装者が必要とする情報（触るファイル、コード、テスト、参照すべきドキュメント、検証方法）を
   すべて計画書内に記載する
 
-- [ ] **Step 2: 既存ルールとの関係を 1 行で明示する**
+- [x] **Step 2: 既存ルールとの関係を 1 行で明示する**
 
 `## 計画書作成の指針` の冒頭に、「以下の各ルールは `## 想定読者` の原則を個別ケースへ
 展開したものである。未記載のケースは同原則から判断する」旨を追記する。
