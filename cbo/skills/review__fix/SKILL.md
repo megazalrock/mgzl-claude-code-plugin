@@ -111,6 +111,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
   - **reviewview 経路で判定を取り込んだ場合のみ**、各修正タスクが完了するたびに、対応する reviewview の finding id が判っている指摘について `mcp__reviewview__report_fix({ findingId, message })` を **1 件ずつ** 呼ぶ（まとめて最後に呼ばない）
     - `message` にはサブエージェントの報告から「何をどう直したか」を 1〜3 行に要約して書く（人間の画面に AI コメントとして表示される）
+    - コメント本文も finding の body と同じ Markdown 基本セットで描画される。識別子・パスはインラインコードで囲み、コード片を載せるときは言語識別子付きのフェンスで囲む（書式の詳細は `cbo/skills/document-saver/references/format-review-result-json.md` の「body」）
     - すでにコミット済みなら `commitSha` も渡す
     - finding id が判らない指摘（突合失敗）・md 報告書はスキップする
     - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 9 の最終レポートに列挙する
