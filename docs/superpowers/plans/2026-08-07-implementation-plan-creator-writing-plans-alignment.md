@@ -120,7 +120,7 @@ taste" / "Assume they don't know good test design very well"）。
 superpowers の Scope Check は「複数の独立サブシステムに跨るなら計画を分割する。各計画は
 単体で動作しテスト可能なソフトウェアを産むこと」を要求する。
 
-- [ ] **Step 1: ステップ1 に「スコープ規模の判定」項目を追加する**
+- [x] **Step 1: ステップ1 に「スコープ規模の判定」項目を追加する**
 
 以下を含める。
 
@@ -131,7 +131,7 @@ superpowers の Scope Check は「複数の独立サブシステムに跨るな�
 - 分割を提案せず 1 本にまとめる判断をした場合は、その根拠を計画書の
   `Architecture`（Task 4 で追加）に記載する
 
-- [ ] **Step 2: 過剰分割ルールとの対を明示する**
+- [x] **Step 2: 過剰分割ルールとの対を明示する**
 
 `cbo/agents/implementation-plan-creator.md:133` の過剰分割ルールに、
 「過大スコープ側の判定はワークフロー ステップ1 の『スコープ規模の判定』を参照」と 1 行追記し、
