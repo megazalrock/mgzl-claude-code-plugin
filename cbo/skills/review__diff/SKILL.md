@@ -87,6 +87,7 @@ $ARGUMENTS を以下の3つに解析する:
      - レビュアー報告の `**位置**` 欄から `file` と `anchor` を組み立てる（`ファイル全体` → `anchor: null`、`なし` → `file: null` かつ `anchor: null`）
      - レビュアー報告の `**提案**` から、フェンス外の平文を `proposals[].text`、フェンス内のコードを `proposals[].code` に分離する（一方しか無ければ他方は `null`）
      - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
+   - 統合の過程で、複数のレビュアーが同根の問題を別々に指摘していたり、一方の指摘が他方の帰結であることに気づいた場合は、`problem` / `reason` の本文で相手の R-ID を `[[R003]]` 記法で参照する（reviewview 上で指摘間のリンクになる。書式と注意点は `cbo/skills/document-saver/references/format-review-result-json.md` の「body」）。レビュアーは並列実行されて互いの指摘を知らないため、この相互参照を張れるのはこのステップだけ
    - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（reviewview の指摘本文に載り、対象リポジトリの `.reviewview/state.db` に永続化されるため）
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
 10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、正本 JSON の `findings` に `severity` が 2 以上の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、正本 JSON の内容を `source` としてそのまま渡してバックグラウンドで教訓蓄積する。`severity` 1 のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
