@@ -429,7 +429,7 @@ superpowers 由来の 6 項目を日本語化して収録する。
 実行時に推測しており、判定が曖昧な場合は安全側の `code-implementer` へ倒している。
 計画書側で担当を明示すれば、この推測が不要になる。
 
-- [ ] **Step 1: ステップの定義をエージェント本文に明記する**
+- [x] **Step 1: ステップの定義をエージェント本文に明記する**
 
 `cbo/agents/implementation-plan-creator.md` のワークフロー ステップ2 冒頭に以下を書く。
 
@@ -438,7 +438,7 @@ superpowers 由来の 6 項目を日本語化して収録する。
   変更対象がテストファイルのみのステップは `test-implementer` が担当する
 - 本体コードとテストの両方を作る作業は、必ず 2 ステップに分割し `blockedBy` で結ぶ
 
-- [ ] **Step 2: テンプレートに `担当` フィールドを追加する**
+- [x] **Step 2: テンプレートに `担当` フィールドを追加する**
 
 ステップ雛形の `**難易度**` の隣に置く。
 
@@ -446,7 +446,7 @@ superpowers 由来の 6 項目を日本語化して収録する。
 - **担当**: code-implementer / test-implementer
 ```
 
-- [ ] **Step 3: 判定基準の重複を確認する**
+- [x] **Step 3: 判定基準の重複を確認する**（確認結果: `impl__execute/SKILL.md:41-44` と一致。テストファイルのみ → `test-implementer`、それ以外 → `code-implementer`、曖昧なら `code-implementer` の 3 点すべて同一。`impl__execute` 側は未変更）
 
 `cbo/skills/impl__execute/SKILL.md:40-44` の判定基準と、Step 1 で書いた基準が
 同一であることを確認する。**このタスクでは `impl__execute` 側を変更しない**
