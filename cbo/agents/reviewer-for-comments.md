@@ -118,7 +118,7 @@ The following types were removed wholesale when a human cleaned up Claude-author
 
 - **Precedent citations** — a parenthetical that cites a prior example as the reason the code was written this way, e.g. `（前例: utils/useStorage.ts の decodeValue）` or `（前例: useIndexStore.test.ts の reactive な mockRoute）`. The existence of a precedent is not evidence that the current code is correct, and the note rots the moment the cited symbol is renamed or deleted. **Flag these even when the cited file and symbol do exist** — this is a different reason from criterion 2 (unresolvable reference). Suggest rewriting the rationale as "what breaks here if this changes"
 - **Cross-references to other comments** — e.g. `（下の月送りのテストと同じ理由。詳細はそちらのコメントを参照）` or `（上の setSupplierId(99) のケースと対称に見る）`. They depend on reading order, so deleting one side or reordering the file strands the reader. Every comment must stand on its own
-- **Explanations of library / framework internals** — e.g. `（@nuxt/test-utils の runtime-utils）`, `（vm.$emit は vnode の onXxx を引くだけ）`, `（型は RouteLocationRaw | false）`. Keep only as far as "why this setting is required". Explaining the mechanism is not the comment's job
+- **Explanations of library / framework internals** — e.g. `（@nuxt/test-utils の runtime-utils）`, `（vm.$emit は vnode の onXxx を引くだけ）`, `（型は RouteLocationRaw | false）`. Keep only as far as "why this setting is required". Explaining the mechanism is not the comment's job. Calibration: a five-line comment tracing `mountSuspended` → `useRouter().replace()` → `mockNuxtImport` → spy count is too much, while the two-line form that keeps only why `route: false` is required, plus the single mechanism that makes it required, is correct. Deleting the comment outright is over-deletion, not compliance.
 - **Spec descriptions that reach into another file's or component's internals** — e.g. what the callee's `watch` emits. This becomes a lie as soon as the other side changes. The caller's circumstances belong in the caller
 - **Full chains of inference** — comments that spell out every intermediate step ("demoted to a fallthrough attribute → no longer present in `props()` → …"). Suggest compressing to a single "conclusion + how it breaks" pair
 
@@ -156,8 +156,8 @@ Severity: `[2]` if the comment is clearly hard to read; `[1]` for minor stylisti
 ### 6. Comment placement and shape
 
 - **Placement** — an explanation belongs directly above the line it governs. When a block has been stacked at the top of a function, or in front of a group of assertions, suggest moving it down to the line where it actually takes effect (`[2]`)
-- **Consolidation** — when the same explanation is repeated in prose across several places, suggest consolidating it into one location (typically a JSDoc block) as a bulleted list, leaving 1–2 lines at each site. **A JSDoc block growing longer through this consolidation is acceptable** and takes precedence over 3.2 — the goal is not "make it shorter" but "stop writing the same thing in prose over and over"
-- **One sentence, one fact** — suggest splitting sentences that stack causes on top of each other (「〜のため、〜なので、〜だから」)
+- **Consolidation** — when the same explanation is repeated in prose across several places, suggest consolidating it into one location (typically a JSDoc block) as a bulleted list, leaving 1–2 lines at each site. **A JSDoc block growing longer through this consolidation is acceptable** and takes precedence over 3.2 — the goal is not "make it shorter" but "stop writing the same thing in prose over and over" (`[2]`)
+- **One sentence, one fact** — suggest splitting sentences that stack causes on top of each other (「〜のため、〜なので、〜だから」). This is `[2]` regardless of character count, and it overrides criterion 5's `[1]` for a sentence under 80 characters
 - **What syntax can express** — when a comment explains something the syntax itself could carry (e.g. a paragraph explaining that a call is deliberately not awaited), suggest replacing it with the syntax (`void`) and keeping only the reason in the comment (`[1]`)
 
 ### 7. Comments that must be preserved
@@ -176,7 +176,12 @@ The past cleanup did **not** remove comments indiscriminately. Never suggest del
 
 **Be conservative about the "obvious" judgment in criterion 3.** What the code reveals is *what it does*, never *why it was done that way*. Even for a one-line implementation, keep the *why* — such as the reason that value is exposed separately from its neighbor.
 
-**AAA comments** (`// Arrange` / `// Act` / `// Assert`) are a project convention. Never flag them, however redundant they look.
+**Comment formats the project explicitly mandates** are never findings — not for volume, not for restating what the code does, and not for referencing the SUT's current behavior. Two exist today:
+
+- **AAA comments** (`// Arrange` / `// Act` / `// Assert`) — a test-structure convention. Never flag them, however redundant they look
+- **Characterization comments** in the `// CHARACTERIZATION: <SUT 行参照> / 運用前提 / 将来の修正候補` form — `test-implementer` requires all three viewpoints, so the comment legitimately exceeds 3.2's line guideline, and its reference to the SUT's current behavior is not the 3.1 "spec descriptions" pattern
+
+When a comment format is mandated elsewhere in the project's own conventions, treat it the same way even if it is not listed here.
 
 ### Explicit out-of-scope reminders
 
