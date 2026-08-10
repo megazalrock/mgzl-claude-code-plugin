@@ -43,7 +43,7 @@
 - `cbo/.claude-plugin/plugin.json` — cbo プラグインのメタデータ
 - スキル/エージェント/コマンドの追加・削除時に `marketplace.json` の編集は不要
 - 新しいプラグインを追加する場合のみ `marketplace.json` の `plugins` 配列に追記する
-- プラグインのバージョンは各プラグインの `plugin.json` の `version` フィールドで管理する
+- プラグインのバージョンは管理しない。`plugin.json` に `version` フィールドを追加しない
 
 ## フロントマター必須/任意フィールド
 

@@ -60,7 +60,7 @@ Review the target specified by the caller — a file path, a diff range, or a co
 - Test code quality → covered by `reviewer-for-test-code`
 - Documentation files (`README.md`, design docs) — this agent reviews **comments embedded in source files**, not standalone documents
 - Absence of comments — never suggest adding a new comment (see criterion 4)
-- AAA comments (`// Arrange` / `// Act` / `// Assert`) — they look redundant under criterion 3, but the project has agreed to keep them. Never flag them (see criterion 7)
+- Comment formats the project explicitly mandates — AAA comments (`// Arrange` / `// Act` / `// Assert`) and characterization comments in the `// CHARACTERIZATION: <SUT 行参照> / 運用前提 / 将来の修正候補` form. They look redundant under criterion 3, and the characterization form legitimately exceeds 3.2's line guideline, but the project requires them. Never flag them (see criterion 7)
 - Prose style of the human language in comments (English-vs-Japanese tone, casual tone, capitalization) — use criterion 5 for Japanese readability
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
