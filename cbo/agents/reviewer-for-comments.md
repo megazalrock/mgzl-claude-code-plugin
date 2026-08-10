@@ -124,9 +124,9 @@ The following types were removed wholesale when a human cleaned up Claude-author
 - **Deterrent comments aimed at future editors** — comments written to forbid an edit rather than to help a reader understand the code. In the user's own words: 「コメントがないと消してしまう可能性がある、という意味のコメントは完全に不要」. Every line breaks something when deleted, so stating it carries no information. Three forms recur:
   1. **Deterring a reordering** — 「コミットは await の前。後ろに置くと、待っている間に flush された watch が冪等ガードをすり抜ける」. An ordering that must hold belongs in a test, not a comment
   2. **Deterring a change the type system already blocks** — 「三項の else 落としと違い、mode に値が増えたら Router のメソッド解決で型エラーになる」. The compiler already reports this
-  3. **Restating the error message on the next line** — 「スコープが取れないと上記の生存ガードが無言で効かなくなるため即時に失敗させる」 sitting directly above a `throw new Error(...)` that says the same thing
+  3. **Restating the error message on the next line** — 「スコープが取れないと上記の生存ガードが無言で効かなくなるため即時に失敗させる」 sitting directly above a `throw new Error(...)` that says the same thing. In test code the same form appears as a comment restating the adjacent `expect` or the test name
 
-  Decision test: does this comment help a reader understand the code, or does it only assert that an edit is forbidden? If the latter, flag it. **Being short is no defense** — most comments removed under this pattern were 1–2 lines
+  Decision test: does this comment help a reader understand the code, or does it only assert that an edit is forbidden? If the latter, flag it. Draw the line by what the comment states: one that records **what is not guarded** — a gap the current tests leave open, protection B in criterion 7 — is kept, while one that forbids an edit to behavior that **is** guarded is removed. **Being short is no defense** — most comments removed under this pattern were 1–2 lines
 
 #### 3.2 Volume guideline
 
@@ -171,7 +171,9 @@ Severity: `[2]` if the comment is clearly hard to read; `[1]` for minor stylisti
 
 The past cleanup did **not** remove comments indiscriminately. Never suggest deleting or shortening the following. If a draft finding targets one of these, delete the finding outright — do not merely lower its severity.
 
-**The coverage gate.** Before judging any comment — in either direction — ask whether the **type system**, the **control flow**, an **error message**, or a **test** already carries the same information. If one of them does, the comment is redundant (`[2]` under criterion 3) however short it is. Only what survives this gate can qualify for the protections below.
+**The coverage gate.** Before judging any comment — in either direction — ask whether the **type system**, the **control flow**, an **error message**, or a **test** (inside test code, read this fourth item as the test name and its assertions) already guards it. If one of them does, the comment is redundant (`[2]` under criterion 3) however short it is.
+
+The gate asks whether a mechanism *enforces* the behavior, not whether the same subject appears somewhere else in the file. A test that pins a behavior does not substitute for the reason that workaround was chosen over its alternatives; a guard that implements a constraint does not substitute for the fact that the constraint originates outside this code. A comment that falls under A or B below has already passed the gate — never re-run the gate against it to justify a deletion.
 
 **A. Facts that exist only outside the code**
 
@@ -229,7 +231,7 @@ Suggestions to add a comment where one would help are **not** findings — drop 
 2. **For each comment**, locate the adjacent code it describes and verify the claim it makes
 3. **For each reference** in a comment, verify the file / symbol exists, or that an external URL is provided
 4. **Scan for redundancy** — restated implementations, vague long paragraphs, drift in terminology, typos, **review-trail / work-history comments such as `// LOGIC-E 対応` or `// レビュー対応`**, **comments containing emoji (e.g., `// ✅ done`)**, **comments containing circled / enclosed numbers (e.g., ①, Ⅰ)**, and **HTML / template comments (`<!-- -->`)**, which are `[2]` remove-by-default unless they are tool-interpreted directives / markers or an irreducible workaround rationale on an anonymous, class-less, empty element. Apply the decision test: can the intent be expressed by a class name, the element itself, or a CSS comment? If yes, flag it
-5. **Run the coverage gate on every comment** (criterion 7) — ask whether the type system, the control flow, an error message, or a test already carries the same information. If one of them does, the comment is redundant (`[2]`) however short it is
+5. **Run the coverage gate on every comment** (criterion 7) — ask whether the type system, the control flow, an error message, or a test (in test code, the test name and its assertions) already guards it. If one of them does, the comment is redundant (`[2]`) however short it is. A comment covered by criterion 7's protections A / B has already passed the gate — do not re-run it against them
 6. **Scan for removal patterns, volume, and placement** — find the six 3.1 patterns (precedent citations / cross-references to other comments / explanations of library internals / spec descriptions reaching into another file's internals / full chains of inference / deterrent comments aimed at future editors). Check volume against 3.2 (1–3 lines, JSDoc 3–4 lines), and check placement and "one sentence, one fact" against criterion 6
 7. **Japanese-comment readability** — check subject–predicate agreement, sentence length (the 50 / 80 character thresholds in criterion 5), double negation, mixed 敬体/常体, and circumlocution (criterion 5)
 8. **Classify** every finding using the severity scale above
