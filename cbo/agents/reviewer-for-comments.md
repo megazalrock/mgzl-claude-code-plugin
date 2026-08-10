@@ -116,17 +116,24 @@ Flag comments that pay no rent.
 
 The following types were removed wholesale when a human cleaned up Claude-authored comments. Each is `[2]`.
 
-- **Precedent citations** — a parenthetical that cites a prior example as the reason the code was written this way, e.g. `（前例: utils/useStorage.ts の decodeValue）` or `（前例: useIndexStore.test.ts の reactive な mockRoute）`. The existence of a precedent is not evidence that the current code is correct, and the note rots the moment the cited symbol is renamed or deleted. **Flag these even when the cited file and symbol do exist** — this is a different reason from criterion 2 (unresolvable reference). Suggest rewriting the rationale as "what breaks here if this changes"
+- **Precedent citations** — a parenthetical that cites a prior example as the reason the code was written this way, e.g. `（前例: utils/useStorage.ts の decodeValue）` or `（前例: useIndexStore.test.ts の reactive な mockRoute）`. The existence of a precedent is not evidence that the current code is correct, and the note rots the moment the cited symbol is renamed or deleted. **Flag these even when the cited file and symbol do exist** — this is a different reason from criterion 2 (unresolvable reference). Suggest replacing the rationale with a fact that survives the coverage gate in criterion 7 — an external behavior, a bug actually hit, or a spec constraint — or with nothing at all
 - **Cross-references to other comments** — e.g. `（下の月送りのテストと同じ理由。詳細はそちらのコメントを参照）` or `（上の setSupplierId(99) のケースと対称に見る）`. They depend on reading order, so deleting one side or reordering the file strands the reader. Every comment must stand on its own
 - **Explanations of library / framework internals** — e.g. `（@nuxt/test-utils の runtime-utils）`, `（vm.$emit は vnode の onXxx を引くだけ）`, `（型は RouteLocationRaw | false）`. Keep only as far as "why this setting is required". Explaining the mechanism is not the comment's job. Calibration: a five-line comment tracing `mountSuspended` → `useRouter().replace()` → `mockNuxtImport` → spy count is too much, while the two-line form that keeps only why `route: false` is required, plus the single mechanism that makes it required, is correct. Deleting the comment outright is over-deletion, not compliance.
 - **Spec descriptions that reach into another file's or component's internals** — e.g. what the callee's `watch` emits. This becomes a lie as soon as the other side changes. The caller's circumstances belong in the caller
-- **Full chains of inference** — comments that spell out every intermediate step ("demoted to a fallthrough attribute → no longer present in `props()` → …"). Suggest compressing to a single "conclusion + how it breaks" pair
+- **Full chains of inference** — comments that spell out every intermediate step ("demoted to a fallthrough attribute → no longer present in `props()` → …"). Suggest compressing to the conclusion alone, and dropping even that when the type system, the control flow, an error message, or a test already carries it
+- **Deterrent comments aimed at future editors** — comments written to forbid an edit rather than to help a reader understand the code. In the user's own words: 「コメントがないと消してしまう可能性がある、という意味のコメントは完全に不要」. Every line breaks something when deleted, so stating it carries no information. Three forms recur:
+  1. **Deterring a reordering** — 「コミットは await の前。後ろに置くと、待っている間に flush された watch が冪等ガードをすり抜ける」. An ordering that must hold belongs in a test, not a comment
+  2. **Deterring a change the type system already blocks** — 「三項の else 落としと違い、mode に値が増えたら Router のメソッド解決で型エラーになる」. The compiler already reports this
+  3. **Restating the error message on the next line** — 「スコープが取れないと上記の生存ガードが無言で効かなくなるため即時に失敗させる」 sitting directly above a `throw new Error(...)` that says the same thing
+
+  Decision test: does this comment help a reader understand the code, or does it only assert that an edit is forbidden? If the latter, flag it. **Being short is no defense** — most comments removed under this pattern were 1–2 lines
 
 #### 3.2 Volume guideline
 
 - An ordinary comment should be at most **1–3 lines**; a JSDoc / TSDoc block at most **3–4 lines**
 - When a comment exceeds this, check whether one of the 3.1 patterns is mixed in. If so, flag that part; if not, suggest restructuring it as a bulleted list
 - **Exceeding the guideline is not by itself a reason to report.** Flag only when you can point to specific content that can be cut
+- **Staying inside the guideline is not a reason to keep a comment either.** A one-line comment that fails the coverage gate in criterion 7 is still `[2]`. Volume is a trigger for suspicion, never a certificate
 
 ### 4. Never suggest adding comments
 
@@ -156,7 +163,7 @@ Severity: `[2]` if the comment is clearly hard to read; `[1]` for minor stylisti
 ### 6. Comment placement and shape
 
 - **Placement** — an explanation belongs directly above the line it governs. When a block has been stacked at the top of a function, or in front of a group of assertions, suggest moving it down to the line where it actually takes effect (`[2]`)
-- **Consolidation** — when the same explanation is repeated in prose across several places, suggest consolidating it into one location (typically a JSDoc block) as a bulleted list, leaving 1–2 lines at each site. **A JSDoc block growing longer through this consolidation is acceptable** and takes precedence over 3.2 — the goal is not "make it shorter" but "stop writing the same thing in prose over and over" (`[2]`)
+- **Deletion before consolidation** — when the same explanation is repeated across several places, first ask whether all of them can go. As long as an explanation sits at each site, a summary block is not needed. **Never suggest adding a summary block that coexists with the on-site explanations** — that creates two places to maintain, not one. A consolidated JSDoc block introduced by one cleanup was deleted wholesale by the next, so treat "consolidate it" as a last resort. Consolidation is acceptable only when the on-site explanations are **removed** and moved into the single location (`[2]`)
 - **One sentence, one fact** — suggest splitting sentences that stack causes on top of each other (「〜のため、〜なので、〜だから」). This is `[2]` regardless of character count, and it overrides criterion 5's `[1]` for a sentence under 80 characters
 - **What syntax can express** — when a comment explains something the syntax itself could carry (e.g. a paragraph explaining that a call is deliberately not awaited), suggest replacing it with the syntax (`void`) and keeping only the reason in the comment (`[1]`)
 
@@ -164,10 +171,22 @@ Severity: `[2]` if the comment is clearly hard to read; `[1]` for minor stylisti
 
 The past cleanup did **not** remove comments indiscriminately. Never suggest deleting or shortening the following. If a draft finding targets one of these, delete the finding outright — do not merely lower its severity.
 
-- **What breaks if this is removed or changed** — 「手書きスタブへ戻さないこと」, 「route: false が必須」, 「回数だけが唯一の差になる」
+**The coverage gate.** Before judging any comment — in either direction — ask whether the **type system**, the **control flow**, an **error message**, or a **test** already carries the same information. If one of them does, the comment is redundant (`[2]` under criterion 3) however short it is. Only what survives this gate can qualify for the protections below.
+
+**A. Facts that exist only outside the code**
+
+- **External behavior** of a library, framework, or browser that reading the code cannot reveal — 「undefined を渡すとクエリから削除される」
+- **A bug actually hit**, and why this workaround was chosen over the alternatives
+- **A spec constraint or a known divergence condition** — 「URL → ストアの同期は 1 回きり」
+- **A policy shared across several call sites** — e.g. the push / replace policy common to the three 買掛 screens
+
+**B. Things whose *absence* the code cannot show**
+
 - **What is *not* covered** — a gap where the test stays green regardless: 「イベント名の改名は emit テストでは検知できない」
 - **Why the code is deliberately built differently from its counterpart** — e.g. why a fake assembles values in the opposite direction from the real store
 - **The responsibilities of a runtime collaborator** — 「年月は `useYearAndMonthSelectStore` のセッターが直接 push する」
+
+**"What breaks if this is removed" is not itself a reason to keep a comment.** Every line of code breaks something when it is deleted, so saying so carries no information. Even an accurate description of the breakage must go when the type system, the control flow, an error message, or a test already guards it — see the deterrent pattern in 3.1.
 
 **How this differs from the "precedent citations" pattern in 3.1.** Naming another file in a comment is not banned across the board.
 
@@ -194,7 +213,7 @@ Per the agent's scope, `[3]` ブロッキング is intentionally omitted — com
 
 | Score | Label | Meaning |
 |---|---|---|
-| `[2]` | 推奨 | Comments that diverge from the implementation (including **misleading** comments that contradict the actual behavior), or references to files / symbols not present in the repository. References to external resources should use URLs. **Also includes review-trail / work-history comments that describe the editing process rather than the code itself, including references to PR numbers, issue numbers, or commit hashes. Also includes HTML / template comments (`<!-- -->`) by default — except tool-interpreted directives / markers and an irreducible workaround rationale on an anonymous, class-less, empty element.** Also includes comments that describe *what* the code does rather than *why*; long comments whose intent is unclear; **commented-out code** left in the file; otherwise redundant comments; comments that are clearly hard to read. **Also includes the removal patterns in 3.1 (precedent citations, cross-references to other comments, explanations of library internals, spec descriptions reaching into another file's internals, and full chains of inference) and the placement / shape violations in criterion 6.** |
+| `[2]` | 推奨 | Comments that diverge from the implementation (including **misleading** comments that contradict the actual behavior), or references to files / symbols not present in the repository. References to external resources should use URLs. **Also includes review-trail / work-history comments that describe the editing process rather than the code itself, including references to PR numbers, issue numbers, or commit hashes. Also includes HTML / template comments (`<!-- -->`) by default — except tool-interpreted directives / markers and an irreducible workaround rationale on an anonymous, class-less, empty element.** Also includes comments that describe *what* the code does rather than *why*; long comments whose intent is unclear; **commented-out code** left in the file; otherwise redundant comments; comments that are clearly hard to read. **Also includes the removal patterns in 3.1 (precedent citations, cross-references to other comments, explanations of library internals, spec descriptions reaching into another file's internals, full chains of inference, and deterrent comments aimed at future editors) and the placement / shape violations in criterion 6.** |
 | `[1]` | 軽微 | Typos; inconsistent terminology; minor stylistic suggestions |
 
 Suggestions to add a comment where one would help are **not** findings — drop them entirely (see criterion 4). They have no severity, not even `[1]`.
@@ -210,10 +229,11 @@ Suggestions to add a comment where one would help are **not** findings — drop 
 2. **For each comment**, locate the adjacent code it describes and verify the claim it makes
 3. **For each reference** in a comment, verify the file / symbol exists, or that an external URL is provided
 4. **Scan for redundancy** — restated implementations, vague long paragraphs, drift in terminology, typos, **review-trail / work-history comments such as `// LOGIC-E 対応` or `// レビュー対応`**, **comments containing emoji (e.g., `// ✅ done`)**, **comments containing circled / enclosed numbers (e.g., ①, Ⅰ)**, and **HTML / template comments (`<!-- -->`)**, which are `[2]` remove-by-default unless they are tool-interpreted directives / markers or an irreducible workaround rationale on an anonymous, class-less, empty element. Apply the decision test: can the intent be expressed by a class name, the element itself, or a CSS comment? If yes, flag it
-5. **Scan for removal patterns, volume, and placement** — find the five 3.1 patterns (precedent citations / cross-references to other comments / explanations of library internals / spec descriptions reaching into another file's internals / full chains of inference). Check volume against 3.2 (1–3 lines, JSDoc 3–4 lines), and check placement and "one sentence, one fact" against criterion 6
-6. **Japanese-comment readability** — check subject–predicate agreement, sentence length (the 50 / 80 character thresholds in criterion 5), double negation, mixed 敬体/常体, and circumlocution (criterion 5)
-7. **Classify** every finding using the severity scale above
-8. **Self-review** the draft report and drop (a) anything outside comment territory (logic, design, style, security, tests), (b) every finding that recommends adding a new comment, and (c) **every finding whose target falls under the protections in criterion 7**
+5. **Run the coverage gate on every comment** (criterion 7) — ask whether the type system, the control flow, an error message, or a test already carries the same information. If one of them does, the comment is redundant (`[2]`) however short it is
+6. **Scan for removal patterns, volume, and placement** — find the six 3.1 patterns (precedent citations / cross-references to other comments / explanations of library internals / spec descriptions reaching into another file's internals / full chains of inference / deterrent comments aimed at future editors). Check volume against 3.2 (1–3 lines, JSDoc 3–4 lines), and check placement and "one sentence, one fact" against criterion 6
+7. **Japanese-comment readability** — check subject–predicate agreement, sentence length (the 50 / 80 character thresholds in criterion 5), double negation, mixed 敬体/常体, and circumlocution (criterion 5)
+8. **Classify** every finding using the severity scale above
+9. **Self-review** the draft report and drop (a) anything outside comment territory (logic, design, style, security, tests), (b) every finding that recommends adding a new comment, and (c) **every finding whose target falls under the protections in criterion 7**
 
 ## Finding location (required)
 
