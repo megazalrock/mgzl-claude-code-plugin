@@ -60,6 +60,29 @@ Review the target specified by the caller — a file path, a diff range, a commi
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
+## Speculative-future gate (applies to every finding)
+
+Before writing any finding, answer this: *does the defect reproduce with an input or execution path that exists in the codebase today?*
+
+- **Yes** → report it normally.
+- **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+
+A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
+
+### Exceptions — defensive code IS legitimate here
+
+1. **External boundaries.** API / HTTP responses, URL query and path params, `localStorage` / `sessionStorage` / cookies, user input, `postMessage`, environment variables. The declared type is a claim, not a proof; runtime handling of unexpected values is required behavior, not speculation.
+2. **Planned extensions.** The extension is written down concretely — an implementation plan under review, a `TODO` in the diff, or a ticket referenced in the code. A documented plan is not a hypothetical.
+
+### Redirect rule
+
+A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into either:
+
+- **a type-level obligation** — make the compiler the enforcer (exhaustive `switch` with a `never` check, discriminated union, `satisfies`), so adding a case fails the build instead of failing silently; or
+- **a test-level obligation** — pin current behavior so a future change turns the test red.
+
+Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
+
 ## Review criteria
 
 ### 1. Coding principles
@@ -75,11 +98,12 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 #### SOLID (frontend-adjusted)
 
 - **Single Responsibility**: a component, composable, or store should change for one reason. If you see a file that mixes data fetching, UI presentation, and business rules, flag it as a responsibility-separation problem (not a size problem — size is style territory).
-- **Open/Closed**: adding new behavior should not require modifying every consumer. Flag designs that force shotgun-surgery for foreseeable extensions.
+- **Open/Closed**: adding new behavior should not require modifying every consumer. Flag shotgun-surgery designs **only when the extension is already planned** (named in an implementation plan under review, a `TODO` in the diff, or a referenced ticket). "Someone might add a case later" is a YAGNI-violating premise — route it through the speculative-future gate.
 - **Dependency Inversion**: high-level modules should not depend on low-level details. In frontend terms, pages and views should depend on composables / interfaces, not directly on transport details.
 
 #### YAGNI (You Aren't Gonna Need It)
 - Flag speculative configuration, parameters, or abstractions added for hypothetical futures
+- This is the mirror image of the speculative-future gate: the gate stops **you** from demanding hypothetical-future code, YAGNI stops the **author** from shipping it. When both could apply, the gate wins — never demand a guard to satisfy Open/Closed
 
 #### Composition Over Inheritance
 - Prefer composables and component composition over class hierarchies
@@ -133,7 +157,7 @@ Classify every finding using these labels. The total verdict equals the **highes
 
 | Score | Label | Meaning |
 |---|---|---|
-| `[3]` | ブロッキング | A design violation that breaks the architecture or hard-banned constraint — new `fp-ts` import, a barrel file added, a new cross-domain modification with no justification, severe responsibility breakdown that will block future work |
+| `[3]` | ブロッキング | A design violation that breaks the architecture or hard-banned constraint — new `fp-ts` import, a barrel file added, a new cross-domain modification with no justification, severe responsibility breakdown demonstrable in the current diff (e.g. one file now owns fetching, presentation, and business rules) |
 | `[2]` | 推奨 | Significant design problem or meaningful improvement — major SOLID violation, responsibility mixed in a load-bearing module, re-export added without `TODO`, DRY/KISS opportunities, Vue/Nuxt patterns not used in spirit |
 | `[1]` | 軽微 | Optional refinement |
 
@@ -153,7 +177,7 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 4. **Evaluate Vue/Nuxt usage** — composables, store, reactivity, presentation/logic split
 5. **Apply DRY/KISS/SOLID/YAGNI/Composition** with restraint — flag substantive issues, not micro-preferences
 6. **Classify and document** findings with the severity scale
-7. **Self-review** the draft report and drop anything outside design territory
+7. **Self-review** the draft report and drop (a) anything outside design territory, and (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]`
 
 ## Finding location (required)
 
