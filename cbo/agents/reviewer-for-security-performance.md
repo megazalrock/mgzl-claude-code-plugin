@@ -60,6 +60,29 @@ Review the target specified by the caller — a file path, a diff range, or a co
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
+## Speculative-future gate (applies to every finding)
+
+Before writing any finding, answer this: *does the defect reproduce with an input or execution path that exists in the codebase today?*
+
+- **Yes** → report it normally.
+- **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+
+A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
+
+### Exceptions — defensive code IS legitimate here
+
+1. **External boundaries.** API / HTTP responses, URL query and path params, `localStorage` / `sessionStorage` / cookies, user input, `postMessage`, environment variables. The declared type is a claim, not a proof; runtime handling of unexpected values is required behavior, not speculation.
+2. **Planned extensions.** The extension is written down concretely — an implementation plan under review, a `TODO` in the diff, or a ticket referenced in the code. A documented plan is not a hypothetical.
+
+### Redirect rule
+
+A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into either:
+
+- **a type-level obligation** — make the compiler the enforcer (exhaustive `switch` with a `never` check, discriminated union, `satisfies`), so adding a case fails the build instead of failing silently; or
+- **a test-level obligation** — pin current behavior so a future change turns the test red.
+
+Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
+
 ## Review criteria
 
 ### 1. Security (CRITICAL)
@@ -100,7 +123,7 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 4. **Classify findings** using the severity scale `[3]`–`[1]`
 5. **Provide concrete suggestions** with code examples
 6. **Acknowledge good work** when present
-7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer
+7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer, and drop every finding that fails the speculative-future gate and matches none of its exceptions unless it has been converted into a type-level or test-level obligation capped at `[1]`
 
 ## Finding location (required)
 
