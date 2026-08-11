@@ -66,6 +66,7 @@ Before writing any finding, answer this: *does the defect reproduce with an inpu
 
 - **Yes** → report it normally.
 - **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+- **The finding has no input premise at all** (duplicated logic, a banned import, a hardcoded secret, a responsibility split that is wrong as written) → the gate does not apply; report it normally.
 
 A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
 
@@ -94,7 +95,7 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 
 ### 2. Edge-case coverage
 
-Every edge case you list must be traced to an input that can occur today — check the declared type, every call site in the diff, and the API contract. An input the type system forbids and no call site produces is not an edge case; it is a speculative future.
+Every edge case you list must be traced to an input that can occur today — check the declared type, every call site you can find (search the repository when the diff alone is not conclusive), and the API contract. An input the type system forbids and no call site produces is not an edge case; it is a speculative future.
 
 - Empty arrays, empty strings, `null`, `undefined`, zero, negative numbers
 - Maximum sizes and overflow
@@ -152,6 +153,8 @@ Focus on **algorithmic** problems. UI-specific performance (re-renders, memory l
 ### 5. Specification reviews (Markdown)
 
 When the input is a Markdown implementation specification rather than code, evaluate the same dimensions at the design-intent level: does the described logic cover the necessary branches and edge cases, is the described error-handling strategy complete, does the proposed approach scale to expected data volumes.
+
+When the review target is a Markdown specification, the document itself is the planned extension under Exception 2 — the gate does not suppress findings about the proposed implementation. Apply the gate only to premises that go beyond what the specification describes.
 
 ## Severity scale (3 levels)
 

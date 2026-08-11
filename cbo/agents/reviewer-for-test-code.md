@@ -63,6 +63,7 @@ Before writing any finding, answer this: *does the defect reproduce with an inpu
 
 - **Yes** → report it normally.
 - **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+- **The finding has no input premise at all** (duplicated logic, a banned import, a hardcoded secret, a responsibility split that is wrong as written) → the gate does not apply; report it normally.
 
 A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
 

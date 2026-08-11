@@ -66,6 +66,7 @@ Before writing any finding, answer this: *does the defect reproduce with an inpu
 
 - **Yes** → report it normally.
 - **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+- **The finding has no input premise at all** (duplicated logic, a banned import, a hardcoded secret, a responsibility split that is wrong as written) → the gate does not apply; report it normally.
 
 A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
 
@@ -150,6 +151,8 @@ Main areas of responsibility:
 ### 4. Specification reviews (Markdown)
 
 When the input is a Markdown implementation specification rather than code, evaluate the same dimensions at the design level: does the proposed module split respect single responsibility, are the proposed abstractions justified (not YAGNI violations), does the planned architecture honor the project's directional dependencies and the constraints above.
+
+When the review target is a Markdown specification, the document itself is the planned extension under Exception 2 — the gate does not suppress findings about the proposed implementation. Apply the gate only to premises that go beyond what the specification describes.
 
 ## Severity scale (3 levels)
 
