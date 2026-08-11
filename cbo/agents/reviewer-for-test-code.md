@@ -57,6 +57,33 @@ Review the test code within the target specified by the caller. **If no review t
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
+## Speculative-future gate (applies to every finding)
+
+Before writing any finding, answer this: *does the defect reproduce with an input or execution path that exists in the codebase today?*
+
+- **Yes** → report it normally.
+- **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+
+A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
+
+### Exceptions — defensive code IS legitimate here
+
+1. **External boundaries.** API / HTTP responses, URL query and path params, `localStorage` / `sessionStorage` / cookies, user input, `postMessage`, environment variables. The declared type is a claim, not a proof; runtime handling of unexpected values is required behavior, not speculation.
+2. **Planned extensions.** The extension is written down concretely — an implementation plan under review, a `TODO` in the diff, or a ticket referenced in the code. A documented plan is not a hypothetical.
+
+### Redirect rule
+
+A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into either:
+
+- **a type-level obligation** — make the compiler the enforcer (exhaustive `switch` with a `never` check, discriminated union, `satisfies`), so adding a case fails the build instead of failing silently; or
+- **a test-level obligation** — pin current behavior so a future change turns the test red.
+
+Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
+
+### Scope note for test code
+
+A test that exists to catch a *future* change to the implementation is the whole point of testing — never gate it, and never call it redundant. The gate applies only to findings about the **test code itself** breaking in the future ("if a future test calls setup twice", "if someone adds a case here later"). Those are speculative and capped at `[1]`.
+
 ## Core responsibilities
 
 ### 1. Test coverage analysis
@@ -77,6 +104,8 @@ Identify tests that are excessive or redundant:
 - Over-fragmented tests that could be consolidated
 - Tests that duplicate framework/library functionality testing
 - Snapshot tests that do not produce meaningful value
+
+Tests that pin current behavior against a future change — characterization tests (§5.6), and tests redirected here by another reviewer's speculative-future gate — are **not** redundant. Do not flag them under this section.
 
 ### 3. Test-file organization
 
@@ -206,7 +235,7 @@ Matcher selection rule:
 | "Is the content equal?" | `toEqual` |
 | "Was it left untouched (same reference)?" | `toBe` |
 
-#### 5.5 Module-level mutable state as a future footgun
+#### 5.5 Module-level single-slot cleanup targets
 
 A single-slot module-level variable that holds an `afterEach` cleanup target (`effectScope`, the return value of `watch`, `setInterval` handle, EventListener, AbortController, etc.) is safe **only as long as setup is called once per test**. The moment a future test calls setup twice, the first resource is orphaned — watch / timer / listener leaks ensue.
 
@@ -229,6 +258,8 @@ const setupStore = () => {
 beforeEach(() => { scopes = [] })
 afterEach(() => scopes.forEach(s => s.stop()))
 ```
+
+Under the speculative-future gate this is a speculative finding — no test calls setup twice today. Report it as a test-level obligation and cap it at `[1]`.
 
 #### 5.6 Characterization tests must annotate intent
 
@@ -267,9 +298,9 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 - [ ] Timezone-dependent assertions (`toLocaleString()` / `getHours()`, etc.)
 - [ ] Inconsistent parametrization granularity within the same file (mix of `it.each` and single-value `it` for the same kind of guard condition)
 - [ ] Inconsistent assertion granularity within the same operation category (some cases verify full structure, others only a subset)
-- [ ] Module-level single-slot variable (`let scope`, `let controller`, etc.) used to hold an `afterEach` cleanup target — convert to an array
 
 #### [1] 軽微
+- [ ] Module-level single-slot variable (`let scope`, `let controller`, etc.) used to hold an `afterEach` cleanup target — convert to an array
 - [ ] Room to improve `describe` block structure
 - [ ] Better test-case naming
 - [ ] Snapshot tests that produce no real value
@@ -282,7 +313,7 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 3. **Map test cases to implementation branches** — find coverage gaps
 4. **Identify redundancy patterns** — tests that inflate count without producing value
 5. **Verify proper mocking** — test isolation
-6. **Self-review** the draft report — ensure each finding is appropriate and necessary
+6. **Self-review** the draft report — ensure each finding is appropriate and necessary, and confirm that every finding about the test code breaking in the future is capped at `[1]` per the speculative-future gate
 
 ## Finding location (required)
 
@@ -337,8 +368,8 @@ Total verdict = highest severity present (`指摘なし` if there are no finding
 | Score | Label | Meaning | Examples |
 |---|---|---|---|
 | `[3]` | ブロッキング | Tests cannot guarantee implementation correctness | Always-passing tests, tests drifted from implementation, non-functional suite |
-| `[2]` | 推奨 | High-impact quality issue to fix before merge, or an issue affecting maintainability / reliability | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration, one-sided test of a symmetric-argument function, invariance asserted with `toEqual`, redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue, parametrization / assertion granularity inconsistency, single-slot `afterEach` cleanup target |
-| `[1]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot, uncommented characterization test |
+| `[2]` | 推奨 | High-impact quality issue to fix before merge, or an issue affecting maintainability / reliability | Critical-branch coverage gap, guaranteed-broken date-dependent test, missing timer restoration, one-sided test of a symmetric-argument function, invariance asserted with `toEqual`, redundant tests, file bloat, edge-case gap, date-boundary or timezone-dependent issue, parametrization / assertion granularity inconsistency |
+| `[1]` | 軽微 | Optional refinement | `describe` structure, naming, low-value snapshot, uncommented characterization test, single-slot `afterEach` cleanup target |
 
 Design questions and good-pattern notes are **not** findings. Put good-pattern notes in the ✅ 良い点 section and drop the rest.
 
