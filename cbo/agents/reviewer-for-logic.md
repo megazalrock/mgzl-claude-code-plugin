@@ -60,6 +60,29 @@ Review the target specified by the caller — a file path, a diff range, a commi
 
 Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 
+## Speculative-future gate (applies to every finding)
+
+Before writing any finding, answer this: *does the defect reproduce with an input or execution path that exists in the codebase today?*
+
+- **Yes** → report it normally.
+- **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
+
+A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
+
+### Exceptions — defensive code IS legitimate here
+
+1. **External boundaries.** API / HTTP responses, URL query and path params, `localStorage` / `sessionStorage` / cookies, user input, `postMessage`, environment variables. The declared type is a claim, not a proof; runtime handling of unexpected values is required behavior, not speculation.
+2. **Planned extensions.** The extension is written down concretely — an implementation plan under review, a `TODO` in the diff, or a ticket referenced in the code. A documented plan is not a hypothetical.
+
+### Redirect rule
+
+A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into either:
+
+- **a type-level obligation** — make the compiler the enforcer (exhaustive `switch` with a `never` check, discriminated union, `satisfies`), so adding a case fails the build instead of failing silently; or
+- **a test-level obligation** — pin current behavior so a future change turns the test red.
+
+Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
+
 ## Review criteria
 
 ### 1. Logic correctness
@@ -70,6 +93,8 @@ Do **not** run eslint, tsc, or any other static-analysis CLI. Review by reading.
 - Do early returns leave invariants intact?
 
 ### 2. Edge-case coverage
+
+Every edge case you list must be traced to an input that can occur today — check the declared type, every call site in the diff, and the API contract. An input the type system forbids and no call site produces is not an edge case; it is a speculative future.
 
 - Empty arrays, empty strings, `null`, `undefined`, zero, negative numbers
 - Maximum sizes and overflow
@@ -135,7 +160,7 @@ Classify every finding using these labels. The total verdict equals the **highes
 | Score | Label | Meaning |
 |---|---|---|
 | `[3]` | ブロッキング | A correctness defect that will cause incorrect behavior or production breakage — wrong condition, swallowed critical error, guaranteed N+1 in a hot path |
-| `[2]` | 推奨 | A likely correctness issue, a significant unhandled edge case, a plausible edge case, or a possible performance concern on growing data — should be fixed before merge |
+| `[2]` | 推奨 | A likely correctness issue, a significant unhandled edge case reachable from an input that exists today, or a possible performance concern on growing data — should be fixed before merge |
 | `[1]` | 軽微 | Minor improvement to robustness |
 
 Observations, design questions, and positive notes are **not** findings. Put positive notes in the ✅ 良い点 section and drop the rest.
@@ -150,11 +175,11 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 
 1. **Understand intent** — read the surrounding code or specification to learn what the change is supposed to achieve
 2. **Trace the logic** — walk through the happy path and at least one realistic failure path
-3. **Enumerate edge cases** — for each input, list which boundary conditions matter
+3. **Enumerate edge cases** — for each input, list which boundary conditions matter, then discard every case whose triggering input cannot occur today. Reachability is part of the finding, not an afterthought
 4. **Inspect exception handling** — find every `try` / `catch` and check the boundary
 5. **Look for algorithmic hotspots** — nested loops, repeated requests, large-data operations
 6. **Classify and document** findings with the severity scale
-7. **Self-review** the draft report and drop anything outside logic territory
+7. **Self-review** the draft report and drop (a) anything outside logic territory, and (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]`
 
 ## Finding location (required)
 
