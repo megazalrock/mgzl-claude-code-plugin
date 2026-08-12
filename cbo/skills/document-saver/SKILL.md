@@ -12,6 +12,7 @@ model: sonnet
 以下のいずれかのドキュメント種類を特定する：
 - **レビュー結果**: レビューエージェント（reviewer-for-logic、reviewer-for-design、reviewer-for-security-performance、reviewer-for-test-code）が出力したレビュー結果
 - **実装計画書**: implementation-plan-creator サブエージェントが出力した実装計画書
+- **軽量版実装計画書**: implementation-plan-creator-lite サブエージェントが出力した、コードサンプルを排した実装計画書
 - **調査レポート**: コードベースや技術調査の結果
 - **技術メモ**: 実装中に得た知見や気づき
 - **議論まとめ**: 会話で決定した内容や要件のまとめ
@@ -34,6 +35,7 @@ model: sonnet
 |------|-------------|
 | レビュー結果 | [format-review-result.md](references/format-review-result.md) |
 | 実装計画書 | [format-implementation-plan.md](references/format-implementation-plan.md) |
+| 軽量版実装計画書 | [format-implementation-plan-lite.md](references/format-implementation-plan-lite.md) |
 | 調査レポート | [format-investigation.md](references/format-investigation.md) |
 | 技術メモ | [format-technical-memo.md](references/format-technical-memo.md) |
 | 議論まとめ | [format-discussion-summary.md](references/format-discussion-summary.md) |
