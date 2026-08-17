@@ -53,14 +53,11 @@ $ARGUMENTS を以下の3つに解析する:
   - 各タスクは「1つのファイルの差分を、1つの観点専門のサブエージェントでレビューする」単位
   - 観点（=サブエージェント）の選び分け:
     - 通常モード:
-      - テストファイル → 以下の2つ
-        - @reviewer-for-test-code
-        - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
-      - その他のファイル → 以下の4つ
+      - テストファイル → @reviewer-for-test-code のみ
+      - その他のファイル → 以下の3つ
         - @reviewer-for-logic（実装の正当性・エッジケース・例外処理）
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
         - @reviewer-for-security-performance（セキュリティ・パフォーマンス）
-        - @reviewer-for-comments（コメントの実装一致性・参照妥当性・冗長性）
     - 簡易モード（`--simple` 指定時）:
       - テストファイル → @reviewer-for-test-code のみ
       - その他のファイル → 以下の2つ
