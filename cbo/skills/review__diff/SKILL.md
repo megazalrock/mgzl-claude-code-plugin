@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 このスキルではレビューを行い、レビュー結果をまとめたり、実装計画書を作成したりすることに集中する
-**このスキルの実行ではファイルの修正を行ってはならない**（教訓ファイルはレビュー対象コードではなく knowledge ストアであり、本制約の対象外）
+**このスキルの実行ではファイルの修正を行ってはならない**
 
 ## 引数
 
@@ -68,7 +68,7 @@ $ARGUMENTS を以下の3つに解析する:
     - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。reviewview が表示する差分と行番号を一致させるため）
     - staged モード: `git diff --cached -- <filepath>`
     - worktree モード: `git diff -- <filepath>`
-    - staged モードのみ、reviewview が表示する差分（`git diff HEAD`）と行番号が一致しない可能性が残る（Step 11 で判定する）
+    - staged モードのみ、reviewview が表示する差分（`git diff HEAD`）と行番号が一致しない可能性が残る（Step 10 で判定する）
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
   - サブエージェントへの指示に「各指摘には差分のハンク行番号に基づく `**位置**` 欄（new 側の行番号を優先）を必ず記載すること。行番号はハンクヘッダー `@@ -a,b +c,d @@` を起点に、new 側なら `+` 行と文脈行のみを数えて算出すること」を含める
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
@@ -87,25 +87,24 @@ $ARGUMENTS を以下の3つに解析する:
    - 統合の過程で、複数のレビュアーが同根の問題を別々に指摘していたり、一方の指摘が他方の帰結であることに気づいた場合は、`problem` / `reason` の本文で相手の R-ID を `[[R003]]` 記法で参照する（reviewview 上で指摘間のリンクになる。書式と注意点は `cbo/skills/document-saver/references/format-review-result-json.md` の「body」）。レビュアーは並列実行されて互いの指摘を知らないため、この相互参照を張れるのはこのステップだけ
    - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（reviewview の指摘本文に載り、対象リポジトリの `.reviewview/state.db` に永続化されるため）
    - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
-10. 知見蓄積: **簡易モード（`--simple` 指定時）はこのステップを実行せずスキップする**。通常モードでは、正本 JSON の `findings` に `severity` が 2 以上の指摘が **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、正本 JSON の内容を `source` としてそのまま渡してバックグラウンドで教訓蓄積する。`severity` 1 のみ・0 件ならスキップする。結果は待たず、すぐに 11. に進む。
-11. 保存した報告書を reviewview に投入する
-   - 投入対象の findings（`file: null` の指摘を除いた全指摘）が **0 件** の場合は reviewview へ投入しない（reviewview の `findings` は 1 件以上必須。0 件の投入はバリデーションエラーになる）。Step 12 をスキップし、Step 13 で正本 JSON の保存先パスと、指摘が無かった旨（`file: null` で載せられなかった指摘があればその本文）を報告して終了する
+10. 保存した報告書を reviewview に投入する
+   - 投入対象の findings（`file: null` の指摘を除いた全指摘）が **0 件** の場合は reviewview へ投入しない（reviewview の `findings` は 1 件以上必須。0 件の投入はバリデーションエラーになる）。Step 11 をスキップし、Step 12 で正本 JSON の保存先パスと、指摘が無かった旨（`file: null` で載せられなかった指摘があればその本文）を報告して終了する
    - `base` / `head` を diff モードに応じて決める（reviewview は `git diff <base> [<head>]` を表示する。pathspec は渡せないため差分全体が表示される）:
      - コミット比較モード / merge-base モード: `base` = `base_commit`、`head` = `head_commit`（Step 6 で各サブエージェントに渡した差分と完全に一致する）
      - worktree モード: `base` = `head_commit`、`head` は **渡さない**（`git diff HEAD` = ステージ + 未ステージ。worktree モードはステージが空なのでレビューした差分と一致する）
      - staged モード: `git diff --name-only`（未ステージの変更）を確認する
        - 出力が空 → ステージ内容と作業ツリーが一致するので worktree モードと同じ渡し方をする
-       - 出力が空でない → reviewview には `git diff --cached` を再現する手段が無い。`base` = `head_commit` / `head` なしで投入したうえで、**「reviewview に表示される差分はステージ + 未ステージであり、レビュー対象（ステージのみ）と行番号がずれる場合がある」旨を `request_triage` の `message` と Step 13 の報告に必ず明記する**（ずれた指摘は Step 12 の orphan として現れる）
+       - 出力が空でない → reviewview には `git diff --cached` を再現する手段が無い。`base` = `head_commit` / `head` なしで投入したうえで、**「reviewview に表示される差分はステージ + 未ステージであり、レビュー対象（ステージのみ）と行番号がずれる場合がある」旨を `request_triage` の `message` と Step 12 の報告に必ず明記する**（ずれた指摘は Step 11 の orphan として現れる）
    - `findings` の組み立て（body / severity / category / anchor / 投入しない指摘）は `cbo/skills/document-saver/references/format-review-result-json.md` の「reviewview への投入」に従う
-   - `mcp__reviewview__start_review` が**実行時エラー**を返した場合（差分が空・ref を解決できない・`file` パスが不正）は、レビュー結果は既に保存済みなのでエラー内容をそのまま報告し、保存先パスを提示して終了する（Step 12 はスキップ）
-12. 投入結果を確認し、人間にトリアージを依頼する
+   - `mcp__reviewview__start_review` が**実行時エラー**を返した場合（差分が空・ref を解決できない・`file` パスが不正）は、レビュー結果は既に保存済みなのでエラー内容をそのまま報告し、保存先パスを提示して終了する（Step 11 はスキップ）
+11. 投入結果を確認し、人間にトリアージを依頼する
    - `mcp__reviewview__get_triage({ reviewId })` を **1 回だけ** 呼び、各 finding の `body` 先頭の `R\d{3}` を使って `R000` → reviewview の finding id の対応表を作る（`start_review` は finding id を返さないため）
      - 応答に「未還元の learnings が N 件あります」が付いていても、このスキルでは何もしない
      - ここでポーリングはしない。判定の取り込みは review:fix の責務
    - `start_review` の `orphanedFindingIds` を対応表で R-ID に変換する。空でない場合、それらの指摘は差分の行に紐付いておらず、reviewview 上では差分の文脈もディープリンクも無しで受信箱にだけ表示される
-     - `side` の取り違え・base/head の取り違え・staged モードの行ズレが典型。行番号を検算し、明らかな誤りがあれば正本 JSON を直したうえで Step 11 からやり直す（再投入は新しいレビューになるので、先に検算を済ませる）
-     - 誤りが無ければそのまま続行し、R-ID を Step 13 の報告に列挙する
+     - `side` の取り違え・base/head の取り違え・staged モードの行ズレが典型。行番号を検算し、明らかな誤りがあれば正本 JSON を直したうえで Step 10 からやり直す（再投入は新しいレビューになるので、先に検算を済ませる）
+     - 誤りが無ければそのまま続行し、R-ID を Step 12 の報告に列挙する
    - sidecar `<保存した JSON のパス（.json を除く）>.reviewview-session.json` を Write ツールで保存する（内容は format-review-result-json.md の「sidecar ファイル（reviewview セッション情報）」に従う）
    - `mcp__reviewview__request_triage({ reviewId, message })` を呼ぶ。`message` には severity ごとの件数内訳、特に見てほしい点、reviewview に載せられなかった指摘（`file: null`）の要約、staged モードの行ズレ注意を書く
    - 返った `url` をユーザーに提示する。**`get_triage` をポーリングしてはならない**
-13. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、reviewview の URL、reviewview に載せられなかった指摘（`file: null`）の本文、差分行に紐付かなかった指摘（orphan）の R-ID 一覧、staged モードで行番号がずれる可能性がある場合はその旨、教訓蓄積をバックグラウンドで起動した旨（スキップ時はその旨）、**reviewview で判定を送信したあと review:fix を実行すれば判定を取り込んで修正できること**
+12. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、reviewview の URL、reviewview に載せられなかった指摘（`file: null`）の本文、差分行に紐付かなかった指摘（orphan）の R-ID 一覧、staged モードで行番号がずれる可能性がある場合はその旨、**reviewview で判定を送信したあと review:fix を実行すれば判定を取り込んで修正できること**
