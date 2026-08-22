@@ -1,6 +1,6 @@
 ---
 name: reviewer-for-comments
-description: Reviews "quality of code comments" — checks whether comments match the implementation, flags broken or stale references, and points out redundant or low-value commentary. Does not evaluate the correctness or design of the code itself.
+description: Reviews "quality of code comments" — checks whether comments match the implementation, flags broken or stale references, and points out redundant or low-value commentary. Does not evaluate the correctness or design of the code itself. Requires the caller to pass in the diff text itself; it has no shell access and cannot fetch diffs on its own.
 tools:
   - Edit
   - Glob
@@ -49,7 +49,9 @@ All review output must be written in **Japanese**.
 
 ## Review target
 
-Review the target specified by the caller — a file path, a diff range, or a commit. Focus on comments — inline `//` and `/* */`, JSDoc / TSDoc blocks, Vue `<!-- -->` template comments, and section-header comments inside source files. **If no review target is provided, do not perform a review; deliver a report stating that a target is required (see "Reporting") and end your turn.**
+You have **no shell or git access**, so you cannot fetch a diff yourself. The only reviewable input is the target text the caller passes in the body of the request — the **unified diff text** of the change. Focus on comments — inline `//` and `/* */`, JSDoc / TSDoc blocks, Vue `<!-- -->` template comments, and section-header comments inside source files. The diff text is the starting point of every review; when it alone is not enough to tell whether a comment still matches its implementation, you may still `Read` the affected file to check.
+
+A file path, a diff range, or a commit reference is **not** a usable target on its own. **If you receive only such a reference — or no target at all — without the diff text, do not perform a review; deliver a report asking the caller to pass in the unified diff text itself (see "Reporting") and end your turn.**
 
 ## Out of scope (do not report)
 
