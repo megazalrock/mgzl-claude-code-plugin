@@ -55,37 +55,35 @@ argument-hint: [-y] [問題点の説明]
 
 4. **対象プラグインの判定**: 問題の所在が `common/` 配下なら mgzl、`cbo/` 配下なら cbo。両方にまたがる場合はプラグインごとに issue を分割する
 5. **該当箇所の特定**: 対象の SKILL.md・エージェント定義・スクリプトのリポジトリ相対パスを特定する。行番号まで分かれば併記する
-6. **修正済みチェック**: 特定した該当箇所を実際に読み、問題が既に解消されていないか確認する。あわせて `git log --oneline -20` も確認する
-   - 解消済みだった場合はその候補を外し、「〈問題点〉は 〈コミットハッシュ〉 で解消済みのため起票対象から除外した」とユーザーに報告する
-7. **重複チェック**: `gh issue list --repo megazalrock/mgzl-claude-code-plugin --state all --search "<キーワード>"` で既存 issue と重複していないか確認する
+6. **重複チェック**: `gh issue list --repo megazalrock/mgzl-claude-code-plugin --state all --search "<キーワード>"` で既存 issue と重複していないか確認する
    - 重複していた場合はその候補を外し、既存 issue の番号を添えてユーザーに報告する
 
 ### Phase 3: issue 案の作成
 
-8. Phase 2 を通過した問題点ごとに、後述の形式でタイトル・ラベル・本文を作成する
+7. Phase 2 を通過した問題点ごとに、後述の形式でタイトル・ラベル・本文を作成する
 
 ### Phase 4: 確認と起票
 
 #### `-y` が指定されていない場合
 
-9. 作成した issue 案を全件、タイトル・ラベル・本文全文がわかる形でユーザーに提示する
-10. AskUserQuestion（`multiSelect: true`）でどの issue を起票するか選ばせる
-    - 各選択肢の `label` は issue タイトル、`description` は対象プラグインと種別ラベル
-11. 選ばれたものだけを Phase 5 に進める
+8. 作成した issue 案を全件、タイトル・ラベル・本文全文がわかる形でユーザーに提示する
+9. AskUserQuestion（`multiSelect: true`）でどの issue を起票するか選ばせる
+   - 各選択肢の `label` は issue タイトル、`description` は対象プラグインと種別ラベル
+10. 選ばれたものだけを Phase 5 に進める
 
 #### `-y` が指定されている場合
 
-9. Phase 3 で作成した issue 案を全件そのまま Phase 5 に進める
-10. 起票前に、これから起票するタイトルとラベルの一覧をユーザーに表示する
+8. Phase 3 で作成した issue 案を全件そのまま Phase 5 に進める
+9. 起票前に、これから起票するタイトルとラベルの一覧をユーザーに表示する
 
 ### Phase 5: 起票の実行
 
-12. 対象プラグインに応じてラベルを冪等に用意する（`--force` により既存でも失敗しない）
+11. 対象プラグインに応じてラベルを冪等に用意する（`--force` により既存でも失敗しない）
     - `gh label create "plugin:mgzl" --repo megazalrock/mgzl-claude-code-plugin --color 1D76DB --description "mgzl プラグイン (common/) に関する issue" --force`
     - `gh label create "plugin:cbo" --repo megazalrock/mgzl-claude-code-plugin --color 5319E7 --description "cbo プラグイン (cbo/) に関する issue" --force`
-13. Write ツールで本文ファイルをスクラッチパッド配下に作成する
-14. `gh issue create --repo megazalrock/mgzl-claude-code-plugin --title "<タイトル>" --label "<種別ラベル>" --label "<プラグインラベル>" --body-file "<本文ファイルのパス>"` を実行する
-15. 起票した issue の URL を全件ユーザーに報告する
+12. Write ツールで本文ファイルをスクラッチパッド配下に作成する
+13. `gh issue create --repo megazalrock/mgzl-claude-code-plugin --title "<タイトル>" --label "<種別ラベル>" --label "<プラグインラベル>" --body-file "<本文ファイルのパス>"` を実行する
+14. 起票した issue の URL を全件ユーザーに報告する
 
 ## issue の形式
 
