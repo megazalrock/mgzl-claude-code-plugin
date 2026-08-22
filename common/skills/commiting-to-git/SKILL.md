@@ -53,14 +53,14 @@ model: sonnet
 - 1行で記述する
 - プレーンテキストで記述する
 - 変数名や関数名などはバッククォートで囲う
-  - バッククウォートはシェルのコマンド置換と認識されてしまうので必ずエスケープする
+  - バッククォートはシェルのコマンド置換と認識されてしまうので必ずエスケープする
 
 ### 適切なコミットメッセージの例
 ```
 feat: その他の予定に協力会社をアサインできる機能を追加
 fix: ホワイトボードのレイアウト崩れを修正
 refactor: useCommonStore.tsのテストをリファクタ
-refactor: `useGanttMonthlyStore`にTSDocを追加
+refactor: \`useGanttMonthlyStore\`にTSDocを追加
 chore: コメントのtypoを修正
 ```
 
