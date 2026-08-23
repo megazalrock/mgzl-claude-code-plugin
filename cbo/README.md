@@ -1,6 +1,6 @@
 # cbo プラグイン
 
-開発ワークフロー支援プラグイン。コードレビュー、実装計画、Playwright 自動化、PR 管理などの機能を提供する。
+開発ワークフロー支援プラグイン。コードレビュー、実装計画、PR 管理などの機能を提供する。
 
 ## 環境変数の設定
 
@@ -10,7 +10,7 @@
 
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
-| `MGZL_DIR` | 実装計画書・レビュー結果・手順書などの保存先ベースディレクトリ | `.mgzl` |
+| `MGZL_DIR` | 実装計画書・レビュー結果などの保存先ベースディレクトリ | `.mgzl` |
 
 ```json
 {
@@ -29,7 +29,6 @@ $MGZL_DIR/
 │   ├── implementation-plan-lessons.md  # 実装計画書作成の教訓（impl:create）
 │   └── implementation-lessons.md       # コード実装の教訓（review:diff/file・impl:execute）
 ├── reviews/                  # レビュー結果（正本 JSON・reviewview セッション sidecar・旧 md 報告書）
-├── playwright_procedures/    # Playwright 手順書
 └── tmp/                      # 一時ファイル・スクリーンショット
 ```
 
@@ -37,7 +36,6 @@ $MGZL_DIR/
 
 | 変数名 | 使用スキル | 説明 | 例 |
 |--------|-----------|------|-----|
-| `APP_HOST` | `playwright:runner` | Playwright 操作時のベース URL | `localhost:3000` |
 | `API_REPO_PATH` | `api:ask-implementations` | API リポジトリの絶対パス | `/path/to/api-repo` |
 | `CDS_REPO_PATH` | `cds:ask-implementations` | デザインシステムリポジトリの絶対パス | `/path/to/craftbank-design-system` |
 
@@ -45,7 +43,6 @@ $MGZL_DIR/
 {
   "env": {
     "MGZL_DIR": ".mgzl",
-    "APP_HOST": "localhost:3000",
     "API_REPO_PATH": "/path/to/api-repo",
     "CDS_REPO_PATH": "/path/to/craftbank-design-system"
   }
@@ -60,8 +57,7 @@ $MGZL_DIR/
 {
   "permissions": {
     "allow": [
-      "Bash(echo $MGZL_DIR)",
-      "Bash(echo $APP_HOST)"
+      "Bash(echo $MGZL_DIR)"
     ]
   }
 }

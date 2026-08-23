@@ -2,7 +2,6 @@
 
 const VARS = [
   "MGZL_DIR",
-  "APP_HOST",
   "API_REPO_PATH",
   "CDS_REPO_PATH",
 ] as const;
