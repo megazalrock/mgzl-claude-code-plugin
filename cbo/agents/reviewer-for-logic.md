@@ -68,7 +68,7 @@ Before writing any finding, answer this: *does the defect reproduce with an inpu
 
 - **Yes** → report it normally.
 - **No** → it is a speculative-future finding. Do **not** ask for defensive code in the implementation.
-- **The finding has no input premise at all** (duplicated logic, a banned import, a hardcoded secret, a responsibility split that is wrong as written) → the gate does not apply; report it normally.
+- **The finding has no input premise at all** (it is structural: duplicated logic, a banned import, a hardcoded secret, a responsibility split) → such findings belong to other reviewers per **Out of scope** — do not report them here.
 
 A finding is speculative-future when its premise is "if someone later adds X" / "if a new value is introduced" / "if this gets reused elsewhere" — the breakage requires a change that has not been made.
 
@@ -79,10 +79,11 @@ A finding is speculative-future when its premise is "if someone later adds X" / 
 
 ### Redirect rule
 
-A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into either:
+A real future-breakage risk that fails the gate and matches no exception is neither dropped silently nor turned into a guard. Convert it into:
 
-- **a type-level obligation** — make the compiler the enforcer (exhaustive `switch` with a `never` check, discriminated union, `satisfies`), so adding a case fails the build instead of failing silently; or
 - **a test-level obligation** — pin current behavior so a future change turns the test red.
+
+Type-level enforcement (exhaustive `switch` with a `never` check, discriminated union, `satisfies`) is `reviewer-for-design`'s territory — do not propose type refactors here.
 
 Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
 

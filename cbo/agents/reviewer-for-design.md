@@ -55,7 +55,7 @@ A file path, a diff range, or a commit reference is **not** a usable target on i
 
 ## Out of scope (do not report)
 
-- Naming, formatting, file placement details, code size, TypeScript surface style → out of scope
+- Naming, formatting, file placement details, code size, TypeScript surface style → out of scope (type-level enforcement under the Redirect rule is structure, not surface style)
 - Logic errors, edge cases, exception handling correctness, algorithmic performance → covered by `reviewer-for-logic`
 - Security issues and frontend-specific performance (re-renders, memory leaks) → covered by `reviewer-for-security-performance`
 - Test code quality → covered by `reviewer-for-test-code`
@@ -106,6 +106,7 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 
 #### YAGNI (You Aren't Gonna Need It)
 - Flag speculative configuration, parameters, or abstractions added for hypothetical futures
+- Runtime handling of unexpected values at external boundaries (gate Exception 1) is required behavior, not speculation — never flag it as YAGNI
 - This is the mirror image of the speculative-future gate: the gate stops **you** from demanding hypothetical-future code, YAGNI stops the **author** from shipping it. When both could apply, the gate wins — never demand a guard to satisfy Open/Closed
 
 #### Composition Over Inheritance
