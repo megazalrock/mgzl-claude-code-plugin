@@ -2,7 +2,7 @@
 name: pr:update
 description: GitHubのプルリクエストのタイトルと本文を更新する。`-y` で確認スキップ。「PRを更新して」「PRの説明を書いて」「PR descriptionを作成して」などの要求時に使用。
 argument-hint: [-y] [pr number] [notion url] [ticket id]
-allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(gh pr edit:*), Bash(bun run:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr edit:*), Bash(bun run:*)
 ---
 
 ## コンテキスト
@@ -14,7 +14,7 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(
 
 - `-y`: 確認スキップフラグ（位置不問・任意）
   - `-y` フラグが明示的に指定されていない場合は絶対に自動選択を行ってはならない
-- 数字のみのトークン: PR番号として採用する（`-y` 未指定時は必須。`-y` 指定時は省略可能で、省略時は自動取得ロジックに従う）
+- 数字のみのトークン: PR番号として採用する（任意。省略時は現在のブランチから解決する）
 - `http://` または `https://` で始まるトークン: Notion URL として採用する（任意・1件のみ。複数指定された場合は最初のものを使う）
 - `PB-` に続けて数字が並ぶトークン（例: `PB-123`）: チケットIDとして採用する（任意・1件のみ。複数指定された場合は最初のものを使う）
   - 大文字小文字は問わず受け付けるが、タイトルに埋め込む際は `PB-123` のように `PB` を大文字へ正規化する
@@ -26,12 +26,11 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr list:*), Bash(gh pr diff:*), Bash(
 ### Phase 1: PR特定
 
 1. PR番号が引数で渡された場合はそれを使用する
-2. PR番号が渡されない場合:
-   - **`-y` が指定されていない場合**: 「PR 番号は必須です。PR 番号を引数で指定してください。」とユーザーに通知し、即座に処理を終了する
-   - **`-y` が指定されている場合**: `gh pr list --author @me --state open --json number,title` で自分のOpen PRを取得し、以下のように分岐する
-     - 0件 → 「Open PR がありません」と報告して終了
-     - 1件 → そのPRを自動採用
-     - 2件以上 → 「`-y` 指定時は PR 番号を明示してください」とエラー終了
+2. PR番号が渡されない場合は現在のブランチから解決する（`-y` の有無で挙動は変えない）
+   - `gh pr view --json number,title,state` を実行する（引数なしの `gh pr view` は現在のブランチに紐づく PR を返す）
+   - **コマンドが失敗した場合**（PR が存在しないブランチでは `no pull requests found for branch "<ブランチ名>"` を出力して終了コード 1 になる）: 「現在のブランチに紐づく PR が見つかりません。PR 番号を引数で指定してください。」とユーザーに通知し、**即座に処理を終了する**（他のPRを探すフォールバックは行わない）
+   - **`state` が `OPEN` 以外だった場合**（`CLOSED` / `MERGED`）: 「現在のブランチの PR #<番号> は <state> のため更新できません。」とユーザーに通知し、**即座に処理を終了する**
+   - **`state` が `OPEN` の場合**: そのPRを採用し、以降の処理に進む前に「PR #<番号> <タイトル> を対象にします」とユーザーに通知する
 
 ### Phase 2: 情報収集
 
