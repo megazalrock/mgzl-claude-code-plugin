@@ -34,19 +34,19 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
        - `submitted` → 判定は確定値。4. へ進む
        - `open` → 人間がまだ送信していない（編集途中でありうる）。AskUserQuestion で提示する:
          - 「reviewview を開いて判定する」→ `mcp__reviewview__request_triage({ reviewId })` を呼び、返った `url` を提示して**停止**する（判定を送信したあと review:fix を再実行してもらう）
-         - 「現在の判定のまま続行する」→ 4. へ進む。未確定である旨をタスク 3 の実行確認とタスク 9 の最終レポートに明記する
+         - 「現在の判定のまま続行する」→ 4. へ進む。未確定である旨をタスク 3 の実行確認とタスク 8 の最終レポートに明記する
          - 「中止する」→ 終了する
     4. `get_triage` の `findings[]` を正本 JSON の指摘に突合する:
        - sidecar の `finding_ids`（`R000` → reviewview の finding id）を第一の突合キーにする
        - sidecar に無い finding は `body` 先頭の `R\d{3}` で突合し、それでも決まらなければ (`file`, `side`, `startLine`, `endLine`) の一致で突合する
        - `get_triage` の返す順序は (file, start_line, id) 順であり投入順とは一致しない。**順序に依存した突合をしてはならない**
-       - 突合できなかった finding はタスク 9 の最終レポートに列挙する（正本 JSON は変更しない）
+       - 突合できなかった finding はタスク 8 の最終レポートに列挙する（正本 JSON は変更しない）
     5. 突合できた指摘ごとに `evaluation` を組み立てる（変換規則は `cbo/skills/document-saver/references/format-review-result-json.md` の「人間のトリアージ（reviewview）」に従う）:
        - `value`: `fix`→`tp` / `false_positive`→`fp` / `out_of_scope`→`oos` / `null`→`null`
        - `directive`: `comments[]` のうち `author === "human"` の `body` を時系列順に改行連結し、`triageReason` が非 null なら末尾に `判定理由: {triageReason}` を足す。どちらも無ければ `null`
     6. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
     7. `R000` → reviewview の finding id の対応表を、タスク 6 の `report_fix` 用にセッション中保持する
-    8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、タスク 9 で「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
+    8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、タスク 8 で「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
 
   - JSON 報告書では、以降の手順の読み替えを行う:
     - 「`### R*` 指摘」→ `findings[]` の要素
@@ -88,7 +88,6 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - activeForm: 「R000: {問題の1行要旨}を修正中」形式
   - 依存関係（addBlockedBy）は設定しない（全件並列実行可能）
   - 最後にコードレビュータスクも追加登録
-  - **ステップ8（知見蓄積）はバックグラウンド起動のため TaskCreate で登録しない**
 
 5. TaskList で未完了のタスクを確認
   - 全て完了していたら、7. のコードレビュータスクに進む
@@ -115,7 +114,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
     - 他の指摘に言及するときは R-ID ではなく sidecar の `finding_ids` にある reviewview の finding id を `[[f-xxxxxxxx]]` の形で書く（`ref` は投入時限りのキーなので、投入後のコメントからは R-ID では解決されない）
     - すでにコミット済みなら `commitSha` も渡す
     - finding id が判らない指摘（突合失敗）・md 報告書はスキップする
-    - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 9 の最終レポートに列挙する
+    - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 8 の最終レポートに列挙する
 
   サブエージェントに渡すプロンプトは以下の構造で統一する（`@code-implementer` / `@test-implementer` どちらの場合も本文は共通）:
 
@@ -162,16 +161,7 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
          - 「中止する」→ 実行を中止し、残った指摘内容をユーザーに報告
   - ループを抜けた場合は TaskUpdate でステータスを `completed` に変更
 
-8. 知見蓄積: 以下の 2 系統を合成して `source` を組み立て、合計 **1 件以上** ある場合のみ、`TaskCreate` で進捗管理用タスクとして登録せず、`Agent` ツールで `@knowledge-distiller` サブエージェントを `run_in_background: true` で直接起動し、バックグラウンドで教訓蓄積する（起動は 1 回。合計 0 件ならスキップ）。結果は待たず、すぐに 9. に進む。
-  - **(A) 元レビューの指摘**: タスク 6 で **今回実際に修正した** 指摘のうち、`evaluation.value` が `tp` かつ `severity` が **2 以上** のもの
-    - 人間のトリアージ判定を取り込めた場合（タスク 2 の reviewview 経路）のみ対象とする。sidecar が無い場合・md 報告書の場合は (A) は空とする（「人間が指摘を妥当と認めた」ことを保証できないため）
-    - 各指摘は `problem` / `reason` / `proposals` に加え、`evaluation.directive`（人間の判定理由・コメント）も `source` に含める。人間が「なぜ妥当か」を書いているため教訓の根拠になる
-    - タスク 2 で `status` が `open` のまま「現在の判定のまま続行する」を選んだ場合も対象に含めてよいが、判定が未確定である旨を `context` に明記する
-    - 対象を「今回修正した指摘」に限るのは、本スキルが ID を絞って複数回実行されうるため。全 `tp` 指摘を毎回渡すと同じ指摘が繰り返し蒸留にかかる
-  - **(B) 修正完了後レビューの指摘**: タスク 7 のレビューループ中に検出された `[2]` 推奨以上（`[2]`/`[3]`）の指摘
-  - `context` には対象プロジェクト名・対象ファイルに加え、**(A) が人間のトリアージ済み指摘であること**を明記する
-
-9. 最終レポートをユーザーに通知
+8. 最終レポートをユーザーに通知
   - 報告書ファイルはこれ以上編集しない（JSON 報告書への `evaluation` 書き戻しはタスク 2 で完了済み。それ以外のフィールドは常に不変）
   - 以下の形式で完了 ID を列挙する
     ```
