@@ -50,6 +50,10 @@ interface RepoInfo {
   };
 }
 
+interface CurrentBranchPr {
+  number: number;
+}
+
 interface UnresolvedThread {
   threadId: string;
   path: string;
@@ -81,14 +85,43 @@ function exitWithError(message: string): never {
   process.exit(0);
 }
 
+/**
+ * 対象の PR 番号。引数が省略された場合は現在のブランチに紐づく PR から解決する。
+ * 解決できなければ他の PR を探すフォールバックはせず即座に終了する。
+ */
+function resolvePrNumber(argument: string | undefined): number {
+  if (argument !== undefined) {
+    const parsed = Number(argument);
+    if (!parsed || isNaN(parsed) || parsed <= 0) {
+      exitWithError(
+        "PR番号を指定してください。例: bun run fetch-copilot-comments.ts 123",
+      );
+    }
+    return parsed;
+  }
+
+  const notFoundMessage =
+    "現在のブランチに紐づく PR が見つかりません。PR 番号を引数で指定してください。";
+
+  let output: string;
+  try {
+    // 引数なしの `gh pr view` は現在のブランチに紐づく PR を返し、無ければ終了コード 1 になる
+    output = execSync("gh pr view --json number", { encoding: "utf-8" });
+  } catch {
+    exitWithError(notFoundMessage);
+  }
+
+  try {
+    const pr: CurrentBranchPr = JSON.parse(output);
+    return pr.number;
+  } catch {
+    exitWithError(notFoundMessage);
+  }
+}
+
 // --- Main ---
 
-const prNumber = Number(process.argv[2]);
-if (!prNumber || isNaN(prNumber) || prNumber <= 0) {
-  exitWithError(
-    "PR番号を指定してください。例: bun run fetch-copilot-comments.ts 123",
-  );
-}
+const prNumber = resolvePrNumber(process.argv[2]);
 
 let token: string;
 let repo: RepoInfo;

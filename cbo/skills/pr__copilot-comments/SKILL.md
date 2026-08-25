@@ -1,21 +1,24 @@
 ---
 name: pr:copilot-comments
-description: 指定したPRのGitHub Copilotによる未解決のレビューコメントを取得し、修正要否を判定する。対応不要と判断した指摘は理由をリプライしてResolvedにできる。「Copilotの指摘を確認して」「PRのCopilotコメント」「未解決のCopilotレビューを取得」「Copilotの未解決コメントを見せて」等の依頼時に使用。PR番号を引数として受け取る。
-argument-hint: <PR番号>
+description: PRのGitHub Copilotによる未解決のレビューコメントを取得し、修正要否を判定する。対応不要と判断した指摘は理由をリプライしてResolvedにできる。PR番号は省略可能で、省略時は現在のブランチに紐づくPRを対象にする。「Copilotの指摘を確認して」「PRのCopilotコメント」「未解決のCopilotレビューを取得」「Copilotの未解決コメントを見せて」等の依頼時に使用。
+argument-hint: [pr number]
 allowed-tools: Bash(bun run:*)
 ---
 
 # pr:copilot-comments
 
-指定したPRからGitHub Copilotによる未解決のレビューコメントを取得して表示するスキル。
+PRからGitHub Copilotによる未解決のレビューコメントを取得して表示するスキル。
 
 ## コンテキスト
 
-- PR番号: $ARGUMENTS
+- PR番号（任意。省略時は現在のブランチから解決する）: $ARGUMENTS
 
 ## タスク
 
-1. PR番号が引数で渡されていない場合はユーザーにその旨を通知し終了
+1. 対象PRを特定する
+   - PR番号が引数で渡された場合はそれを使用する
+   - PR番号が渡されない場合はスクリプトが現在のブランチから解決する（引数なしの `gh pr view` は現在のブランチに紐づく PR を返す）
+   - 現在のブランチに紐づく PR が無い場合、スクリプトは「現在のブランチに紐づく PR が見つかりません。」という `error` を返す。その場合の扱いは手順3の `error` 分岐に従う
 2. 以下のスクリプトを実行してCopilotの未解決コメントを取得
 
 ```bash
@@ -23,7 +26,7 @@ bun run "${CLAUDE_SKILL_DIR}/scripts/fetch-copilot-comments.ts" $ARGUMENTS
 ```
 
 3. スクリプトの出力はJSON形式。結果に応じて以下のように対応する:
-   - `error` フィールドがある場合: エラー内容をユーザーに通知
+   - `error` フィールドがある場合: エラー内容をユーザーに通知し、**即座に処理を終了する**（他のPRを探すフォールバックは行わない）
    - `unresolvedCount` が 0 の場合: 未解決のCopilot指摘がない旨を通知
    - 指摘がある場合: 以下の形式でユーザーに提示
 
