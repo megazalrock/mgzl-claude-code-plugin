@@ -22,11 +22,6 @@ $ARGUMENTS を以下の3つに解析する:
 
 ## タスク
 
-0. **前提チェック**: 利用可能なツールに `mcp__reviewview__start_review` が存在するか確認する
-   - 存在しない場合は、**後続の処理を一切行わずに即座に停止**し、以下をユーザーに報告して終了する:
-     - reviewview の MCP サーバーが接続されていないため、このスキルは実行できないこと
-     - 確認手順: `cbo/.mcp.json` の `reviewview` エントリのパスが正しいか、reviewview の `packages/server/dist/main.js` がビルド済みか、Claude Code を再起動して MCP サーバーが接続されたか
-   - reviewview を使わずにレビューだけ実行して報告書を残すフォールバックはしない（レビュアーを起動する前にここで落とす）
 1. 引数を解析し、diff 対象・絞り込み指定・簡易モードの有無を確定し、**diff モード** を決定する
    - diff 対象が指定されている場合 → **コミット比較モード**（指定された branch/tag/commit を diff 対象とする）
    - diff 対象が未指定の場合、以下を上から順に判定して最初に該当したモードを使う:
@@ -37,7 +32,7 @@ $ARGUMENTS を以下の3つに解析する:
 2. レビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
    - コミット比較モード: `git diff --name-status <diff対象>` を実行する
    - staged / worktree モード: Step 1 の判定で実行した `git diff --cached --name-status` / `git diff --name-status` の出力をそのまま使う
-   - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 の JSON 報告書出力まで保持する:
+   - あわせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 9 の md 報告書出力まで保持する:
      - コミット比較モード: `git rev-parse <diff対象>` の結果を `base_commit`、`git rev-parse HEAD` の結果を `head_commit` として保持
      - staged / worktree モード: `git rev-parse HEAD` の結果を `base_commit` と `head_commit` の両方として保持
      - どちらも短縮せずフル 40 桁の SHA-1 を使う
@@ -65,46 +60,29 @@ $ARGUMENTS を以下の3つに解析する:
         - @reviewer-for-design（DRY/KISS/SOLID/YAGNI・責務分離・依存関係制約）
 6. 各タスクのサブエージェントへの入力は次のとおり:
   - 対象ファイルの差分を取得し、**その差分のみ**を渡す:
-    - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。reviewview が表示する差分と行番号を一致させるため）
+    - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath>`（作業ツリーではなくコミット間の差分を使う。md 報告書の `**位置**` 欄の行番号基準を統一するため）
     - staged モード: `git diff --cached -- <filepath>`
     - worktree モード: `git diff -- <filepath>`
-    - staged モードのみ、reviewview が表示する差分（`git diff HEAD`）と行番号が一致しない可能性が残る（Step 10 で判定する）
   - **ファイル全体は渡さない**。差分だけでは判断できない場合に限り、サブエージェント側の判断で当該ファイルを Read することを許容する
   - サブエージェントへの指示に「各指摘には差分のハンク行番号に基づく `**位置**` 欄（new 側の行番号を優先）を必ず記載すること。行番号はハンクヘッダー `@@ -a,b +c,d @@` を起点に、new 側なら `+` 行と文脈行のみを数えて算出すること」を含める
 7. 全タスク間に依存関係を持たせず、並列実行されるようにする
 8. 全てのタスクを実行
   - 各レビュアーサブエージェントの起動時、`Agent` ツールの `model` パラメータに 5. で **タスクの対象ファイルに対して** 決定したモデル（`sonnet` または `opus`）を指定する
-9. 全てのレビュー結果を統合し、正本 JSON 報告書を組み立てて保存する
-   - スキーマは `cbo/skills/document-saver/references/format-review-result-json.md` に従う。document-saver スキルは使わず Write ツールで直接保存する
-   - `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）
-   - `base_commit` / `head_commit` は Step 2 で解決したフル 40 桁 SHA-1（**必須**）
-   - 各指摘を `findings[]` の要素にする:
-     - `id` は出現順に R000, R001, ...（R + 3桁ゼロパディング連番）
-     - `reporter` に担当サブエージェント名を記載する
-     - レビュアー報告の `**位置**` 欄から `file` と `anchor` を組み立てる（`ファイル全体` → `anchor: null`、`なし` → `file: null` かつ `anchor: null`）
-     - レビュアー報告の `**提案**` から、フェンス外の平文を `proposals[].text`、フェンス内のコードを `proposals[].code` に分離する（一方しか無ければ他方は `null`）
-     - `evaluation` は全指摘 `{ "value": null, "directive": null }` で初期化する
-   - 統合の過程で、複数のレビュアーが同根の問題を別々に指摘していたり、一方の指摘が他方の帰結であることに気づいた場合は、`problem` / `reason` の本文で相手の R-ID を `[[R003]]` 記法で参照する（reviewview 上で指摘間のリンクになる。書式と注意点は `cbo/skills/document-saver/references/format-review-result-json.md` の「body」）。レビュアーは並列実行されて互いの指摘を知らないため、この相互参照を張れるのはこのステップだけ
-   - 差分中の秘密情報（トークン・鍵など）を `problem` / `reason` / `proposals` に転記しない（reviewview の指摘本文に載り、対象リポジトリの `.reviewview/state.db` に永続化されるため）
-   - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
-10. 保存した報告書を reviewview に投入する
-   - 投入対象の findings（`file: null` の指摘を除いた全指摘）が **0 件** の場合は reviewview へ投入しない（reviewview の `findings` は 1 件以上必須。0 件の投入はバリデーションエラーになる）。Step 11 をスキップし、Step 12 で正本 JSON の保存先パスと、指摘が無かった旨（`file: null` で載せられなかった指摘があればその本文）を報告して終了する
-   - `base` / `head` を diff モードに応じて決める（reviewview は `git diff <base> [<head>]` を表示する。pathspec は渡せないため差分全体が表示される）:
-     - コミット比較モード / merge-base モード: `base` = `base_commit`、`head` = `head_commit`（Step 6 で各サブエージェントに渡した差分と完全に一致する）
-     - worktree モード: `base` = `head_commit`、`head` は **渡さない**（`git diff HEAD` = ステージ + 未ステージ。worktree モードはステージが空なのでレビューした差分と一致する）
-     - staged モード: `git diff --name-only`（未ステージの変更）を確認する
-       - 出力が空 → ステージ内容と作業ツリーが一致するので worktree モードと同じ渡し方をする
-       - 出力が空でない → reviewview には `git diff --cached` を再現する手段が無い。`base` = `head_commit` / `head` なしで投入したうえで、**「reviewview に表示される差分はステージ + 未ステージであり、レビュー対象（ステージのみ）と行番号がずれる場合がある」旨を `request_triage` の `message` と Step 12 の報告に必ず明記する**（ずれた指摘は Step 11 の orphan として現れる）
-   - `findings` の組み立て（body / severity / category / anchor / 投入しない指摘）は `cbo/skills/document-saver/references/format-review-result-json.md` の「reviewview への投入」に従う
-   - `mcp__reviewview__start_review` が**実行時エラー**を返した場合（差分が空・ref を解決できない・`file` パスが不正）は、レビュー結果は既に保存済みなのでエラー内容をそのまま報告し、保存先パスを提示して終了する（Step 11 はスキップ）
-11. 投入結果を確認し、人間にトリアージを依頼する
-   - `mcp__reviewview__get_triage({ reviewId })` を **1 回だけ** 呼び、各 finding の `body` 先頭の `R\d{3}` を使って `R000` → reviewview の finding id の対応表を作る（`start_review` は finding id を返さないため）
-     - 応答に「未還元の learnings が N 件あります」が付いていても、このスキルでは何もしない
-     - ここでポーリングはしない。判定の取り込みは review:fix の責務
-   - `start_review` の `orphanedFindingIds` を対応表で R-ID に変換する。空でない場合、それらの指摘は差分の行に紐付いておらず、reviewview 上では差分の文脈もディープリンクも無しで受信箱にだけ表示される
-     - `side` の取り違え・base/head の取り違え・staged モードの行ズレが典型。行番号を検算し、明らかな誤りがあれば正本 JSON を直したうえで Step 10 からやり直す（再投入は新しいレビューになるので、先に検算を済ませる）
-     - 誤りが無ければそのまま続行し、R-ID を Step 12 の報告に列挙する
-   - sidecar `<保存した JSON のパス（.json を除く）>.reviewview-session.json` を Write ツールで保存する（内容は format-review-result-json.md の「sidecar ファイル（reviewview セッション情報）」に従う）
-   - `mcp__reviewview__request_triage({ reviewId, message })` を呼ぶ。`message` には severity ごとの件数内訳、特に見てほしい点、reviewview に載せられなかった指摘（`file: null`）の要約、staged モードの行ズレ注意を書く
-   - 返った `url` をユーザーに提示する。**`get_triage` をポーリングしてはならない**
-12. 以下をユーザーに伝えて終了する: 正本 JSON の保存先パス、reviewview の URL、reviewview に載せられなかった指摘（`file: null`）の本文、差分行に紐付かなかった指摘（orphan）の R-ID 一覧、staged モードで行番号がずれる可能性がある場合はその旨、**reviewview で判定を送信したあと review:fix を実行すれば判定を取り込んで修正できること**
+9. 全てのレビュー結果を統合し、md レビュー報告書を組み立てて保存する
+   - テンプレートは `cbo/skills/document-saver/references/format-review-result.md` に従う。document-saver スキルは使わず Write ツールで直接保存する
+   - frontmatter の `reporter` は固定で `ClaudeCode review:diff`。`model` は実行中の自身のモデル名（不明なら `unknown`）
+   - frontmatter の `diff_mode` に Step 1 で決定した diff モードを記載する（コミット比較モード → `commit` / staged モード → `staged` / worktree モード → `worktree`）。ただし Step 1 の 3 番目で merge-base を解決した場合は、以降コミット比較モードとして扱っていても `merge-base` と記載する
+   - frontmatter の `base_commit` / `head_commit` は Step 2 で解決したフル 40 桁 SHA-1（**必須**）
+   - `--target` の指定があれば frontmatter の `target` にその指定内容をそのまま記載する（指定が無ければ `target` の行ごと省略する）
+   - 各指摘を `## 改善提案` の直下にフラットな `### R*` 見出しとして並べる（ファイル別の中間見出しでグルーピングしない。`### R*` の階層が変わると review:fix が指摘を切り出せなくなる）:
+     - R-ID は出現順に R000, R001, ...（R + 3桁ゼロパディング連番）
+     - 見出しは `### R000 [3] ブロッキング 評価： 対応：` の形式。`評価：` と `対応：` は空欄で初期化する
+     - `**位置**` にはレビュアー報告の `**位置**` 欄をそのまま転記する
+     - `**問題**` / `**理由**` / `**提案**` はレビュアー報告をそのまま転記する（提案のフェンス内外を分離しない）
+     - `**報告者**` に担当サブエージェント名を記載する
+   - 統合の過程で、複数のレビュアーが同根の問題を別々に指摘していたり、一方の指摘が他方の帰結であることに気づいた場合は、`**問題**` / `**理由**` の本文で相手の R-ID を `R003` と平文で参照する。レビュアーは並列実行されて互いの指摘を知らないため、この相互参照を張れるのはこのステップだけ
+   - 差分中の秘密情報（トークン・鍵など）を `**問題**` / `**理由**` / `**提案**` に転記しない（報告書ファイルに永続化されるため）
+   - 各レビュアーが報告した「良い点」を `## 良い点` に、「参考情報」を `## 参考情報` に統合する（いずれも該当が無ければ見出しごと省略する）
+   - 指摘が 0 件でも報告書は保存する（`## 改善提案` の見出しは残し、その下を空にする）
+   - ファイル名は `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.md`。タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し、!`echo $MGZL_DIR`/reviews/ に保存する
+10. 以下をユーザーに伝えて終了する: md 報告書の保存先パス、重要度（`[3]` / `[2]` / `[1]`）ごとの指摘件数の内訳、`**位置**: なし` の指摘があればその本文、**review:fix を実行すれば修正に進めること**（既定では報告書内の全指摘が対象になる。報告書の `評価：` 欄に記入したうえで review:fix に「tp のみ」などの絞り込みを自然言語で指定すると対象を絞れる）

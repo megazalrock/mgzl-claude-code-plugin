@@ -1,12 +1,12 @@
 # レビュー結果 正本 JSON スキーマ
 
-review:diff が出力するレビュー報告書の正本フォーマット（削除済みの旧 review:file が出力した報告書も同形式）。
-document-saver スキルは経由せず、各スキルが Write ツールで !`echo $MGZL_DIR`/reviews/ に直接保存する。
+過去に review:diff が出力した JSON 報告書のフォーマット（削除済みの旧 review:file が出力した報告書も同形式）。
+現在の review:diff は md 報告書（[format-review-result.md](format-review-result.md)）を出力するため、本スキーマの報告書が新規に作られることはない。review:fix が過去の報告書を扱うために残している。
 
 - ファイル名: `yyyyMMdd-hhmmss-<内容を表す英語ケバブケース>.json`
 - タイムスタンプ取得: `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"`
 
-人間に指摘を提示する UI は **reviewview**。review:diff が MCP ツール経由でトリアージを往復し、review:fix がその判定を回収する。
+人間に指摘を提示する UI は **reviewview**。sidecar 付きの JSON 報告書を review:fix が扱うとき、MCP ツール経由でトリアージ判定を回収する。
 
 ## スキーマ
 
@@ -51,11 +51,11 @@ document-saver スキルは経由せず、各スキルが Write ツールで !`e
 
 ---
 
-# reviewview 経路（review:diff）
+# reviewview 経路（review:fix / 手動投入）
 
 ## reviewview への投入
 
-正本 JSON を保存したあと、`mcp__reviewview__start_review` の `findings[]` に変換して投入する。
+JSON 報告書を reviewview に投入する場合、`mcp__reviewview__start_review` の `findings[]` に変換して投入する。
 変換規則はここが正本。
 `findings` は **1 件以上必須**（0 件の投入はバリデーションエラー）。投入対象が 0 件（指摘なし、または全指摘が `file: null` で投入対象外）ならレビューを投入しない。
 
