@@ -1,0 +1,7 @@
+{
+  "name": "fading-memory",
+  "description": "セッションから自動で記憶を抽出し、参照されない記憶は有効期限で朽ちていく memory 機能を提供する",
+  "author": {
+    "name": "otto"
+  }
+}
