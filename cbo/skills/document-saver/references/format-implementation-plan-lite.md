@@ -58,7 +58,7 @@
   - [観測可能な条件1]
   - [観測可能な条件2]
 - **依存関係**: [前提条件]
-- **TaskList依存関係**:
+- **ステップ依存関係**:
   - `blockedBy`: [ブロッカー]
   - `blocks`: [ブロック]
   - `並列グループ`: [並列実行用グループ]
@@ -85,7 +85,7 @@
 - **Interfaces**:
   - Consumes: [テスト対象のシグネチャ]
   - Produces: なし
-- **TaskList依存関係**:
+- **ステップ依存関係**:
   - `blockedBy`: [ブロッカー]
 ```
 
@@ -125,7 +125,7 @@
   - Modify: `exact/path/to/existing.ts:123-145`
 - **Interfaces**:
   - Consumes: [ステップN の Produces を再掲する]
-- **TaskList依存関係**:
+- **ステップ依存関係**:
   - `blockedBy`: ステップN
 ```
 

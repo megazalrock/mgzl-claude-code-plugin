@@ -12,7 +12,6 @@ tools:
   - ReadMcpResourceTool
   - SendMessage
   - Skill
-  - TodoWrite
   - WebFetch
   - WebSearch
   - mcp__context7__query-docs

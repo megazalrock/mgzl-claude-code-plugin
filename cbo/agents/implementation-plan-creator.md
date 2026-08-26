@@ -13,7 +13,6 @@ tools:
   - ReadMcpResourceTool
   - Search
   - Skill
-  - TodoWrite
   - WebFetch
   - WebSearch
   - Write
@@ -109,7 +108,7 @@ Agent ツールで起動してよいのは `code-investigator` のみ。それ�
 
 実装を論理的でテスト可能なステップに分割する：
 
-**ステップの構造：** ステップ名 / 難易度（低・中・高・最高） / 概要 / 具体的な実装内容 / `Files`（Create・Modify・Test） / `Interfaces`（Consumes・Produces） / 想定所要時間 / 依存関係 / TaskList依存関係（`blockedBy`・`blocks`・並列グループ）。各フィールドの書式は document-saver スキルの実装計画テンプレートに従う。
+**ステップの構造：** ステップ名 / 難易度（低・中・高・最高） / 概要 / 具体的な実装内容 / `Files`（Create・Modify・Test） / `Interfaces`（Consumes・Produces） / 想定所要時間 / 依存関係 / ステップ依存関係（`blockedBy`・`blocks`・並列グループ）。各フィールドの書式は document-saver スキルの実装計画テンプレートに従う。
 
 - `Files` は「ステップ1.5: ファイル構成マップ」で列挙したファイルの部分集合である。Create / Modify / Test の 3 種別で書き、該当がない種別は行ごと省略する。Modify には行範囲を付けるが、行範囲は目安であり特定は構文的特徴を併記する
 - `Interfaces` は並列ステップ間の契約である。実装者は自分のステップしか見えないため、後続ステップが依存する関数名・引数型・戻り値型は `Produces` に正確に書く。依存が無いステップも `Consumes: なし` と明記し、行ごと省略しない

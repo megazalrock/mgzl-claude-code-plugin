@@ -13,7 +13,6 @@ tools:
   - ReadMcpResourceTool
   - Search
   - Skill
-  - TodoWrite
   - WebFetch
   - WebSearch
   - Write
@@ -110,7 +109,7 @@ Agent ツールで起動してよいのは `code-investigator` のみ。それ�
 
 実装を論理的でテスト可能なステップに分割する：
 
-**ステップの構造：** ステップ名 / 難易度（低・中・高・最高） / 概要 / 実装内容（テストステップは 実装内容 の代わりに テスト観点） / `Files`（Create・Modify・Test） / `Interfaces`（Consumes・Produces） / `完了条件` / 依存関係 / TaskList依存関係（`blockedBy`・`blocks`・並列グループ）。各フィールドの書式は document-saver スキルの軽量版実装計画書テンプレートに従う。
+**ステップの構造：** ステップ名 / 難易度（低・中・高・最高） / 概要 / 実装内容（テストステップは 実装内容 の代わりに テスト観点） / `Files`（Create・Modify・Test） / `Interfaces`（Consumes・Produces） / `完了条件` / 依存関係 / ステップ依存関係（`blockedBy`・`blocks`・並列グループ）。各フィールドの書式は document-saver スキルの軽量版実装計画書テンプレートに従う。
 
 - `実装内容` には満たすべき性質だけを書き、手順・順序・ローカル命名は書かない。粒度の基準は「計画書作成の指針 > 実装内容の記述粒度」に従う
 - `Files` は「ステップ1.5: ファイル構成マップ」で列挙したファイルの部分集合である。Create / Modify / Test の 3 種別で書き、該当がない種別は行ごと省略する。Modify には行範囲を付けるが、行範囲は目安であり特定は構文的特徴を併記する

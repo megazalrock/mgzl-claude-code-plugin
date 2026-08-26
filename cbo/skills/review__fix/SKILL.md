@@ -34,19 +34,19 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
        - `submitted` → 判定は確定値。4. へ進む
        - `open` → 人間がまだ送信していない（編集途中でありうる）。AskUserQuestion で提示する:
          - 「reviewview を開いて判定する」→ `mcp__reviewview__request_triage({ reviewId })` を呼び、返った `url` を提示して**停止**する（判定を送信したあと review:fix を再実行してもらう）
-         - 「現在の判定のまま続行する」→ 4. へ進む。未確定である旨をタスク 3 の実行確認とタスク 8 の最終レポートに明記する
+         - 「現在の判定のまま続行する」→ 4. へ進む。未確定である旨をタスク 3 の実行確認と最終レポートに明記する
          - 「中止する」→ 終了する
     4. `get_triage` の `findings[]` を正本 JSON の指摘に突合する:
        - sidecar の `finding_ids`（`R000` → reviewview の finding id）を第一の突合キーにする
        - sidecar に無い finding は `body` 先頭の `R\d{3}` で突合し、それでも決まらなければ (`file`, `side`, `startLine`, `endLine`) の一致で突合する
        - `get_triage` の返す順序は (file, start_line, id) 順であり投入順とは一致しない。**順序に依存した突合をしてはならない**
-       - 突合できなかった finding はタスク 8 の最終レポートに列挙する（正本 JSON は変更しない）
+       - 突合できなかった finding は最終レポートに列挙する（正本 JSON は変更しない）
     5. 突合できた指摘ごとに `evaluation` を組み立てる（変換規則は `cbo/skills/document-saver/references/format-review-result-json.md` の「人間のトリアージ（reviewview）」に従う）:
        - `value`: `fix`→`tp` / `false_positive`→`fp` / `out_of_scope`→`oos` / `null`→`null`
        - `directive`: `comments[]` のうち `author === "human"` の `body` を時系列順に改行連結し、`triageReason` が非 null なら末尾に `判定理由: {triageReason}` を足す。どちらも無ければ `null`
     6. 解釈結果を正本 JSON の `evaluation` フィールドに書き戻す（**書き戻してよいのは `evaluation` のみ**。他フィールドは変更しない）
-    7. `R000` → reviewview の finding id の対応表を、タスク 6 の `report_fix` 用にセッション中保持する
-    8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、タスク 8 で「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
+    7. `R000` → reviewview の finding id の対応表を、タスク 4 の `report_fix` 用にセッション中保持する
+    8. reviewview 側で `status === "resolved"` の指摘は過去の review:fix が修正報告済み。既定の候補集合から除外し、最終レポートで「修正報告済みのためスキップ」として列挙する（引数で ID を明示指定された場合のみ対象に含める）
 
   - JSON 報告書では、以降の手順の読み替えを行う:
     - 「`### R*` 指摘」→ `findings[]` の要素
@@ -81,40 +81,21 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - `-y` フラグがない場合は、AskUserQuestion で修正を実行してよいかユーザーに最終確認する
     - 選択肢は必ず「実行する」「実行しない」の順で並べる
 
-4. 修正対象の指摘をタスクリストに登録
-  - TaskCreate を使用して各指摘を 1 タスクとして登録
-  - subject: `[R000] {問題の1行要旨}` 形式
-  - description: 切り出した指摘ブロック全文 + 報告書の絶対パス
-  - activeForm: 「R000: {問題の1行要旨}を修正中」形式
-  - 依存関係（addBlockedBy）は設定しない（全件並列実行可能）
-  - 最後にコードレビュータスクも追加登録
-
-5. TaskList で未完了のタスクを確認
-  - 全て完了していたら、7. のコードレビュータスクに進む
-  - 未完了タスクがあれば 6. に進む
-
-6. 修正タスクを並列実行
-  - TaskList で未完了の修正タスクを全件抽出する
-  - **各修正タスクについて、起動する実装エージェント種別を判定する**（起動するのは 1 タスクにつき 1 種類、集合ではない）
+4. 修正対象の指摘を把握し、並列に修正する
+  - 報告書から切り出した指摘ブロック（R000 形式の ID 付き）を修正対象の一覧として保持する
+  - **各指摘について、起動する実装エージェント種別を判定する**（起動するのは 1 指摘につき 1 種類、集合ではない）
     - **修正対象がテストコードの場合**: `@test-implementer`
     - **それ以外の場合**: `@code-implementer`
     - **「修正対象がテストコード」の判定基準**: 当該指摘の `**問題**` / `**提案**` 本文が対象としているファイルが `*.test.ts` / `*.spec.ts` / `__tests__/` 配下の**テストファイルのみ**である場合
     - 判定が曖昧な場合は `@code-implementer` を選択する（本体コードにも及ぶ指摘を安全側で扱えるため）
-  - 単一タスクの場合:
-    - TaskUpdate でステータスを `in_progress` に変更
-    - 判定結果に応じて `@test-implementer` または `@code-implementer` サブエージェントを起動して修正
-    - 完了後、TaskUpdate でステータスを `completed` に変更
-  - 複数タスクが未完了の場合（通常並列フロー）:
-    - 各タスクの TaskUpdate でステータスを `in_progress` に変更
-    - 各タスクについて上記判定基準に従い、`@test-implementer` または `@code-implementer` サブエージェントを **並列に起動** して修正（判定はタスク単位で個別に行うため、同一並列バッチ内で両種が混在してよい）
-    - 完了後、各タスクの TaskUpdate でステータスを `completed` に変更
-  - **reviewview 経路で判定を取り込んだ場合のみ**、各修正タスクが完了するたびに、対応する reviewview の finding id が判っている指摘について `mcp__reviewview__report_fix({ findingId, message })` を **1 件ずつ** 呼ぶ（まとめて最後に呼ばない）
+  - 対象の指摘は依存関係なく全件並列実行可能なため、判定結果に応じて `@test-implementer` または `@code-implementer` サブエージェントを **指摘単位で並列に起動** して修正する（判定は指摘単位で個別に行うため、同一並列バッチ内で両種が混在してよい）
+  - **reviewview 経路で判定を取り込んだ場合のみ**、各指摘の修正が完了するたびに、対応する reviewview の finding id が判っている指摘について `mcp__reviewview__report_fix({ findingId, message })` を **1 件ずつ** 呼ぶ（まとめて最後に呼ばない）
     - `message` にはサブエージェントの報告から「何をどう直したか」を 1〜3 行に要約して書く（人間の画面に AI コメントとして表示される）
     - コメント本文も finding の body と同じ Markdown 基本セットで描画される。識別子・パスはインラインコードで囲み、コード片を載せるときは言語識別子付きのフェンスで囲む（書式の詳細は `cbo/skills/document-saver/references/format-review-result-json.md` の「body」）
     - 他の指摘に言及するときは R-ID ではなく sidecar の `finding_ids` にある reviewview の finding id を `[[f-xxxxxxxx]]` の形で書く（`ref` は投入時限りのキーなので、投入後のコメントからは R-ID では解決されない）
     - すでにコミット済みなら `commitSha` も渡す
     - finding id が判らない指摘（突合失敗）・md 報告書はスキップする
-    - `report_fix` が失敗しても修正タスク自体は成功として扱い、失敗した ID をタスク 8 の最終レポートに列挙する
+    - `report_fix` が失敗しても修正自体は成功として扱い、失敗した ID を最終レポートに列挙する
 
   サブエージェントに渡すプロンプトは以下の構造で統一する（`@code-implementer` / `@test-implementer` どちらの場合も本文は共通）:
 
@@ -136,9 +117,9 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   ```
 
   - `human_directive` が `null` の指摘（複数案でも無く、自由記述指示も無い場合）は、上記「## 人間からの追加指示」ブロックを **付けない**（従来通り `**提案**` をそのまま実装させる）。
+  - 全ての指摘の修正完了を確認してから次へ進む
 
-7. 全修正タスク完了後、コードレビュータスクを実行
-  - TaskUpdate でステータスを `in_progress` に変更
+5. 全指摘の修正完了後、コードレビューを実行
   - **次回起動するレビュアー集合**（次のラウンドで並列起動するサブエージェントの種類の集合。レビュー対象のファイルではなくサブエージェント種別のリスト）を初期化する
     - 修正対象がテストコードの場合: `@reviewer-for-test-code`, `@reviewer-for-comments`
     - それ以外: `@reviewer-for-logic`, `@reviewer-for-design`, `@reviewer-for-security-performance`, `@reviewer-for-comments`
@@ -155,13 +136,12 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
          （例: `@reviewer-for-comments` のみが指摘した場合、次回は `@reviewer-for-comments` のみで再レビュー）
        - 1. に戻る
     4. **上限到達時のユーザー判断**
-       - AskUserQuestion で「completed にする / もう一度だけ修正を試みる / 中止する」を提示
-         - 「completed にする」→ ループを抜ける
+       - AskUserQuestion で「レビューを完了とする / もう一度だけ修正を試みる / 中止する」を提示
+         - 「レビューを完了とする」→ ループを抜ける
          - 「もう一度だけ修正を試みる」→ 3. に戻る（再度 4. に到達したら再びユーザー確認）
          - 「中止する」→ 実行を中止し、残った指摘内容をユーザーに報告
-  - ループを抜けた場合は TaskUpdate でステータスを `completed` に変更
 
-8. 最終レポートをユーザーに通知
+6. 最終レポートをユーザーに通知
   - 報告書ファイルはこれ以上編集しない（JSON 報告書への `evaluation` 書き戻しはタスク 2 で完了済み。それ以外のフィールドは常に不変）
   - 以下の形式で完了 ID を列挙する
     ```
@@ -174,7 +154,6 @@ argument-hint: [R000 R001 ...] [自然言語の絞り込み] [report file path] 
   - `reviewview へ修正報告` の行は reviewview 経路で判定を取り込んだ場合のみ出力する
 
 ## 注意事項
-- タスクの進捗はいつでも TaskList で確認可能
 - 人間の評価・指示の入力経路: JSON 報告書は reviewview のトリアージ（判定ボタン・理由・コメント）、または `evaluation` フィールドの直接編集。md 報告書は従来どおり見出し行末尾の `評価：`/`対応：`。本スキルが JSON 報告書に書き戻してよいのは `evaluation` フィールドのみ
 - reviewview で `out_of_scope`（スコープ外）/ `false_positive`（偽陽性）と判定された指摘には反論せず、修正もしない
 - 見出し行末尾の記入順は `評価：{値} 対応：{自由記述}` とする運用。`対応：` は必要な時だけ人間が記入する（`**提案**` に複数案があるときの採用案指定、または実装方針の追加指示）。エージェントはこの欄も編集しない

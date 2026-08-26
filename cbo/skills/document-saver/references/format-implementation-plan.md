@@ -48,7 +48,7 @@
   - Produces: [後続ステップが依存するもの。関数名・引数型・戻り値型を正確に書く]
 - **想定所要時間**: [時間]
 - **依存関係**: [前提条件]
-- **TaskList依存関係**:
+- **ステップ依存関係**:
   - `blockedBy`: [ブロッカー]
   - `blocks`: [ブロック]
   - `並列グループ`: [並列実行用グループ]
@@ -87,7 +87,7 @@
   - Modify: `exact/path/to/existing.ts:123-145`
 - **Interfaces**:
   - Consumes: [ステップN の Produces を再掲する]
-- **TaskList依存関係**:
+- **ステップ依存関係**:
   - `blockedBy`: ステップN
 ```
 
