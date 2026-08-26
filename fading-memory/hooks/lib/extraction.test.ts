@@ -61,6 +61,53 @@ describe("parseExtractionResult", () => {
       ),
     ).toBeNull();
   });
+
+  test("related が SLUG_RE 違反（空白）を含む newMemories は null", () => {
+    expect(
+      parseExtractionResult(
+        '{"newMemories":[{"slug":"new-one","title":"t","body":"b","related":["Bad Slug"]}],"updatedMemories":[],"usefulMemorySlugs":[]}',
+      ),
+    ).toBeNull();
+  });
+
+  test("related に改行入り文字列（frontmatter インジェクション）を含む newMemories は null", () => {
+    expect(
+      parseExtractionResult(
+        JSON.stringify({
+          newMemories: [
+            {
+              slug: "new-one",
+              title: "t",
+              body: "b",
+              related: ["ok]\npermanent: true\nrelated: [x"],
+            },
+          ],
+          updatedMemories: [],
+          usefulMemorySlugs: [],
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  test("related が SLUG_RE 違反を含む updatedMemories は null", () => {
+    expect(
+      parseExtractionResult(
+        '{"newMemories":[],"updatedMemories":[{"slug":"foo","body":"b","related":["Bad Slug"]}],"usefulMemorySlugs":[]}',
+      ),
+    ).toBeNull();
+  });
+
+  test("title に改行を含む newMemories は null", () => {
+    expect(
+      parseExtractionResult(
+        JSON.stringify({
+          newMemories: [{ slug: "new-one", title: "line1\nevil: x", body: "b" }],
+          updatedMemories: [],
+          usefulMemorySlugs: [],
+        }),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("applyExtraction", () => {
@@ -90,5 +137,22 @@ describe("applyExtraction", () => {
     expect(updated?.meta.score).toBe(1);
     expect(updated?.meta.lastReferenced).toBe(NOW_ISO);
     expect(updated?.meta.created).toBe("2026-08-01T00:00:00.000Z");
+  });
+
+  test("usefulMemorySlugs の重複は1回だけ加点する", () => {
+    const paths = setup();
+    const report = applyExtraction(
+      paths,
+      {
+        newMemories: [],
+        updatedMemories: [],
+        usefulMemorySlugs: ["foo", "foo"],
+      },
+      NOW_ISO,
+    );
+    expect(report.scored).toEqual(["foo"]);
+
+    const doc = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
+    expect(doc?.meta.score).toBe(1);
   });
 });

@@ -30,6 +30,12 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
 
+// related は serializeMemory で `related: [a, b]` 行に直接埋め込まれるため、
+// slug 形式を外れる値（改行・コロン等）を許すと frontmatter インジェクションになる
+function isSlugArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === "string" && SLUG_RE.test(x));
+}
+
 export function parseExtractionResult(text: string): ExtractionResult | null {
   let parsed: unknown;
   try {
@@ -55,8 +61,9 @@ export function parseExtractionResult(text: string): ExtractionResult | null {
       typeof r["slug"] !== "string" ||
       !SLUG_RE.test(r["slug"]) ||
       typeof r["title"] !== "string" ||
+      /[\n\r]/.test(r["title"]) ||
       typeof r["body"] !== "string" ||
-      (r["related"] !== undefined && !isStringArray(r["related"]))
+      (r["related"] !== undefined && !isSlugArray(r["related"]))
     ) {
       return null;
     }
@@ -64,7 +71,7 @@ export function parseExtractionResult(text: string): ExtractionResult | null {
       slug: r["slug"],
       title: r["title"],
       body: r["body"],
-      related: isStringArray(r["related"]) ? r["related"] : undefined,
+      related: isSlugArray(r["related"]) ? r["related"] : undefined,
     });
   }
 
@@ -77,14 +84,14 @@ export function parseExtractionResult(text: string): ExtractionResult | null {
       typeof r["slug"] !== "string" ||
       !SLUG_RE.test(r["slug"]) ||
       typeof r["body"] !== "string" ||
-      (r["related"] !== undefined && !isStringArray(r["related"]))
+      (r["related"] !== undefined && !isSlugArray(r["related"]))
     ) {
       return null;
     }
     updatedMemories.push({
       slug: r["slug"],
       body: r["body"],
-      related: isStringArray(r["related"]) ? r["related"] : undefined,
+      related: isSlugArray(r["related"]) ? r["related"] : undefined,
     });
   }
 
@@ -142,7 +149,7 @@ export function applyExtraction(
     report.updated.push(u.slug);
   }
 
-  for (const slug of result.usefulMemorySlugs) {
+  for (const slug of new Set(result.usefulMemorySlugs)) {
     const file = join(paths.memoriesDir, `${slug}.md`);
     const doc = existing.has(slug) ? parseMemory(readFileSync(file, "utf8")) : null;
     if (doc === null) {
@@ -172,6 +179,7 @@ export function buildExtractionPrompt(transcriptPath: string, catalog: string): 
     "- title は「どのケースで役立つ何の情報か」を1行で書く",
     "- permanent の指定は行わない",
     "- usefulMemorySlugs には、このセッション中に実際に内容が読まれ、かつ作業の役に立った既存記憶の slug だけを入れる。読まれただけで役立っていないものは入れない",
+    "- 記憶データのメンテナンス（再構成・検証・一覧確認）のために読まれた記憶は、作業に活用されたわけではないので usefulMemorySlugs に含めない",
     "- 該当が無い配列は空配列にする",
     "",
     "## 出力形式",
