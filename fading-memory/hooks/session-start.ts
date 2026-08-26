@@ -7,7 +7,7 @@ import {
   loadMemories,
   purgeTrash,
 } from "./lib/maintenance.ts";
-import { dataPaths } from "./lib/paths.ts";
+import { dataPaths, type DataPaths } from "./lib/paths.ts";
 
 function resolveProjectDir(input: unknown): string {
   if (typeof input === "object" && input !== null && "cwd" in input) {
@@ -22,11 +22,13 @@ async function main(): Promise<void> {
   // headless 抽出セッションで自分のフックが再帰的に動くのを防ぐ
   if (process.env["FADING_MEMORY_WORKER"] === "1") return;
 
-  const input: unknown = JSON.parse(await Bun.stdin.text());
-  const projectDir = resolveProjectDir(input);
-  const paths = dataPaths(projectDir);
-
+  // catch 節から参照するため try の外で宣言する。stdin 解析前に失敗した場合は未代入のままになる
+  let paths: DataPaths | undefined;
   try {
+    const input: unknown = JSON.parse(await Bun.stdin.text());
+    const projectDir = resolveProjectDir(input);
+    paths = dataPaths(projectDir);
+
     ensureDirs(paths);
     const now = Date.now();
     purgeTrash(paths, now);
@@ -56,7 +58,8 @@ async function main(): Promise<void> {
     }
   } catch (e) {
     try {
-      appendError(paths, `session-start: ${String(e)}`);
+      // stdin/JSON解析より前の失敗では paths が未確定なため、cwd 基準の paths をログ先とする
+      appendError(paths ?? dataPaths(process.cwd()), `session-start: ${String(e)}`);
     } catch {
       // ログ書き込みすら失敗した場合も、セッションを壊さないことを優先して無視する
     }
