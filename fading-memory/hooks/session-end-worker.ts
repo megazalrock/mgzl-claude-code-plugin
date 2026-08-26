@@ -19,9 +19,9 @@ async function main(): Promise<void> {
   }
 
   const paths = dataPaths(projectDir);
-  ensureDirs(paths);
 
   try {
+    ensureDirs(paths);
     const { memories } = loadMemories(paths);
     const catalog = memories.map((m) => `- ${m.slug}: ${m.meta.title}`).join("\n");
     const prompt = buildExtractionPrompt(transcriptPath, catalog);
@@ -45,10 +45,20 @@ async function main(): Promise<void> {
       stderr: "pipe",
     });
     const killTimer = setTimeout(() => proc.kill(), CLAUDE_TIMEOUT_MS);
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = await proc.exited;
-    clearTimeout(killTimer);
+    let stdout: string;
+    let stderr: string;
+    let exitCode: number;
+    try {
+      // stdout/stderr を順に await すると、先に読む方のパイプが埋まるまで claude 側が
+      // ブロックし得るため、両ストリームと終了待ちを並行に drain する
+      [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+    } finally {
+      clearTimeout(killTimer);
+    }
 
     if (exitCode !== 0) {
       appendError(paths, `worker: claude が exit ${exitCode}: ${stderr.slice(0, 500)}`);
