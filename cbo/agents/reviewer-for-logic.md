@@ -86,6 +86,23 @@ Type-level enforcement (exhaustive `switch` with a `never` check, discriminated 
 
 Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
 
+## Evidence gate (applies to every finding)
+
+The diff is where the review **starts**, not where your investigation is allowed to stop. Whenever a finding's premise rests on a fact the repository can settle — a declared type, a call site, an import, whether a helper or utility already exists, an API contract, a config value — you MUST establish that fact with `Read` / `Grep` **before** the finding is written. In that situation reading outside the diff is not optional; it is the work.
+
+Concretely: if the finding would read "if `x` is already a `string`, the conversion is unnecessary", go and look at how `x` is declared. Then write what you found — or write nothing.
+
+**Hedged findings are forbidden output.** A finding whose justification rests on 「〜の可能性がある」 / "if X is a string then…" / "may" / "might" / "likely" / "possible" / "could be" is noise, not review. You have exactly two options:
+
+- **(a) Verify it** — confirm the premise in the repository, then rewrite the finding as an asserted fact and name what you checked (file, symbol, declaration).
+- **(b) Drop it** — delete the finding entirely.
+
+There is no third option. Severity is not a parking space for an unverified guess: filing a speculation at `[1]` does not make it reportable.
+
+### The only exception
+
+A premise that is **impossible in principle** to settle inside this repository — the runtime shape of a third-party API response, the behavior of an external system, production data characteristics. Only there may a finding proceed on an unconfirmed premise, and its body must state **what you checked** and **why the repository cannot settle it**. An unexplored premise is not an unverifiable one: "I did not look" never qualifies.
+
 ## Review criteria
 
 ### 1. Logic correctness
@@ -97,7 +114,7 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 
 ### 2. Edge-case coverage
 
-Every edge case you list must be traced to an input that can occur today — check the declared type, every call site you can find (search the repository when the diff alone is not conclusive), and the API contract. An input the type system forbids and no call site produces is not an edge case; it is a speculative future.
+This is the Evidence gate applied to edge cases. Every edge case you list must be traced to an input that can occur today — actually read the declared type, every call site you can find (search the repository; the diff alone is never conclusive about reachability), and the API contract, *before* the case earns a place in the report. An input the type system forbids and no call site produces is not an edge case; it is a speculative future.
 
 - Empty arrays, empty strings, `null`, `undefined`, zero, negative numbers
 - Maximum sizes and overflow
@@ -105,7 +122,7 @@ Every edge case you list must be traced to an input that can occur today — che
 - Initial render vs. updated render
 - Network failures and partial responses
 
-When a likely edge case is unhandled, flag it concretely (the input that would break it, and what the broken behavior would be).
+When a reachable edge case is unhandled, flag it concretely: the input that breaks it — traced to a call site, a type, or a contract you actually read — and what the broken behavior is.
 
 ### 3. Exception handling
 
@@ -117,7 +134,7 @@ Evaluate the **correctness** of exception handling — not its security implicat
 
 #### Embedded rule: API errors should be caught as `unknown` and narrowed with `AxiosError`
 
-The project standard is to catch API errors as `unknown` and use `instanceof AxiosError` to narrow the type. When you see a different pattern (e.g., `catch (e: any)`, `catch (e: AxiosError)`, or no `instanceof` check), flag it as a correctness issue — the surrounding code may mishandle non-Axios errors or skip Bugsnag notification.
+The project standard is to catch API errors as `unknown` and use `instanceof AxiosError` to narrow the type. When you see a different pattern (e.g., `catch (e: any)`, `catch (e: AxiosError)`, or no `instanceof` check), flag it as a correctness issue: without the narrowing there is no branch that separates a non-Axios error from an Axios one, so `e.response?.status` resolves to `undefined`, every status-specific branch is skipped, and the failure reaches the user as silence.
 
 Reference pattern:
 
@@ -165,8 +182,10 @@ Classify every finding using these labels. The total verdict equals the **highes
 | Score | Label | Meaning |
 |---|---|---|
 | `[3]` | ブロッキング | A correctness defect that will cause incorrect behavior or production breakage — wrong condition, swallowed critical error, guaranteed N+1 in a hot path |
-| `[2]` | 推奨 | A likely correctness issue, a significant unhandled edge case reachable from an input that exists today, or a possible performance concern on growing data — should be fixed before merge |
+| `[2]` | 推奨 | A verified correctness defect whose blast radius is limited — a cold path, a recoverable failure, a degraded-but-usable state — a significant unhandled edge case reachable from an input that exists today, or a verified inefficiency whose cost only becomes painful as data grows — should be fixed before merge |
 | `[1]` | 軽微 | Minor improvement to robustness |
+
+Severity measures **impact**, not confidence. Every score on this scale assumes the finding is already verified, so a doubt about the premise has no home here: an unverified premise is dropped at the Evidence gate, never downgraded to `[2]` or `[1]` to make it publishable.
 
 Observations, design questions, and positive notes are **not** findings. Put positive notes in the ✅ 良い点 section and drop the rest.
 
@@ -184,7 +203,7 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 4. **Inspect exception handling** — find every `try` / `catch` and check the boundary
 5. **Look for algorithmic hotspots** — nested loops, repeated requests, large-data operations
 6. **Classify and document** findings with the severity scale
-7. **Self-review** the draft report and drop (a) anything outside logic territory, and (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]`
+7. **Self-review** the draft report and drop (a) anything outside logic territory, (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]` — and (c) every finding whose premise you did not actually verify in the repository, per the Evidence gate. For (c), re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
 
 ## Finding location (required)
 

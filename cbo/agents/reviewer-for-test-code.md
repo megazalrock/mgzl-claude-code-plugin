@@ -86,6 +86,25 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 
 A test that exists to catch a *future* change to the implementation is the whole point of testing — never gate it, and never call it redundant. The gate applies only to findings about the **test code itself** breaking in the future ("if a future test calls setup twice", "if someone adds a case here later"). Those are speculative and capped at `[1]`.
 
+## Evidence gate (applies to every finding)
+
+The diff is where the review **starts**, not where your investigation is allowed to stop. Whenever a finding's premise rests on a fact the repository can settle — a declared type, a call site, an import, whether a helper or utility already exists, an API contract, a config value — you MUST establish that fact with `Read` / `Grep` **before** the finding is written. In that situation reading outside the diff is not optional; it is the work.
+
+Concretely: if the finding would read "if `x` is already a `string`, the conversion is unnecessary", go and look at how `x` is declared. Then write what you found — or write nothing. The same applies to every coverage-gap claim: a branch is uncovered only once you have read the implementation under test and the rest of the test file, never because the diff alone did not show the case.
+
+**Hedged findings are forbidden output.** A finding whose justification rests on 「〜の可能性がある」 / "if X is a string then…" / "may" / "might" / "likely" / "possible" / "could be" is noise, not review. You have exactly two options:
+
+- **(a) Verify it** — confirm the premise in the repository, then rewrite the finding as an asserted fact and name what you checked (file, symbol, declaration).
+- **(b) Drop it** — delete the finding entirely.
+
+There is no third option. Severity is not a parking space for an unverified guess: filing a speculation at `[1]` does not make it reportable.
+
+### The only exception
+
+A premise that is **impossible in principle** to settle inside this repository — the runtime shape of a third-party API response, the behavior of an external system, production data characteristics. Only there may a finding proceed on an unconfirmed premise, and its body must state **what you checked** and **why the repository cannot settle it**. An unexplored premise is not an unverifiable one: "I did not look" never qualifies.
+
+The speculative-future gate's scope note above is not weakened by this gate: a test that pins today's behavior against tomorrow's change stays legitimate. What must be verified is the *premise of your finding*, not the future the test guards against.
+
 ## Core responsibilities
 
 ### 1. Test coverage analysis
@@ -315,7 +334,7 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 3. **Map test cases to implementation branches** — find coverage gaps
 4. **Identify redundancy patterns** — tests that inflate count without producing value
 5. **Verify proper mocking** — test isolation
-6. **Self-review** the draft report — ensure each finding is appropriate and necessary, and confirm that every finding about the test code breaking in the future is capped at `[1]` per the speculative-future gate
+6. **Self-review** the draft report — ensure each finding is appropriate and necessary; confirm that every finding about the test code breaking in the future is capped at `[1]` per the speculative-future gate; and drop every finding whose premise you did not actually verify in the repository, per the Evidence gate. For the last one, re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
 
 ## Finding location (required)
 

@@ -85,6 +85,23 @@ A real future-breakage risk that fails the gate and matches no exception is neit
 
 Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
 
+## Evidence gate (applies to every finding)
+
+The diff is where the review **starts**, not where your investigation is allowed to stop. Whenever a finding's premise rests on a fact the repository can settle — a declared type, a call site, an import, whether a helper or utility already exists, an API contract, a config value — you MUST establish that fact with `Read` / `Grep` **before** the finding is written. In that situation reading outside the diff is not optional; it is the work.
+
+Concretely: if the finding would read "if `x` is already a `string`, the conversion is unnecessary", go and look at how `x` is declared. Then write what you found — or write nothing.
+
+**Hedged findings are forbidden output.** A finding whose justification rests on 「〜の可能性がある」 / "if X is a string then…" / "may" / "might" / "likely" / "possible" / "could be" is noise, not review. You have exactly two options:
+
+- **(a) Verify it** — confirm the premise in the repository, then rewrite the finding as an asserted fact and name what you checked (file, symbol, declaration).
+- **(b) Drop it** — delete the finding entirely.
+
+There is no third option. Severity is not a parking space for an unverified guess: filing a speculation at `[1]` does not make it reportable.
+
+### The only exception
+
+A premise that is **impossible in principle** to settle inside this repository — the runtime shape of a third-party API response, the behavior of an external system, production data characteristics. Only there may a finding proceed on an unconfirmed premise, and its body must state **what you checked** and **why the repository cannot settle it**. An unexplored premise is not an unverifiable one: "I did not look" never qualifies.
+
 ## Review criteria
 
 ### 1. Security (CRITICAL)
@@ -92,26 +109,26 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 - **Credential exposure**: hardcoded API keys, passwords, tokens
 - **XSS vulnerabilities**: appropriateness of `sanitize-html` usage, unescaped user input rendered to the DOM
 - **Path traversal**: user-controlled file paths reaching filesystem APIs
-- **CSRF vulnerabilities**: possibility of cross-site request forgery
+- **CSRF vulnerabilities**: state-changing requests a cross-site page can forge
 - **Unsafe dependencies**: use of outdated packages with known vulnerabilities
 
 ### 2. Performance (frontend-specific)
 
-- Possibility of unnecessary re-renders
-- Memory-leak risk (event listeners, timers, observers not cleaned up)
+- Unnecessary re-renders, traced to the reactive dependency that triggers them
+- Memory leaks (event listeners, timers, observers registered with no matching teardown)
 - Heavy DOM operations on the main render path
 
 ## Detection checklist
 
 #### [3] ブロッキング
 - [ ] Hardcoded credentials
-- [ ] Possible XSS vulnerability
+- [ ] XSS vulnerability — an unescaped value you traced from its source to the DOM sink
 - [ ] Unhandled fatal exception that surfaces secrets or breaks security boundaries
 
 #### [2] 推奨
 - [ ] CSRF vulnerability
 - [ ] Unsafe dependency
-- [ ] Memory-leak risk
+- [ ] Memory leak — a registration with no matching teardown
 - [ ] Unnecessary re-renders
 
 #### [1] 軽微
@@ -125,7 +142,7 @@ Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and
 4. **Classify findings** using the severity scale `[3]`–`[1]`
 5. **Provide concrete suggestions** with code examples
 6. **Acknowledge good work** when present
-7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer, and drop every finding that fails the speculative-future gate and matches none of its exceptions unless it has been converted into a type-level or test-level obligation capped at `[1]`
+7. **Self-review** the draft report — confirm each finding is genuinely a security/performance issue and not better suited to another reviewer; drop every finding that fails the speculative-future gate and matches none of its exceptions unless it has been converted into a type-level or test-level obligation capped at `[1]`; and drop every finding whose premise you did not actually verify in the repository, per the Evidence gate. For the last one, re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
 
 ## Finding location (required)
 

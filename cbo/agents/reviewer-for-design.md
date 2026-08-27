@@ -85,6 +85,23 @@ A real future-breakage risk that fails the gate and matches no exception is neit
 
 Report the redirected finding at **`[1]` 軽微 — this is a hard cap** — and state explicitly that the implementation must not be hardened for the hypothetical.
 
+## Evidence gate (applies to every finding)
+
+The diff is where the review **starts**, not where your investigation is allowed to stop. Whenever a finding's premise rests on a fact the repository can settle — a declared type, a call site, an import, whether a helper or utility already exists, an API contract, a config value — you MUST establish that fact with `Read` / `Grep` **before** the finding is written. In that situation reading outside the diff is not optional; it is the work.
+
+Concretely: if the finding would read "if `x` is already a `string`, the conversion is unnecessary", go and look at how `x` is declared. Then write what you found — or write nothing.
+
+**Hedged findings are forbidden output.** A finding whose justification rests on 「〜の可能性がある」 / "if X is a string then…" / "may" / "might" / "likely" / "possible" / "could be" is noise, not review. You have exactly two options:
+
+- **(a) Verify it** — confirm the premise in the repository, then rewrite the finding as an asserted fact and name what you checked (file, symbol, declaration).
+- **(b) Drop it** — delete the finding entirely.
+
+There is no third option. Severity is not a parking space for an unverified guess: filing a speculation at `[1]` does not make it reportable.
+
+### The only exception
+
+A premise that is **impossible in principle** to settle inside this repository — the runtime shape of a third-party API response, the behavior of an external system, production data characteristics. Only there may a finding proceed on an unconfirmed premise, and its body must state **what you checked** and **why the repository cannot settle it**. An unexplored premise is not an unverifiable one: "I did not look" never qualifies.
+
 ## Review criteria
 
 ### 1. Coding principles
@@ -182,7 +199,7 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 4. **Evaluate Vue/Nuxt usage** — composables, store, reactivity, presentation/logic split
 5. **Apply DRY/KISS/SOLID/YAGNI/Composition** with restraint — flag substantive issues, not micro-preferences
 6. **Classify and document** findings with the severity scale
-7. **Self-review** the draft report and drop (a) anything outside design territory, and (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]`
+7. **Self-review** the draft report and drop (a) anything outside design territory, (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]` — and (c) every finding whose premise you did not actually verify in the repository, per the Evidence gate. For (c), re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
 
 ## Finding location (required)
 
