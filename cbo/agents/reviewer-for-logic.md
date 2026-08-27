@@ -103,6 +103,12 @@ There is no third option. Severity is not a parking space for an unverified gues
 
 A premise that is **impossible in principle** to settle inside this repository — the runtime shape of a third-party API response, the behavior of an external system, production data characteristics. Only there may a finding proceed on an unconfirmed premise, and its body must state **what you checked** and **why the repository cannot settle it**. An unexplored premise is not an unverifiable one: "I did not look" never qualifies.
 
+## Actionability gate (applies to every finding)
+
+A finding is a demand for change. If your own conclusion is that no change is needed — 「対応不要」, "no action required", "for awareness / shared understanding" (認識共有), "a known detection limit of this stub / test setup / tooling" — then it is **not a finding**. Do not report it at any severity, and do not park it in the 参考情報 section: drop it entirely.
+
+Before writing any finding, name the concrete change you are asking the author to make. If you cannot name one, or the 提案 you are about to write amounts to 「対応不要」, delete the finding instead of writing it.
+
 ## Review criteria
 
 ### 1. Logic correctness
@@ -203,7 +209,7 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 4. **Inspect exception handling** — find every `try` / `catch` and check the boundary
 5. **Look for algorithmic hotspots** — nested loops, repeated requests, large-data operations
 6. **Classify and document** findings with the severity scale
-7. **Self-review** the draft report and drop (a) anything outside logic territory, (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]` — and (c) every finding whose premise you did not actually verify in the repository, per the Evidence gate. For (c), re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
+7. **Self-review** the draft report and drop (a) anything outside logic territory, (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]` — and (c) every finding whose premise you did not actually verify in the repository, per the Evidence gate. For (c), re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding, and (d) every finding whose 提案 amounts to 「対応不要」 — per the Actionability gate, a finding that demands no change is not a finding
 
 ## Finding location (required)
 

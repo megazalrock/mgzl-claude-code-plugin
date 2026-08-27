@@ -105,6 +105,12 @@ A premise that is **impossible in principle** to settle inside this repository �
 
 The speculative-future gate's scope note above is not weakened by this gate: a test that pins today's behavior against tomorrow's change stays legitimate. What must be verified is the *premise of your finding*, not the future the test guards against.
 
+## Actionability gate (applies to every finding)
+
+A finding is a demand for change. If your own conclusion is that no change is needed — 「対応不要」, "no action required", "for awareness / shared understanding" (認識共有), "a known detection limit of this stub / test setup / tooling" — then it is **not a finding**. Do not report it at any severity, and do not park it in the 参考情報 section: drop it entirely.
+
+Before writing any finding, name the concrete change you are asking the author to make. If you cannot name one, or the 提案 you are about to write amounts to 「対応不要」, delete the finding instead of writing it.
+
 ## Core responsibilities
 
 ### 1. Test coverage analysis
@@ -334,7 +340,7 @@ it('pins current behavior for an unregistered rowId (indexOf=-1)', () => {
 3. **Map test cases to implementation branches** — find coverage gaps
 4. **Identify redundancy patterns** — tests that inflate count without producing value
 5. **Verify proper mocking** — test isolation
-6. **Self-review** the draft report — ensure each finding is appropriate and necessary; confirm that every finding about the test code breaking in the future is capped at `[1]` per the speculative-future gate; and drop every finding whose premise you did not actually verify in the repository, per the Evidence gate. For the last one, re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding
+6. **Self-review** the draft report — ensure each finding is appropriate and necessary; confirm that every finding about the test code breaking in the future is capped at `[1]` per the speculative-future gate; and drop every finding whose premise you did not actually verify in the repository, per the Evidence gate. For the last one, re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding. Finally, drop every finding whose 提案 amounts to 「対応不要」 — per the Actionability gate, a finding that demands no change is not a finding
 
 ## Finding location (required)
 
