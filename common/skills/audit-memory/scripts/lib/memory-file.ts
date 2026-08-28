@@ -17,7 +17,7 @@ export interface ParsedMemory {
   links: string[];
   /** 本文の H2 見出し（`## `）の数 */
   h2Count: number;
-  /** 本文の行数（末尾の空行を除く） */
+  /** 本文の行数（先頭・末尾の空行を除く） */
   bodyLines: number;
 }
 
@@ -108,7 +108,9 @@ export function parseMemory(file: string, content: string): ParsedMemory {
 
   const metadata = data !== null && isRecord(data.metadata) ? data.metadata : null;
 
-  const lines = body.replace(/\n+$/, "").split("\n");
+  // 先頭の空行はフロントマター直後の区切りであって本文ではないので落とす。
+  // 残すと通常書式のファイルが常に 1 行多く数えられ、行数の閾値判定が境界でずれる
+  const lines = body.replace(/^\n+/, "").replace(/\n+$/, "").split("\n");
   const bodyLines = body.trim() === "" ? 0 : lines.length;
   // 走査対象はフェンス外のみ。bodyLines はフェンス内も含めた本文の実行数なので lines 側から数える
   const scannedLines = linesOutsideCodeFence(lines);

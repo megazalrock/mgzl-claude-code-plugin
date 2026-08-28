@@ -46,7 +46,37 @@ c
 `;
     const m = parseMemory("project_x.md", content);
     expect(m.h2Count).toBe(3);
-    expect(m.bodyLines).toBe(7);
+    expect(m.bodyLines).toBe(6);
+  });
+
+  test("フロントマター直後の空行は本文行数に数えない", () => {
+    const content = `---
+name: x
+description: y
+metadata:
+  type: project
+---
+
+1行目
+2行目
+3行目
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.bodyLines).toBe(3);
+  });
+
+  test("フロントマター直後に空行が複数あっても本文行数に数えない", () => {
+    const content = "---\nname: x\ndescription: y\nmetadata:\n  type: project\n---\n\n\n\n1行目\n2行目\n";
+    const m = parseMemory("project_x.md", content);
+    expect(m.bodyLines).toBe(2);
+  });
+
+  test("本文がちょうど 60 行なら bodyLines は 60 になる", () => {
+    // multi_fact の 60 行超判定が境界でずれないことを固定する
+    const body = Array.from({ length: 60 }, (_, i) => `行${i + 1}`).join("\n");
+    const content = `---\nname: x\ndescription: y\nmetadata:\n  type: project\n---\n\n${body}\n`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.bodyLines).toBe(60);
   });
 
   test("metadata 配下の規定外キーも metadataKeys に含める", () => {
@@ -105,7 +135,7 @@ metadata:
     expect(m.type).toBe("project");
     expect(m.metadataKeys).toEqual(["type"]);
     expect(m.h2Count).toBe(1);
-    expect(m.bodyLines).toBe(3);
+    expect(m.bodyLines).toBe(2);
   });
 
   test("フロントマター内の行頭 `--- foo` で本文を途中から切り出さない", () => {
@@ -126,7 +156,7 @@ metadata:
     expect(m.name).toBeNull();
     expect(m.h2Count).toBe(1);
     expect(m.links).toEqual(["project-foo"]);
-    expect(m.bodyLines).toBe(3);
+    expect(m.bodyLines).toBe(2);
   });
 
   test("閉じフェンス行の行末に空白があっても閉じフェンスとして扱う", () => {
@@ -134,7 +164,7 @@ metadata:
     const m = parseMemory("project_x.md", content);
     expect(m.frontmatterParsable).toBe(true);
     expect(m.type).toBe("project");
-    expect(m.bodyLines).toBe(2);
+    expect(m.bodyLines).toBe(1);
   });
 
   test("ファイル末尾が改行なしの `---` で終わる場合は本文を空として扱う", () => {
@@ -174,7 +204,7 @@ metadata:
     const m = parseMemory("project_x.md", content);
     expect(m.type).toBe("project");
     expect(m.h2Count).toBe(2);
-    expect(m.bodyLines).toBe(4);
+    expect(m.bodyLines).toBe(3);
   });
 
   test("コードフェンス内の `## ` と [[...]] は h2Count / links に数えない", () => {
@@ -199,7 +229,7 @@ metadata:
     expect(m.h2Count).toBe(2);
     expect(m.links).toEqual(["project-outside"]);
     // bodyLines はフェンス内の行も従来どおり数える
-    expect(m.bodyLines).toBe(10);
+    expect(m.bodyLines).toBe(9);
   });
 
   test("閉じフェンスが無い場合は開きフェンス以降を末尾までフェンス内として扱う", () => {
