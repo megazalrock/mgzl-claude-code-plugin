@@ -18,15 +18,27 @@ function mem(over: Partial<ParsedMemory> & { file: string }): ParsedMemory {
 }
 
 describe("parseIndexLinks", () => {
-  test("MEMORY.md のリンク先ベース名を列挙する", () => {
+  test("MEMORY.md のリンク先ファイル名を列挙する", () => {
     const index = `# Memory Index
 
 ## Feedback
 - [A](feedback_a.md) — hook
-- [B](sub/project_b.md) — hook
+- [B](project_b.md) — hook
 見出しだけの行
 `;
     expect(parseIndexLinks(index)).toEqual(["feedback_a.md", "project_b.md"]);
+  });
+
+  test("パス区切りを含むリンクと外部 URL は索引リンクとして採用しない", () => {
+    const index = `# Memory Index
+
+## Feedback
+- [A](feedback_a.md) — hook
+- [B](sub/project_b.md) — サブディレクトリ配下
+- [C](./project_c.md) — 相対パス指定
+- [D](https://example.com/foo.md) — 外部 URL
+`;
+    expect(parseIndexLinks(index)).toEqual(["feedback_a.md"]);
   });
 });
 

@@ -7,12 +7,15 @@ export interface Issue {
   detail: string;
 }
 
-/** MEMORY.md の索引行 `[...](path.md)` からリンク先のベース名を列挙する */
+/**
+ * MEMORY.md の索引行 `[...](file.md)` からリンク先のファイル名を列挙する。
+ * 記憶ファイルは memory/ 直下にフラットに置かれるので、パス区切りを含むリンクは記憶を指していない。
+ * ベース名に切り詰めると `sub/x.md` と `x.md` が同一視され、`https://example.com/foo.md` のような外部 URL まで索引リンクとして拾ってしまうため除外する
+ */
 export function parseIndexLinks(indexContent: string): string[] {
-  return [...indexContent.matchAll(/\]\(([^)]+\.md)\)/g)].map((m) => {
-    const target = m[1] ?? "";
-    return target.slice(target.lastIndexOf("/") + 1);
-  });
+  return [...indexContent.matchAll(/\]\(([^)]+\.md)\)/g)]
+    .map((m) => m[1] ?? "")
+    .filter((target) => !target.includes("/"));
 }
 
 /** metadata 配下で正常とみなすキー。type 以外の 3 つは Claude Code 本体が記憶の書き込み時に自動付与するもの（2026-08-28 の試走で確認） */
