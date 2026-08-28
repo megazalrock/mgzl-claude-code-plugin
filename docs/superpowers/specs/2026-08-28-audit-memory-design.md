@@ -22,7 +22,7 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 1. 索引整合: `MEMORY.md` と実ファイルの突き合わせ（未索引ファイル / 実体の無い索引行）
 2. フロントマター妥当性: `name` / `description` / `metadata.type` の存在、`type` が `user | feedback | project | reference`
 3. 命名規約: ファイル名の接頭辞（`user_` / `feedback_` / `project_` / `reference_`）と `metadata.type` の一致、`name` とファイル名（拡張子除く）の一致。`name` はケバブケース、ファイル名はスネークケースが正常形なので、比較は `-` と `_` を同一視して行う
-4. 規定外キー: `metadata` 配下に `type` 以外のキーがある（書き手のバージョン差によるドリフト検出）
+4. 規定外キー: `metadata` 配下に既知キー以外のキーがある。既知キーは `type` と、Claude Code 本体が記憶の書き込み時に自動付与する `node_type` / `originSessionId` / `modified` の 4 つ（2026-08-28 の試走で、当日書いた記憶にもこの 3 キーが付与されていることを確認したため、これらは正常形として扱う）
 5. リンク整合: `[[name]]` の参照先が、いずれかの記憶の `name` またはファイル名（拡張子除く）に存在するか（`-` と `_` は同一視）。存在しないものは「未執筆リンク」として警告扱い（エラーではない）
 6. 1ファイル1事実: H2 見出しが 3 つ以上、または本文が 60 行超のものをヒューリスティックで検出
 
@@ -30,7 +30,7 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 
 個別検証（1 ファイルで閉じる）:
 
-7. 鮮度・真偽: 記憶の主張がコード・git 履歴の現状と合っているか。特に `project` 型の「未完了」「予定」
+7. 鮮度・真偽: 記憶の主張がコード・git 履歴の現状と合っているか。記憶は複数の主張の束なので主張ごとに検証し、全主張が確認できて初めて「保持」。特に `project` 型の「未完了」「予定」は、記憶の日付（`metadata.modified` または本文の日付）以降の git 履歴と、インストール・設定に関する主張なら `~/.claude/settings.json` / `~/.claude/plugins/` を能動的に探して完了の証拠を確認する（2026-08-28 の試走で、未完了の主張を検証せず他の主張だけで「保持」と判定した事例があったため明文化）
 8. リポジトリから導ける内容: CLAUDE.md・コード・git 履歴で分かる内容は memory に置かない規則に照らして不要か
 9. テンプレート準拠: `feedback` / `project` に **Why** / **How to apply** があり、適用条件が具体的か
 10. 分類の正しさ: `metadata.type` が内容に合っているか
@@ -47,7 +47,7 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 
 ## 構成
 
-追加するファイルは 3 つ。
+追加するのは次の 3 系統（スクリプトは lib 4 モジュールと各テストに分割）。
 
 - `common/skills/audit-memory/SKILL.md` — 司令塔。手順と報告形式を定義
 - `common/skills/audit-memory/scripts/check-structure.ts` — 観点 A の機械検査。bun で実行、`key=value` 形式で出力
@@ -89,7 +89,7 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
   - `type_invalid`: `detail` に実際の値
   - `name_mismatch`: `detail` に `name` の値（`-` / `_` を同一視しても一致しない場合のみ）
   - `prefix_mismatch`: `detail` に `type` の値
-  - `extra_key`: `detail` に規定外キー名（`metadata` 配下）
+  - `extra_key`: `detail` に規定外キー名（`metadata` 配下。`type` / `node_type` / `originSessionId` / `modified` は既知キーとして除外）
   - `broken_link`: `detail` にリンク先の名前
   - `multi_fact`: `detail` に `h2=<数> lines=<数>`
 
@@ -118,8 +118,9 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 
 `type` ごとの扱い:
 
-- `user` / `feedback`: ユーザーの嗜好であり、コードでは真偽を検証できない。`CLAUDE.md` に同内容があれば「削除可」、`CLAUDE.md` と矛盾すれば「要判断」、それ以外は「保持」
+- `user` / `feedback`: ユーザーの嗜好であり、コードでは真偽を検証できない。`CLAUDE.md` に同内容があれば「削除可」、`CLAUDE.md` と矛盾すれば「要判断」、それ以外は「保持」。ただしテンプレート不備（観点 9）・分類の誤り（観点 10）は type によらず「要判断」
 - `project` / `reference`: コード・git 履歴と照合する。`reference` の URL やパスは存在確認できる範囲で確認する
+- `metadata.type` が無い記憶は、トップレベルの `type` またはファイル名の接頭辞から type を解決して同じ規則を適用する（欠落自体は構造検査が報告するので、それだけで「要判断」にはしない）
 
 ### 判定基準（`cross`）
 
@@ -147,7 +148,7 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 
 ## 報告形式（SKILL.md がメインで出力、日本語、リスト形式）
 
-1. サマリ: 総数、削除可・保持・要判断・構造問題の各件数
+1. サマリ: 総数、削除可・保持・要判断・構造的問題（`broken_link` を除く `issue=` 行数）・未執筆リンク（`broken_link` の行数）の各件数
 2. 構造的問題（観点 A）: 種別ごとに対象と修正案
 3. 削除可: ファイル名と根拠 1 行
 4. 保持: ファイル名のみ
@@ -160,13 +161,15 @@ Claude Code の AutoMemory（`~/.claude/projects/<encoded-project-path>/memory/`
 - フロントマターが壊れたファイル: `issue=frontmatter_unparsable` として報告しつつ、エージェントには渡す（本文があれば検証できる）
 - エージェントが結果を返さない、または対象の一部が出力に無い: 該当ファイルを「要判断（検証未完了）」として報告
 - エージェントが「削除可」と判定したが `根拠:` が空、または `path:line` / コミット / CLAUDE.md 箇所のいずれも含まない: メインが統合時に「要判断」へ格下げする（根拠ゲートはエージェント側とメイン側の二重）
+- 記憶ファイルが 0 件（`count=0`）: エージェントを起動せず、構造的問題だけを報告して終了
+- bun が古く `Bun.YAML` が無い: スクリプトが `error=bun_too_old` を出して終了コード 1。SKILL.md は `detail` を報告して終了
 
 ## テスト
 
 - スクリプト: `bun test` による単体テスト。一時ディレクトリに意図的に壊した記憶（未索引・実体の無い索引行・不正 `type`・切れたリンク・規定外キー・複数事実）を置き、期待する `issue=` 行が出ることを確認する
 - スキル全体: このプロジェクト（`mgzl-claude-code-plugin`）の実 memory で試走する。受け入れ条件は次の既知の問題が検出されること
   - `project_cbo_review_model_threshold_fp_gap.md` が `index_missing`
-  - 新しめの記憶ファイルの `node_type` / `originSessionId` / `modified` が `extra_key`
+  - `node_type` / `originSessionId` / `modified` しか持たないファイルに `extra_key` が出ないこと
   - `project_cbo_review_model_threshold_fp_gap.md`（`name: cbo-review-model-threshold-fp-gap`、接頭辞 `project_` が `name` に無い）が `name_mismatch`
   - `project_fading_memory_plugin.md` の「実セッションでの動作確認が未完了」が現状と合わないとして「要判断」以上に上がる
 

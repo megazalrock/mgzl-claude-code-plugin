@@ -436,14 +436,14 @@ describe("auditMemories", () => {
     expect(issues).toEqual([{ kind: "prefix_mismatch", file: "reference_x.md", detail: "project" }]);
   });
 
-  test("metadata の規定外キーは extra_key をキーごとに出す", () => {
+  test("metadata の規定外キーは extra_key をキーごとに出す。Claude Code が自動付与する既知キーは除外", () => {
     const issues = auditMemories(
-      [mem({ file: "project_x.md", metadataKeys: ["node_type", "type", "modified"] })],
+      [mem({ file: "project_x.md", metadataKeys: ["node_type", "type", "originSessionId", "modified", "foo", "bar"] })],
       ["project_x.md"],
     );
     expect(issues).toEqual([
-      { kind: "extra_key", file: "project_x.md", detail: "node_type" },
-      { kind: "extra_key", file: "project_x.md", detail: "modified" },
+      { kind: "extra_key", file: "project_x.md", detail: "foo" },
+      { kind: "extra_key", file: "project_x.md", detail: "bar" },
     ]);
   });
 
@@ -499,6 +499,9 @@ export function parseIndexLinks(indexContent: string): string[] {
   });
 }
 
+/** metadata 配下で正常とみなすキー。type 以外の 3 つは Claude Code 本体が記憶の書き込み時に自動付与するもの（2026-08-28 の試走で確認） */
+const KNOWN_METADATA_KEYS = new Set(["type", "node_type", "originSessionId", "modified"]);
+
 /** name / ファイル名 / リンク先を比較するための正規化。ケバブとスネークを同一視する */
 function normalize(s: string): string {
   return s.replace(/[-_]/g, "-");
@@ -543,7 +546,7 @@ export function auditMemories(memories: ParsedMemory[], indexLinks: string[]): I
         issues.push({ kind: "prefix_mismatch", file: m.file, detail: m.type });
       }
       for (const key of m.metadataKeys) {
-        if (key !== "type") issues.push({ kind: "extra_key", file: m.file, detail: key });
+        if (!KNOWN_METADATA_KEYS.has(key)) issues.push({ kind: "extra_key", file: m.file, detail: key });
       }
     }
 
@@ -758,7 +761,7 @@ Run: `bun run /Users/otto/workspace/mgzl-claude-code-plugin/common/skills/audit-
 Expected: 終了コード 0。次の行が含まれる
 - `issue=index_missing file=project_cbo_review_model_threshold_fp_gap.md ...`
 - `issue=name_mismatch file=project_cbo_review_model_threshold_fp_gap.md detail=cbo-review-model-threshold-fp-gap`
-- `issue=extra_key file=project_fading_memory_plugin.md detail=node_type`（`originSessionId` / `modified` も同様）
+- `extra_key` が 1 件も出ないこと（実データの `metadata` は `type` / `node_type` / `originSessionId` / `modified` のみ）
 - `name: project-fading-memory-plugin` のファイルに `name_mismatch` が出ないこと
 
 - [ ] **Step 6: 全テストをまとめて実行する**
@@ -1066,7 +1069,7 @@ git commit -m "feat: AutoMemory を棚卸しする audit-memory スキルを追�
 
 - 構造的問題に `index_missing: project_cbo_review_model_threshold_fp_gap.md`
 - 構造的問題に `name_mismatch: project_cbo_review_model_threshold_fp_gap.md`
-- 構造的問題に `extra_key` が `node_type` / `originSessionId` / `modified` について出ている
+- 構造的問題に `extra_key` が出ていない（`node_type` / `originSessionId` / `modified` は既知キー）
 - `project_fading_memory_plugin.md` が「要判断」または「削除可」で、根拠にコミットハッシュか hook 設定のパスが含まれる
 - 「削除可」の各項目の根拠に `path:line` / コミット / CLAUDE.md の箇所が含まれる（含まれないものが「削除可」に残っていれば Step 3 の格下げ規則の記述を見直す）
 - 報告のあとに memory ディレクトリへの書き込みが一切発生していないこと: 試走の前後で `ls -l <memory_dir>` を実行し、`MEMORY.md` と各記憶の更新時刻が変わっていないことを確認する
