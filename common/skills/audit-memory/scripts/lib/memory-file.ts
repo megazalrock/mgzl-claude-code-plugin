@@ -45,6 +45,43 @@ function splitFrontmatter(content: string): { raw: string | null; body: string }
   return { raw: null, body: content };
 }
 
+/** 行頭のコードフェンス（インデント 3 以内 + バッククォート 3 個以上）と情報文字列を捉える */
+const CODE_FENCE_RE = /^ {0,3}(`{3,})(.*)$/;
+
+/**
+ * コードフェンスの内側とフェンス行自体を除いた行だけを返す。
+ * 記憶本文がコードフェンスで見出し記法や [[...]] を引用しているとき、
+ * それを構造や未執筆リンクとして誤検出しないための前処理。
+ */
+function linesOutsideCodeFence(lines: string[]): string[] {
+  const outside: string[] = [];
+  // 開きフェンスのバッククォート数。0 はフェンス外を表す。
+  // 閉じるには同数以上が必要なので、4 個で開いたフェンス内の ``` は本文の一部として扱われる
+  let openFenceLength = 0;
+
+  for (const line of lines) {
+    const match = CODE_FENCE_RE.exec(line);
+    if (match !== null) {
+      const backticks = match[1] ?? "";
+      const info = match[2] ?? "";
+      if (openFenceLength === 0) {
+        // 情報文字列にバッククォートを含む行はフェンスを開かない（インラインコードとの衝突を避ける）
+        if (!info.includes("`")) {
+          openFenceLength = backticks.length;
+          continue;
+        }
+      } else if (backticks.length >= openFenceLength && info.trim() === "") {
+        openFenceLength = 0;
+        continue;
+      }
+    }
+    if (openFenceLength === 0) outside.push(line);
+  }
+
+  // 閉じフェンスが無いまま本文が終わった場合、開きフェンス以降は内側のまま除外される
+  return outside;
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -73,6 +110,9 @@ export function parseMemory(file: string, content: string): ParsedMemory {
 
   const lines = body.replace(/\n+$/, "").split("\n");
   const bodyLines = body.trim() === "" ? 0 : lines.length;
+  // 走査対象はフェンス外のみ。bodyLines はフェンス内も含めた本文の実行数なので lines 側から数える
+  const scannedLines = linesOutsideCodeFence(lines);
+  const scannedBody = scannedLines.join("\n");
 
   return {
     file,
@@ -81,8 +121,8 @@ export function parseMemory(file: string, content: string): ParsedMemory {
     type: metadata === null ? null : scalarToString(metadata.type),
     metadataKeys: metadata === null ? [] : Object.keys(metadata),
     frontmatterParsable: data !== null,
-    links: [...body.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1] ?? ""),
-    h2Count: lines.filter((l) => l.startsWith("## ")).length,
+    links: [...scannedBody.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1] ?? ""),
+    h2Count: scannedLines.filter((l) => l.startsWith("## ")).length,
     bodyLines,
   };
 }

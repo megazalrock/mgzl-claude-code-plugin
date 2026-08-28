@@ -177,6 +177,73 @@ metadata:
     expect(m.bodyLines).toBe(4);
   });
 
+  test("コードフェンス内の `## ` と [[...]] は h2Count / links に数えない", () => {
+    const content = `---
+name: x
+description: y
+metadata:
+  type: project
+---
+
+## 外の見出し
+[[project-outside]]
+
+\`\`\`md
+## フェンス内の見出し
+[[project-inside]]
+\`\`\`
+
+## 外の見出し2
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.h2Count).toBe(2);
+    expect(m.links).toEqual(["project-outside"]);
+    // bodyLines はフェンス内の行も従来どおり数える
+    expect(m.bodyLines).toBe(10);
+  });
+
+  test("閉じフェンスが無い場合は開きフェンス以降を末尾までフェンス内として扱う", () => {
+    const content = `---
+name: x
+description: y
+metadata:
+  type: project
+---
+
+## 外の見出し
+
+\`\`\`
+## フェンス内の見出し
+[[project-inside]]
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.h2Count).toBe(1);
+    expect(m.links).toEqual([]);
+  });
+
+  test("4 個以上のバッククォートで開いたフェンスは同数以上の行までがフェンス内", () => {
+    const content = `---
+name: x
+description: y
+metadata:
+  type: project
+---
+
+\`\`\`\`md
+\`\`\`
+## フェンス内の見出し
+[[project-inside]]
+\`\`\`
+\`\`\`\`
+
+## 外の見出し
+[[project-outside]]
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.h2Count).toBe(1);
+    expect(m.links).toEqual(["project-outside"]);
+  });
+
   test("metadata が無い場合 type は null で metadataKeys は空", () => {
     const content = `---
 name: x
