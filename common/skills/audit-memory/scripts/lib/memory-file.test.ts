@@ -86,6 +86,97 @@ description: y
     expect(m.frontmatterParsable).toBe(false);
   });
 
+  test("フロントマター内の行頭 `----` を閉じフェンスと誤認しない", () => {
+    // `----:` は YAML としては単なるキー行だが、`---` 前方一致だと閉じフェンスに見えてしまう
+    const content = `---
+name: x
+description: y
+----: 区切りに見えるキー
+metadata:
+  type: project
+---
+
+## A
+本文
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.frontmatterParsable).toBe(true);
+    expect(m.name).toBe("x");
+    expect(m.type).toBe("project");
+    expect(m.metadataKeys).toEqual(["type"]);
+    expect(m.h2Count).toBe(1);
+    expect(m.bodyLines).toBe(3);
+  });
+
+  test("フロントマター内の行頭 `--- foo` で本文を途中から切り出さない", () => {
+    const content = `---
+name: x
+description: y
+--- foo
+metadata:
+  type: project
+---
+
+## A
+[[project-foo]]
+`;
+    const m = parseMemory("project_x.md", content);
+    // `--- foo` を含むフロントマターは YAML として壊れているので解析不可が正しい
+    expect(m.frontmatterParsable).toBe(false);
+    expect(m.name).toBeNull();
+    expect(m.h2Count).toBe(1);
+    expect(m.links).toEqual(["project-foo"]);
+    expect(m.bodyLines).toBe(3);
+  });
+
+  test("閉じフェンス行の行末に空白があっても閉じフェンスとして扱う", () => {
+    const content = "---\nname: x\ndescription: y\nmetadata:\n  type: project\n--- \n\n## A\n";
+    const m = parseMemory("project_x.md", content);
+    expect(m.frontmatterParsable).toBe(true);
+    expect(m.type).toBe("project");
+    expect(m.bodyLines).toBe(2);
+  });
+
+  test("ファイル末尾が改行なしの `---` で終わる場合は本文を空として扱う", () => {
+    const content = "---\nname: x\ndescription: y\nmetadata:\n  type: project\n---";
+    const m = parseMemory("project_x.md", content);
+    expect(m.frontmatterParsable).toBe(true);
+    expect(m.type).toBe("project");
+    expect(m.bodyLines).toBe(0);
+  });
+
+  test("閉じフェンスが無い場合は行頭 `----` を境界にせず全体を本文として扱う", () => {
+    const content = `---
+本文だけのファイル
+
+----
+
+## A
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.frontmatterParsable).toBe(false);
+    expect(m.h2Count).toBe(1);
+    expect(m.bodyLines).toBe(6);
+  });
+
+  test("本文中の行頭 `---` は本文として保持される", () => {
+    const content = `---
+name: x
+description: y
+metadata:
+  type: project
+---
+
+## A
+----
+## B
+`;
+    const m = parseMemory("project_x.md", content);
+    expect(m.type).toBe("project");
+    expect(m.h2Count).toBe(2);
+    expect(m.bodyLines).toBe(4);
+  });
+
   test("metadata が無い場合 type は null で metadataKeys は空", () => {
     const content = `---
 name: x

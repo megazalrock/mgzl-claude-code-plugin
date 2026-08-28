@@ -24,12 +24,25 @@ export interface ParsedMemory {
 /** フロントマター（--- で囲まれた先頭ブロック）と本文に分割する。フロントマターが無ければ raw は null */
 function splitFrontmatter(content: string): { raw: string | null; body: string } {
   if (!content.startsWith("---\n")) return { raw: null, body: content };
-  const end = content.indexOf("\n---", 4);
-  if (end === -1) return { raw: null, body: content };
-  const raw = content.slice(4, end);
-  const afterClose = content.indexOf("\n", end + 1);
-  const body = afterClose === -1 ? "" : content.slice(afterClose + 1);
-  return { raw, body };
+
+  // 閉じフェンスは行全体が `---`（行末の空白のみ許容）の行に限る。
+  // `\n---` の前方一致だと値に含まれる `----` や `--- foo` をフェンスと誤認し、
+  // フロントマターと本文の境界がずれるため 1 行ずつ照合する
+  let lineStart = 4;
+  while (lineStart <= content.length) {
+    const newlineIndex = content.indexOf("\n", lineStart);
+    const lineEnd = newlineIndex === -1 ? content.length : newlineIndex;
+    if (content.slice(lineStart, lineEnd).trimEnd() === "---") {
+      // lineStart - 1 はフェンス行直前の改行位置。raw にその改行は含めない
+      const raw = content.slice(4, lineStart - 1);
+      // フェンス行で終端している（末尾に改行が無い）場合は本文なし
+      const body = newlineIndex === -1 ? "" : content.slice(newlineIndex + 1);
+      return { raw, body };
+    }
+    if (newlineIndex === -1) break;
+    lineStart = newlineIndex + 1;
+  }
+  return { raw: null, body: content };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
