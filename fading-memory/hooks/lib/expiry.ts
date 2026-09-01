@@ -18,3 +18,16 @@ export function expiresAt(meta: MemoryMeta, cfg: FadingMemoryConfig = config): n
   );
   return Math.max(created + extensionDays * DAY_MS, lastRef + cfg.baseTtlDays * DAY_MS);
 }
+
+/**
+ * 有効期限までの残り日数。日をまたぐ端数は切り上げる。
+ * permanent は Infinity、期限切れの記憶では負値になる。
+ */
+export function remainingDays(
+  meta: MemoryMeta,
+  now: number,
+  cfg: FadingMemoryConfig = config,
+): number {
+  if (meta.permanent) return Infinity;
+  return Math.ceil((expiresAt(meta, cfg) - now) / DAY_MS);
+}

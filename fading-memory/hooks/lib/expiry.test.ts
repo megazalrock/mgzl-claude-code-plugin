@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { expiresAt } from "./expiry.ts";
+import { expiresAt, remainingDays } from "./expiry.ts";
 import type { MemoryMeta } from "./frontmatter.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -41,5 +41,27 @@ describe("expiresAt", () => {
 
   test("permanent は Infinity", () => {
     expect(expiresAt(meta({ permanent: true }))).toBe(Infinity);
+  });
+});
+
+describe("remainingDays", () => {
+  test("permanent は Infinity", () => {
+    expect(remainingDays(meta({ permanent: true }), createdMs)).toBe(Infinity);
+  });
+
+  test("期限ちょうどの時刻では 0", () => {
+    expect(remainingDays(meta({}), createdMs + 30 * DAY)).toBe(0);
+  });
+
+  test("期限を過ぎていれば負値になる", () => {
+    expect(remainingDays(meta({}), createdMs + 33 * DAY)).toBe(-3);
+  });
+
+  test("端数は切り上げる", () => {
+    expect(remainingDays(meta({}), createdMs + 29.5 * DAY)).toBe(1);
+  });
+
+  test("score による延長が残り日数に反映される", () => {
+    expect(remainingDays(meta({ score: 3 }), createdMs)).toBe(51);
   });
 });
