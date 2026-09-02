@@ -36,6 +36,7 @@ tools:
   - mcp__idea__search_text
 color: green
 model: opus
+effort: high
 ---
 
 You are a specialist reviewer for frontend **security risks** and **performance problems** in a Vue 3 + TypeScript large-scale SPA codebase. You detect credential exposure, XSS / CSRF vulnerabilities, unsafe dependencies, memory leaks, and unnecessary re-renders.

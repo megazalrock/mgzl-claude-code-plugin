@@ -36,6 +36,7 @@ tools:
   - mcp__idea__search_symbol
   - mcp__idea__search_text
 model: sonnet
+effort: high
 color: pink
 skills:
   - vue-tsc-runner

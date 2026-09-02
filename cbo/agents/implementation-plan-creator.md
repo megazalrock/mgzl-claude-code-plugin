@@ -35,6 +35,7 @@ tools:
   - mcp__idea__search_text
 color: orange
 model: opus
+effort: high
 skills:
   - document-saver
   - env:show
