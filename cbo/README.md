@@ -35,16 +35,20 @@ $MGZL_DIR/
 |--------|-----------|------|-----|
 | `API_REPO_PATH` | `api:ask-implementations` | API リポジトリの絶対パス | `/path/to/api-repo` |
 | `CDS_REPO_PATH` | `cds:ask-implementations` | デザインシステムリポジトリの絶対パス | `/path/to/craftbank-design-system` |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `impl:execute` | Agent Teams（チーム実行）を有効化する。難易度: 高の並列ステップをチームメイトへ委譲するチーム実行フローで必要 | `1` |
 
 ```json
 {
   "env": {
     "MGZL_DIR": ".mgzl",
     "API_REPO_PATH": "/path/to/api-repo",
-    "CDS_REPO_PATH": "/path/to/craftbank-design-system"
+    "CDS_REPO_PATH": "/path/to/craftbank-design-system",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
 ```
+
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` は Claude Code 組み込みの環境変数で、既定では無効。未設定の場合 `impl:execute` のチーム実行フローは通常の並列実行へ縮退する（チームメイトが起動しないため、完了後の shutdown 送信も空振りする）。チーム実行を使うなら設定する。ユーザー全体で有効にする場合は `~/.claude/settings.json` の `env` に置いてもよい。
 
 ## パーミッションの設定
 
