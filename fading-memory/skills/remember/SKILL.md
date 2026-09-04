@@ -32,7 +32,7 @@ fading-memory の記憶データを作成する。保存先の決定・frontmatt
    EOF
    ```
    - 該当が無い配列は空配列にする
-   - 書き込みで EPERM (operation not permitted) が出た場合は入力の不備ではなく、保存先 `~/.claude/fading-memory/` がサンドボックスの書き込み許可外であることが原因
+   - 書き込みで EPERM (operation not permitted) が出た場合は入力の不備ではなく、記憶データの保存先（既定は `~/.claude/fading-memory/`、`FADING_MEMORY_DIR` で変更可）がサンドボックスの書き込み許可外であることが原因
 4. スクリプトの出力（key=value 形式）を確認し、結果をユーザーに報告する:
    - `created=` / `updated=` の slug と title を伝える
    - `skipped=` は存在しない slug への更新を意味する。newMemories に組み替えて再実行する
