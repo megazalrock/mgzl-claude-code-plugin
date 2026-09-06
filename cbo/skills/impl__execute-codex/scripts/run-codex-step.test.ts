@@ -82,7 +82,7 @@ describe("run-codex-step", () => {
     await runStep({ mode: "ok", role: "test", promptOut });
 
     const received = readFileSync(promptOut, "utf8");
-    expect(received.startsWith("# HEADER-TEST")).toBe(true);
+    expect(received.startsWith("# 実装依頼（テストコード）")).toBe(true);
     expect(received).toContain("## ステップ 1\nfoo を実装する");
   });
 
