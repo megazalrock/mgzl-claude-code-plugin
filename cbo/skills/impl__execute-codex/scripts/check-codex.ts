@@ -25,11 +25,6 @@ const stderr = await new Response(proc.stderr).text();
 const exitCode = await proc.exited;
 
 if (exitCode !== 0) {
-  // Bun が throw せず非 0 終了のプロセスを返すケース（例: 実行ファイル自体は存在しない
-  // がシェル経由で解決できない）も not_found として扱う
-  if (stderr.includes("ENOENT") || stderr.includes("No such file")) {
-    printNg({ reason: "not_found", detail: stderr.split("\n")[0] ?? "" });
-  }
   printNg({ reason: "exec_failed", detail: stderr.split("\n")[0] ?? "" });
 }
 
