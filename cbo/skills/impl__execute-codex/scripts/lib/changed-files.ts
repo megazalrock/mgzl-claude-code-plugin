@@ -13,9 +13,15 @@ export const parsePorcelain = (output: string): Set<string> => {
   return files;
 };
 
+/** パス → 内容ハッシュ。削除済み（実体が無い）パスは undefined */
+export type FileHashes = Map<string, string | undefined>;
+
 /**
- * 実行前後の git status 差分から、Codex の実行によって新たに変更されたファイルを求める。
- * 実行前から変更済みだったファイルは Codex の成果か判別できないため除外する
+ * 実行前後の「変更済みファイルの内容ハッシュ」から、Codex の実行で変わったファイルを求める。
+ * パスの集合比較だと、直前のステップで作られてまだコミットされていないファイルを
+ * さらに書き換えた場合に検出できないため、内容を突き合わせる
  */
-export const diffChangedFiles = (args: { before: Set<string>; after: Set<string> }): string[] =>
-  [...args.after].filter((file) => !args.before.has(file)).sort();
+export const diffChangedFiles = (args: { before: FileHashes; after: FileHashes }): string[] =>
+  [...args.after.keys()]
+    .filter((file) => !args.before.has(file) || args.before.get(file) !== args.after.get(file))
+    .sort();

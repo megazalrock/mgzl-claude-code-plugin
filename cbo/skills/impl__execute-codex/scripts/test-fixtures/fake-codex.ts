@@ -61,9 +61,25 @@ if (mode === "nonzero_exit") {
   process.exit(1);
 }
 
-if (mode === "ok") {
+if (mode === "hang") {
+  // タイムアウト検出のテスト用。上限を短縮した実行なら kill される
+  await Bun.sleep(3000);
+}
+
+if (mode === "stderr_flood") {
+  // stdout より先に stderr を大量に書き、パイプの読み順による詰まりを検出する
+  console.error("x".repeat(256 * 1024));
+}
+
+if (mode === "ok" || mode === "stderr_flood") {
   mkdirSync(join(cwd, "src"), { recursive: true });
   writeFileSync(join(cwd, "src", "generated.ts"), "export const generated = true;\n");
+  // 非 ASCII パスがクォートされずに報告されるかを検証するためのファイル
+  writeFileSync(join(cwd, "src", "日本語.ts"), "export const nihongo = true;\n");
+}
+
+if (mode === "modify_existing") {
+  writeFileSync(join(cwd, "src", "existing.ts"), "export const existing = 2;\n");
 }
 
 emit({ type: "turn.completed", usage: { input_tokens: 1, output_tokens: 1 } });

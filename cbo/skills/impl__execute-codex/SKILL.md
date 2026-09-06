@@ -17,7 +17,10 @@ disable-model-invocation: true
 ## Bash 実行時の注意
 
 - `${CLAUDE_SKILL_DIR}/scripts/check-codex.ts` と `${CLAUDE_SKILL_DIR}/scripts/run-codex-step.ts` を実行する Bash 呼び出しは **サンドボックスを無効化して実行する**。Codex CLI はサンドボックス内では `failed to initialize in-process app-server client: Operation not permitted` で起動できない
+- `run-codex-step.ts` を実行する Bash 呼び出しは **`timeout` を最大値の 600000（ミリ秒）で指定する**。Codex の 1 ステップは既定の 120 秒を容易に超える
+  - それでも Bash ツール側がタイムアウトした場合は `status=error` / `reason=timeout` と同じ扱いとし、計画書は書き換えずユーザーに報告して停止する
 - スクリプトの出力は key=value 形式（1 行 1 項目）。`status=` 行で成否を判定する
+- `run-codex-step.ts` の `reason` は `invalid_args` / `git_failed` / `error_event` / `nonzero_exit` / `no_last_message` / `no_changes` / `timeout` のいずれか
 
 ## 進捗管理の方針
 

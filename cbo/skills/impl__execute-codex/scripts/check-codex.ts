@@ -12,17 +12,28 @@ const printNg = (args: { reason: string; detail: string }): never => {
 
 const command = resolveCodexBin(process.env);
 
-let proc: ReturnType<typeof Bun.spawn>;
+const run = async (): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+  const proc = Bun.spawn([...command, "--version"], { stdout: "pipe", stderr: "pipe" });
+  // stdout を読み切るまで stderr のパイプが詰まると子プロセスが止まるため、両方を同時に読む
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  return { stdout, stderr, exitCode: await proc.exited };
+};
+
+let result: { stdout: string; stderr: string; exitCode: number };
 try {
-  proc = Bun.spawn([...command, "--version"], { stdout: "pipe", stderr: "pipe" });
+  result = await run();
 } catch (error) {
-  // Bun.spawn は実行ファイルが存在しないとき同期的に throw する
-  printNg({ reason: "not_found", detail: error instanceof Error ? error.message : String(error) });
+  // Bun.spawn は実行ファイルが存在しないとき throw する
+  result = printNg({
+    reason: "not_found",
+    detail: error instanceof Error ? error.message : String(error),
+  });
 }
 
-const stdout = await new Response(proc.stdout).text();
-const stderr = await new Response(proc.stderr).text();
-const exitCode = await proc.exited;
+const { stdout, stderr, exitCode } = result;
 
 if (exitCode !== 0) {
   printNg({ reason: "exec_failed", detail: stderr.split("\n")[0] ?? "" });

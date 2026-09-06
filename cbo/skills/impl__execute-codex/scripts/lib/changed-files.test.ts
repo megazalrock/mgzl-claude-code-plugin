@@ -25,18 +25,36 @@ describe("parsePorcelain", () => {
 
 describe("diffChangedFiles", () => {
   it("after にだけ含まれるパスをソート済み配列で返す", () => {
-    const before = new Set(["src/pre.ts"]);
-    const after = new Set(["src/pre.ts", "src/z.ts", "src/a.ts"]);
+    const before = new Map([["src/pre.ts", "h1"]]);
+    const after = new Map([
+      ["src/pre.ts", "h1"],
+      ["src/z.ts", "h2"],
+      ["src/a.ts", "h3"],
+    ]);
 
     const changed = diffChangedFiles({ before, after });
 
     expect(changed).toStrictEqual(["src/a.ts", "src/z.ts"]);
   });
 
-  it("実行前から変更済みだったファイルは含めない", () => {
-    const before = new Set(["src/pre.ts"]);
-    const after = new Set(["src/pre.ts"]);
+  it("実行前から変更済みでハッシュが同じファイルは含めない", () => {
+    const before = new Map([["src/pre.ts", "h1"]]);
+    const after = new Map([["src/pre.ts", "h1"]]);
 
     expect(diffChangedFiles({ before, after })).toStrictEqual([]);
+  });
+
+  it("実行前から変更済みでもハッシュが変わっていれば含める", () => {
+    const before = new Map([["src/pre.ts", "h1"]]);
+    const after = new Map([["src/pre.ts", "h2"]]);
+
+    expect(diffChangedFiles({ before, after })).toStrictEqual(["src/pre.ts"]);
+  });
+
+  it("実行中に削除されたファイルは含める", () => {
+    const before: Map<string, string | undefined> = new Map([["src/pre.ts", "h1"]]);
+    const after: Map<string, string | undefined> = new Map([["src/pre.ts", undefined]]);
+
+    expect(diffChangedFiles({ before, after })).toStrictEqual(["src/pre.ts"]);
   });
 });

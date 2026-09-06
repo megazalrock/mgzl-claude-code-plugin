@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -48,6 +48,7 @@ const runStep = async (args: {
   role?: string;
   extraArgs?: string[];
   promptOut?: string;
+  timeoutMs?: number;
 }): Promise<RunResult> => {
   const cliArgs =
     args.extraArgs ?? ["--prompt", promptFile, "--cwd", workDir, "--role", args.role ?? "impl"];
@@ -57,6 +58,9 @@ const runStep = async (args: {
       IMPL_EXECUTE_CODEX_BIN: fakeCodex,
       FAKE_CODEX_MODE: args.mode,
       ...(args.promptOut === undefined ? {} : { FAKE_CODEX_PROMPT_OUT: args.promptOut }),
+      ...(args.timeoutMs === undefined
+        ? {}
+        : { IMPL_EXECUTE_CODEX_TIMEOUT_MS: String(args.timeoutMs) }),
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -72,7 +76,7 @@ describe("run-codex-step", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.lines.status).toBe("ok");
-    expect(result.lines.changed_files).toBe("src/generated.ts");
+    expect(result.lines.changed_files).toBe("src/generated.ts,src/日本語.ts");
     expect(result.lines.summary).toBe("実装しました。");
     expect(existsSync(result.lines.last_message_file ?? "")).toBe(true);
   });
@@ -86,13 +90,38 @@ describe("run-codex-step", () => {
     expect(received).toContain("## ステップ 1\nfoo を実装する");
   });
 
-  it("実行前から変更済みだったファイルは changed_files に含めない", async () => {
+  it("実行前から変更済みで内容が変わらないファイルは changed_files に含めない", async () => {
     writeFileSync(join(workDir, "pre-existing.txt"), "dirty\n");
 
     const result = await runStep({ mode: "ok" });
 
-    expect(result.lines.changed_files).toBe("src/generated.ts");
+    expect(result.lines.changed_files).toBe("src/generated.ts,src/日本語.ts");
   });
+
+  it("実行前から変更済みのファイルを書き換えた場合も changed_files に含める", async () => {
+    mkdirSync(join(workDir, "src"), { recursive: true });
+    writeFileSync(join(workDir, "src", "existing.ts"), "export const existing = 1;\n");
+
+    const result = await runStep({ mode: "modify_existing" });
+
+    expect(result.lines.status).toBe("ok");
+    expect(result.lines.changed_files).toBe("src/existing.ts");
+  });
+
+  it("stderr が大量でも詰まらずに完了する", async () => {
+    const result = await runStep({ mode: "stderr_flood" });
+
+    expect(result.lines.status).toBe("ok");
+    expect(result.lines.changed_files).toBe("src/generated.ts,src/日本語.ts");
+  }, 30_000);
+
+  it("上限時間を超えたら reason=timeout で停止する", async () => {
+    const result = await runStep({ mode: "hang", timeoutMs: 500 });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.lines.status).toBe("error");
+    expect(result.lines.reason).toBe("timeout");
+  }, 30_000);
 
   it("error イベントがあれば reason=error_event で停止する", async () => {
     const result = await runStep({ mode: "error_event" });

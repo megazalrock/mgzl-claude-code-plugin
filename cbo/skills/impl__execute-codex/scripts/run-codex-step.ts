@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 // SKILL_DIR/scripts/run-codex-step.ts
 
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { diffChangedFiles, parsePorcelain } from "./lib/changed-files";
+import { diffChangedFiles, type FileHashes, parsePorcelain } from "./lib/changed-files";
 import { buildExecArgs, resolveCodexBin } from "./lib/codex-command";
 import { parseCodexEvents } from "./lib/codex-events";
 
@@ -39,19 +40,50 @@ const readTextFile = (path: string): string => {
   }
 };
 
+/** codex 1 ステップの実行時間の上限。Bash ツール側の上限 600 秒より短く取る */
+const DEFAULT_TIMEOUT_MS = 570_000;
+/** テストから上限を短縮するためだけの環境変数 */
+const TIMEOUT_ENV = "IMPL_EXECUTE_CODEX_TIMEOUT_MS";
+
+const resolveTimeoutMs = (env: Record<string, string | undefined>): number => {
+  const raw = env[TIMEOUT_ENV];
+  const parsed = raw === undefined ? Number.NaN : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
+};
+
 const gitStatus = async (cwd: string): Promise<Set<string>> => {
-  // -uall で未追跡ディレクトリを配下のファイル単位まで展開させる（既定だと "src/" のように丸められる）
-  const proc = Bun.spawn(["git", "status", "--porcelain", "-uall"], {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
+  // -uall で未追跡ディレクトリを配下のファイル単位まで展開させる（既定だと "src/" のように丸められる）。
+  // core.quotepath=false で非 ASCII のパスが \346\227... にエスケープされるのを防ぐ
+  const args = ["git", "-c", "core.quotepath=false", "status", "--porcelain", "-uall"];
+  const proc = Bun.spawn(args, { cwd, stdout: "pipe", stderr: "pipe" });
+  // stdout を読み切るまで stderr のパイプが詰まると子プロセスが止まるため、両方を同時に読む
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
   if ((await proc.exited) !== 0) {
     return printError({ reason: "git_failed", detail: stderr });
   }
   return parsePorcelain(stdout);
+};
+
+const hashFile = async (path: string): Promise<string | undefined> => {
+  const file = Bun.file(path);
+  if (!(await file.exists())) {
+    return undefined;
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return createHash("sha256").update(bytes).digest("hex");
+};
+
+/** git status に現れたパスだけを対象に内容ハッシュを取る（走査対象は dirty なファイルに限られる） */
+const gitStatusHashes = async (cwd: string): Promise<FileHashes> => {
+  const paths = await gitStatus(cwd);
+  const hashes: FileHashes = new Map();
+  for (const path of paths) {
+    hashes.set(path, await hashFile(join(cwd, path)));
+  }
+  return hashes;
 };
 
 const main = async (): Promise<void> => {
@@ -82,7 +114,7 @@ const main = async (): Promise<void> => {
   const lastMessageFile = join(workDir, "last-message.md");
   writeFileSync(fullPromptFile, `${header}\n\n---\n\n${body}`);
 
-  const before = await gitStatus(cwd);
+  const before = await gitStatusHashes(cwd);
 
   const proc = Bun.spawn(
     [...resolveCodexBin(process.env), ...buildExecArgs({ cwd, lastMessageFile })],
@@ -93,9 +125,23 @@ const main = async (): Promise<void> => {
       stderr: "pipe",
     }
   );
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
+  const timeoutMs = resolveTimeoutMs(process.env);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    proc.kill();
+  }, timeoutMs);
+  // stdout を読み切るまで stderr のパイプが詰まると codex が止まるため、両方を同時に読む
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
   const exitCode = await proc.exited;
+  clearTimeout(timer);
+
+  if (timedOut) {
+    return printError({ reason: "timeout", detail: `codex exceeded ${timeoutMs}ms` });
+  }
 
   const events = parseCodexEvents(stdout);
   if (events.errors.length > 0 || events.turnFailed) {
@@ -108,7 +154,7 @@ const main = async (): Promise<void> => {
     return printError({ reason: "no_last_message", detail: lastMessageFile });
   }
 
-  const after = await gitStatus(cwd);
+  const after = await gitStatusHashes(cwd);
   const changedFiles = diffChangedFiles({ before, after });
   const lastMessage = readFileSync(lastMessageFile, "utf8");
   const summary = lastMessage.split("\n")[0] ?? "";

@@ -75,10 +75,10 @@ codex exec \
 ```
 
 3. `--json` の JSONL イベントを読み、`type` が `error` または `turn.failed` のイベントを集める。実測では、不正なモデル指定時に `{"type":"error","message":...}` と `{"type":"turn.failed","error":{...}}` が出て終了コード 1 になる。`item.completed` の `item.type: "error"` は警告扱いで、それ単独では失敗にしない。
-4. 変更ファイルは JSONL からは取れない（ファイル操作は `command_execution` イベントのシェルコマンドとして現れるだけ）。実行前後に `git status --porcelain` を取り、差分で変更ファイルを求める。
+4. 変更ファイルは JSONL からは取れない（ファイル操作は `command_execution` イベントのシェルコマンドとして現れるだけ）。実行前後に `git -c core.quotepath=false status --porcelain -uall` を取り、そこに現れたパスの内容ハッシュ（SHA-256）のマップを作って突き合わせる。after にのみ現れたパスと、両方にあってハッシュが変わったパスを変更ファイルとする。パスの集合だけで比較すると、コミットを挟まない多段ステップで既に dirty なファイルの再編集を検出できないため。ハッシュ対象は dirty なファイルに限られるのでコストは有界。
 5. 出力:
    - 成功: `status=ok`、`changed_files=<カンマ区切り>`、`last_message_file=<パス>`、`summary=<最終メッセージ先頭行>`
-   - 失敗: `status=error`、`reason=<nonzero_exit | error_event | no_last_message | no_changes | git_failed>`、`detail=<原因の要約>`
+   - 失敗: `status=error`、`reason=<nonzero_exit | error_event | no_last_message | no_changes | git_failed | timeout | invalid_args>`、`detail=<原因の要約>`
 
 失敗判定:
 
@@ -87,6 +87,7 @@ codex exec \
 - 最終メッセージファイルが生成されない
 - 変更ファイルが 0 件（Codex が「実装できない」と判断して終えた場合。エラーにはならないので明示的に検出する）
 - `git status` が失敗した（対象が git 管理外）
+- 実行が上限時間（570 秒）を超えた（`reason=timeout`。Bash ツールの最大 600 秒より内側で自ら打ち切る）
 
 ### サンドボックスに関する制約
 
