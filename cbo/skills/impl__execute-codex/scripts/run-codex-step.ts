@@ -11,11 +11,16 @@ import { parseCodexEvents } from "./lib/codex-events";
 
 type Role = "impl" | "test";
 
-const printError = (args: { reason: string; detail: string }): never => {
+const printError = (args: { reason: string; detail: string; lastMessageFile?: string }): never => {
   console.log("status=error");
   console.log(`reason=${args.reason}`);
   // 複数行の detail は key=value 形式を崩すので 1 行に潰す
   console.log(`detail=${args.detail.replace(/\s*\n\s*/g, " / ").trim()}`);
+  // detail は最終メッセージの 1 行目しか持たないため、中断理由の全文を呼び出し側が
+  // 読めるように最終メッセージのパスも渡す
+  if (args.lastMessageFile !== undefined) {
+    console.log(`last_message_file=${args.lastMessageFile}`);
+  }
   process.exit(1);
 };
 
@@ -169,7 +174,7 @@ const main = async (): Promise<void> => {
   const lastMessage = readFileSync(lastMessageFile, "utf8");
   const summary = lastMessage.split("\n")[0] ?? "";
   if (changedFiles.length === 0) {
-    return printError({ reason: "no_changes", detail: summary });
+    return printError({ reason: "no_changes", detail: summary, lastMessageFile });
   }
 
   console.log("status=ok");

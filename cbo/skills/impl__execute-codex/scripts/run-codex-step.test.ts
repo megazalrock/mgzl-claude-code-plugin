@@ -154,12 +154,30 @@ describe("run-codex-step", () => {
     const result = await runStep({ mode: "no_last_message" });
 
     expect(result.lines.reason).toBe("no_last_message");
+    expect(result.lines.last_message_file).toBeUndefined();
   });
 
   it("変更ファイルが 0 件なら reason=no_changes", async () => {
     const result = await runStep({ mode: "nochange" });
 
     expect(result.lines.reason).toBe("no_changes");
+  });
+
+  it("reason=no_changes では最終メッセージの全文を読める last_message_file を出力する", async () => {
+    const result = await runStep({ mode: "nochange" });
+
+    const lastMessageFile = result.lines.last_message_file ?? "";
+    expect(existsSync(lastMessageFile)).toBe(true);
+    const content = readFileSync(lastMessageFile, "utf8");
+    expect(content.startsWith(result.lines.detail ?? "")).toBe(true);
+    expect(content).toContain("変更: src/generated.ts");
+  });
+
+  it("no_changes 以外のエラーでは last_message_file を出力しない", async () => {
+    const result = await runStep({ mode: "nonzero_exit" });
+
+    expect(result.lines.reason).toBe("nonzero_exit");
+    expect(result.lines.last_message_file).toBeUndefined();
   });
 
   it("cwd が git 管理外なら reason=git_failed", async () => {

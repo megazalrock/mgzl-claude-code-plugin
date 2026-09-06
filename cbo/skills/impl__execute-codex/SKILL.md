@@ -21,6 +21,7 @@ disable-model-invocation: true
   - それでも Bash ツール側がタイムアウトした場合は `status=error` / `reason=timeout` と同じ扱いとし、計画書は書き換えずユーザーに報告して停止する
 - スクリプトの出力は key=value 形式（1 行 1 項目）。`status=` 行で成否を判定する
 - `run-codex-step.ts` の `reason` は `invalid_args` / `git_failed` / `error_event` / `nonzero_exit` / `no_last_message` / `no_changes` / `timeout` のいずれか
+- `reason=no_changes` のときは `last_message_file` も出力される。Codex の最終メッセージ（中断理由）の全文が入っている
 
 ## 進捗管理の方針
 
@@ -78,7 +79,7 @@ disable-model-invocation: true
   - `status=ok` の場合: `last_message_file` を読み、`changed_files` と最終メッセージの要約をコンテキストに控える。**先に最終メッセージの 1 行目を判定する**
     - 1 行目が「実装中断」「異常停止」で始まる場合: Codex が完了していないので、計画書は書き換えず（`- [x]` にしない）内容をユーザーに報告して **停止する**
     - 該当しない場合: 計画書の当該ステップ見出しを `- [x]` に書き換える
-  - `status=error` の場合: `reason` と `detail` をユーザーに報告して **停止する**。計画書は書き換えない
+  - `status=error` の場合: `reason` と `detail` をユーザーに報告して **停止する**。計画書は書き換えない。`last_message_file` があれば読み、Codex の中断理由の全文も報告に含める
 
 6. 計画書を読み直して `- [ ]` のステップが残っているか確認し、残っていれば 5. を繰り返す
 
@@ -100,7 +101,7 @@ disable-model-invocation: true
     - 報告の先頭に `⛔ 前提チェック失敗` がある場合は、実装済みステップのどこかでテストが red のまま残っている。ミューテーションテストを中断し、red のテストと失敗メッセージをユーザーに報告して判断を仰ぐ
   - **survivor が報告された場合**
     - 修正回数カウンタをファイルごとに 0 で初期化し、以下の「テスト追加 → 再検証」ループを実行する（**最大 2 回まで**）
-      1. **テスト追加**: survivor の変異内容と「追加すべきテスト観点」、対象 SUT と関連テストファイルのパスを `$TMPDIR` 配下の依頼文ファイルに書き、`bun run ${CLAUDE_SKILL_DIR}/scripts/run-codex-step.ts --prompt <依頼文ファイル> --cwd <プロジェクトルート> --role test` で Codex に委譲する。`status=error` なら `reason` と `detail` を報告して停止する
+      1. **テスト追加**: survivor の変異内容と「追加すべきテスト観点」、対象 SUT と関連テストファイルのパスを `$TMPDIR` 配下の依頼文ファイルに書き、`bun run ${CLAUDE_SKILL_DIR}/scripts/run-codex-step.ts --prompt <依頼文ファイル> --cwd <プロジェクトルート> --role test` で Codex に委譲する。`status=error` なら `reason` と `detail`（`last_message_file` があればその全文も）を報告して停止する
       2. **再検証**: テスト追加後、該当ファイルの `@mutation-tester` を再度起動し、**当該 survivor のみ**を対象に再検証する（検証対象の survivor の変異内容一覧をプロンプトで渡す）
       3. **判定**
          - survivor が **0 件** → 当該ファイルは完了。次の対象 SUT ファイルへ進む
@@ -130,7 +131,7 @@ disable-model-invocation: true
        - 指摘が **1 件以上** かつ **修正回数 < 2** → 3. へ進む
        - 指摘が **1 件以上** かつ **修正回数 ≥ 2** → 4. へ進む
     3. **修正**
-       - `[2]` 以上の指摘を、指摘ごとの「問題」「理由」「提案」と対象ファイル・行を `$TMPDIR` 配下の依頼文ファイルにまとめ、対象がテストファイルのみなら `--role test`、それ以外は `--role impl` を指定して `bun run ${CLAUDE_SKILL_DIR}/scripts/run-codex-step.ts --prompt <依頼文ファイル> --cwd <プロジェクトルート> --role <impl|test>` で修正させる。指摘が複数ファイルにまたがる場合も 1 回の呼び出しにまとめてよい。`status=error` なら `reason` と `detail` を報告して停止する
+       - `[2]` 以上の指摘を、指摘ごとの「問題」「理由」「提案」と対象ファイル・行を `$TMPDIR` 配下の依頼文ファイルにまとめ、対象がテストファイルのみなら `--role test`、それ以外は `--role impl` を指定して `bun run ${CLAUDE_SKILL_DIR}/scripts/run-codex-step.ts --prompt <依頼文ファイル> --cwd <プロジェクトルート> --role <impl|test>` で修正させる。指摘が複数ファイルにまたがる場合も 1 回の呼び出しにまとめてよい。`status=error` なら `reason` と `detail`（`last_message_file` があればその全文も）を報告して停止する
        - 修正が完了したら修正回数を 1 増やす
        - **コメントに対する指摘の対処方針を依頼文に含める。説明を追記して辻褄を合わせる前に、当該記述ごと削除できないかを先に検討させる**
          - ループの抜け条件が「指摘 0 件」であるため、再指摘を確実に避けられる追記が構造的に選ばれやすく、ラウンドを重ねるほどコメントが肥大化する
