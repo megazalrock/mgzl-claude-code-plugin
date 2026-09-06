@@ -90,6 +90,17 @@ describe("run-codex-step", () => {
     expect(received).toContain("## ステップ 1\nfoo を実装する");
   });
 
+  it("ヘッダの型チェックスクリプトのプレースホルダを絶対パスに置換して渡す", async () => {
+    const promptOut = join(outsideDir, "received-prompt.txt");
+    await runStep({ mode: "ok", promptOut });
+
+    const received = readFileSync(promptOut, "utf8");
+    expect(received).toContain(
+      join(import.meta.dir, "..", "..", "vue-tsc-runner", "scripts", "run-vue-tsc.ts")
+    );
+    expect(received).not.toContain("{{VUE_TSC_RUNNER_SCRIPT}}");
+  });
+
   it("実行前から変更済みで内容が変わらないファイルは changed_files に含めない", async () => {
     writeFileSync(join(workDir, "pre-existing.txt"), "dirty\n");
 

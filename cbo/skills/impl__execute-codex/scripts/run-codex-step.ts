@@ -4,7 +4,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { diffChangedFiles, type FileHashes, parsePorcelain } from "./lib/changed-files";
 import { buildExecArgs, resolveCodexBin } from "./lib/codex-command";
 import { parseCodexEvents } from "./lib/codex-events";
@@ -39,6 +39,11 @@ const readTextFile = (path: string): string => {
     });
   }
 };
+
+/** 規約ヘッダの `{{VUE_TSC_RUNNER_SCRIPT}}` に埋め込む、CI 相当の型チェックスクリプトの絶対パス */
+const vueTscRunnerScript = resolve(
+  join(import.meta.dir, "..", "..", "vue-tsc-runner", "scripts", "run-vue-tsc.ts")
+);
 
 /** codex 1 ステップの実行時間の上限。Bash ツール側の上限 600 秒より短く取る */
 const DEFAULT_TIMEOUT_MS = 570_000;
@@ -106,7 +111,12 @@ const main = async (): Promise<void> => {
   const role = rawRole;
 
   const headerPath = join(import.meta.dir, "..", "references", `codex-header-${role}.md`);
-  const header = readTextFile(headerPath);
+  // codex は `${CLAUDE_SKILL_DIR}` のような Claude 側の変数を解決できないため、
+  // 型チェック用スクリプトの絶対パスをここで埋め込んでから渡す
+  const header = readTextFile(headerPath).replaceAll(
+    "{{VUE_TSC_RUNNER_SCRIPT}}",
+    vueTscRunnerScript
+  );
   const body = readTextFile(promptPath);
 
   const workDir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "impl-execute-codex-"));
