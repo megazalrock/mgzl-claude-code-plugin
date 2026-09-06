@@ -34,9 +34,14 @@ if (cwd === undefined || lastMessageFile === undefined) {
   process.exit(3);
 }
 
-// 受け取ったプロンプトを記録し、テスト側でヘッダ連結を検証できるようにする
+// 受け取ったプロンプトを記録し、テスト側でヘッダ連結を検証できるようにする。
+// 対象リポジトリ（cwd）配下に書くと git status の差分に混入してしまうため、
+// 明示的に指定されたパス（cwd の外を想定）にのみ書き出す
 const prompt = await Bun.stdin.text();
-writeFileSync(join(cwd, ".fake-codex-prompt.txt"), prompt);
+const promptOut = process.env.FAKE_CODEX_PROMPT_OUT;
+if (promptOut !== undefined) {
+  writeFileSync(promptOut, prompt);
+}
 
 const emit = (event: Record<string, unknown>): void => {
   console.log(JSON.stringify(event));

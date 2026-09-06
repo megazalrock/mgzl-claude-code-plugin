@@ -26,6 +26,19 @@ const readOption = (name: string): string | undefined => {
 
 const isRole = (value: string | undefined): value is Role => value === "impl" || value === "test";
 
+const readTextFile = (path: string): string => {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    // ファイル欠落や権限エラーはユーザー入力の不備として invalid_args で報告し、
+    // status= 行を必ず出力する契約を守る
+    return printError({
+      reason: "invalid_args",
+      detail: `failed to read ${path}: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+};
+
 const gitStatus = async (cwd: string): Promise<Set<string>> => {
   // -uall で未追跡ディレクトリを配下のファイル単位まで展開させる（既定だと "src/" のように丸められる）
   const proc = Bun.spawn(["git", "status", "--porcelain", "-uall"], {
@@ -61,8 +74,8 @@ const main = async (): Promise<void> => {
   const role = rawRole;
 
   const headerPath = join(import.meta.dir, "..", "references", `codex-header-${role}.md`);
-  const header = readFileSync(headerPath, "utf8");
-  const body = readFileSync(promptPath, "utf8");
+  const header = readTextFile(headerPath);
+  const body = readTextFile(promptPath);
 
   const workDir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "impl-execute-codex-"));
   const fullPromptFile = join(workDir, "prompt.md");
@@ -96,17 +109,13 @@ const main = async (): Promise<void> => {
   }
 
   const after = await gitStatus(cwd);
-  // fake-codex がデバッグ用に cwd 直下へ書き出す `.fake-codex-prompt.txt` など、
-  // ドットファイルはツール由来の副産物であり Codex の実装成果ではないため除外する
-  const changedFiles = diffChangedFiles({ before, after }).filter(
-    (file) => !(file.split("/").pop() ?? file).startsWith(".")
-  );
+  const changedFiles = diffChangedFiles({ before, after });
+  const lastMessage = readFileSync(lastMessageFile, "utf8");
+  const summary = lastMessage.split("\n")[0] ?? "";
   if (changedFiles.length === 0) {
-    const firstLine = readFileSync(lastMessageFile, "utf8").split("\n")[0] ?? "";
-    return printError({ reason: "no_changes", detail: firstLine });
+    return printError({ reason: "no_changes", detail: summary });
   }
 
-  const summary = readFileSync(lastMessageFile, "utf8").split("\n")[0] ?? "";
   console.log("status=ok");
   console.log(`changed_files=${changedFiles.join(",")}`);
   console.log(`last_message_file=${lastMessageFile}`);

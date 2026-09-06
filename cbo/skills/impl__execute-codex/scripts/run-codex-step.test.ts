@@ -26,27 +26,38 @@ const gitInit = async (dir: string): Promise<void> => {
 
 let workDir: string;
 let promptFile: string;
+let outsideDir: string;
 
 beforeEach(async () => {
   workDir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "run-codex-step-"));
   await gitInit(workDir);
   promptFile = join(workDir, "prompt.md");
   writeFileSync(promptFile, "## ステップ 1\nfoo を実装する\n");
+  // fake-codex が受信プロンプトを記録する先。git 管理下の workDir の外に置き、
+  // git status の差分（changed_files）に混入しないようにする
+  outsideDir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "run-codex-step-out-"));
 });
 
 afterEach(() => {
   rmSync(workDir, { recursive: true, force: true });
+  rmSync(outsideDir, { recursive: true, force: true });
 });
 
 const runStep = async (args: {
   mode: string;
   role?: string;
   extraArgs?: string[];
+  promptOut?: string;
 }): Promise<RunResult> => {
   const cliArgs =
     args.extraArgs ?? ["--prompt", promptFile, "--cwd", workDir, "--role", args.role ?? "impl"];
   const proc = Bun.spawn(["bun", "run", scriptPath, ...cliArgs], {
-    env: { ...process.env, IMPL_EXECUTE_CODEX_BIN: fakeCodex, FAKE_CODEX_MODE: args.mode },
+    env: {
+      ...process.env,
+      IMPL_EXECUTE_CODEX_BIN: fakeCodex,
+      FAKE_CODEX_MODE: args.mode,
+      ...(args.promptOut === undefined ? {} : { FAKE_CODEX_PROMPT_OUT: args.promptOut }),
+    },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -67,9 +78,10 @@ describe("run-codex-step", () => {
   });
 
   it("role に応じた規約ヘッダをプロンプトの先頭に連結して渡す", async () => {
-    await runStep({ mode: "ok", role: "test" });
+    const promptOut = join(outsideDir, "received-prompt.txt");
+    await runStep({ mode: "ok", role: "test", promptOut });
 
-    const received = readFileSync(join(workDir, ".fake-codex-prompt.txt"), "utf8");
+    const received = readFileSync(promptOut, "utf8");
     expect(received.startsWith("# HEADER-TEST")).toBe(true);
     expect(received).toContain("## ステップ 1\nfoo を実装する");
   });
@@ -125,6 +137,18 @@ describe("run-codex-step", () => {
     const result = await runStep({ mode: "ok", extraArgs: ["--prompt", promptFile] });
 
     expect(result.exitCode).toBe(1);
+    expect(result.lines.reason).toBe("invalid_args");
+  });
+
+  it("--prompt のファイルが存在しなければ reason=invalid_args", async () => {
+    const missingPrompt = join(workDir, "does-not-exist.md");
+    const result = await runStep({
+      mode: "ok",
+      extraArgs: ["--prompt", missingPrompt, "--cwd", workDir, "--role", "impl"],
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.lines.status).toBe("error");
     expect(result.lines.reason).toBe("invalid_args");
   });
 });
