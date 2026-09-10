@@ -39,6 +39,7 @@
   - [具体的な作業項目2]
 - **Files**:
   <!-- ファイル構成マップの部分集合。該当がない種別は行ごと省略する。Modify の行範囲は目安であり、特定は構文的特徴を併記する -->
+  <!-- 作成・変更・削除のいずれもしないファイルは書かない。「このファイルが変更されていないことを確認する」ことを目的とした記載も含めて書かない -->
   - Create: `exact/path/to/file.ts`
   - Modify: `exact/path/to/existing.ts:123-145`
   - Test: `tests/exact/path/to/file.test.ts`
