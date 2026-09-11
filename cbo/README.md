@@ -25,7 +25,7 @@
 ```
 $MGZL_DIR/
 ├── implementations/          # 実装計画書
-├── reviews/                  # レビュー結果（md 報告書。過去の正本 JSON・reviewview セッション sidecar も含む）
+├── reviews/                  # レビュー結果（md 報告書）
 └── tmp/                      # 一時ファイル・スクリーンショット
 ```
 
@@ -63,13 +63,3 @@ $MGZL_DIR/
   }
 }
 ```
-
-## reviewview（レビュー UI）の設定
-
-`review:fix` は、過去に `review:diff` が出力した sidecar 付き JSON 報告書を扱うときに reviewview の MCP サーバーを使い、人間のトリアージ判定を取り込んで修正結果を `report_fix` で報告する。現在の `review:diff` は md 報告書を出力するだけで reviewview を使わないため、md 報告書だけを扱うなら以下の設定は不要。
-
-サーバー定義は `cbo/.mcp.json` の `reviewview` エントリにあるが、`args` は**ローカルにビルドした reviewview の絶対パス**を指しているため、環境に合わせて書き換える。`packages/server/dist/main.js` がビルド済みである必要がある。
-
-レビューの状態（指摘・判定・差分スナップショット）は**レビュー対象リポジトリ**の `.reviewview/state.db` に保存される。指摘本文とファイル全文が含まれるため、対象リポジトリの `.gitignore` に `.reviewview/` を追加すること。
-
-MCP サーバーが接続されていない場合、`review:fix` は reviewview の sidecar がある報告書を扱うときに冒頭で停止する。
