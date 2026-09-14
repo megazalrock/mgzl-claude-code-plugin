@@ -5,10 +5,11 @@ Claude Code が書く日本語を textlint で検査するプラグインであ�
 ## 検査対象
 
 - Edit / Write で書かれたソースコード内のコメント（Edit は追加行のみ）
+- Write / Edit で書かれた Markdown ファイル（`.md`、Edit は追加行のみ）
 - `git commit` のコミットメッセージ（`-m` / `--message` / `-F` / `--file` / heredoc）
 - `gh pr create` / `gh pr edit` のタイトルと本文（`--title` / `--body` / `--body-file`）
 
-Claude の応答文そのもの、Markdown ファイルの本文、人間が直接書いた文章は対象外である。
+Claude の応答文そのもの、人間が直接書いた文章は対象外である。
 
 ## 対象拡張子
 
@@ -19,11 +20,12 @@ Claude の応答文そのもの、Markdown ファイルの本文、人間が直�
 
 ## 文脈別のルール構成
 
-- comment（コード内コメント）: ja-technical-writing 一式（`ja-no-mixed-period` を除く） + ai-writing の `no-ai-hype-expressions` + prh
-- commit（コミットメッセージ、PR タイトル）: comment と同じ
-- pr（PR 本文）: ja-technical-writing 一式（`ja-no-mixed-period` を含む） + ai-writing 5 ルール全部 + prh。`ai-tech-writing-guideline` だけは info 扱い
+- `comment`（コード内コメント）: ja-technical-writing 一式（`ja-no-mixed-period` を除く） + ai-writing の `no-ai-hype-expressions` + prh
+- `commit`（コミットメッセージ、PR タイトル）: `comment` と同じ
+- `pr`（PR 本文）: ja-technical-writing 一式（`ja-no-mixed-period` を含む） + ai-writing 5 ルール全部 + prh。`ai-tech-writing-guideline` だけは info 扱い
+- `markdown`（Markdown ファイル本文）: `pr` と同じ
 
-文末の句点「。」を必須にするのは pr 文脈だけである。
+文末の句点「。」を必須にするのは `pr` 文脈と `markdown` 文脈だけである。`pr` / `markdown` は Markdown として解析するため、箇条書き・見出し・コードブロックは `ja-no-mixed-period` の対象外になる。
 
 ## 挙動
 
@@ -36,6 +38,7 @@ Claude の応答文そのもの、Markdown ファイルの本文、人間が直�
 
 - 文字列リテラル内の `//` や `#` をコメントと誤認することがある（日本語を含む場合のみ影響）
 - 1 回の Edit で離れた場所に追加した複数のコメント行は 1 段落として連結され、行をまたぐルールが誤検知することがある
+- Edit で段落の一部だけを差し替えると追加行が文の途中で切れ、句点の誤検知につながることもある
 
 出力例:
 

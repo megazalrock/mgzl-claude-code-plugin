@@ -58,32 +58,41 @@ function expandPreset(
 
 /** 文脈ごとの descriptor を組み立てる。textlint 系は起動コスト回避のため動的 import する */
 export async function buildDescriptor(context: TargetContext): Promise<TextlintKernelDescriptor> {
-  const [kernel, interopModule, textPluginModule, jaTechModule, aiWritingModule, prhModule] =
-    await Promise.all([
-      import("@textlint/kernel"),
-      import("@textlint/module-interop"),
-      import("@textlint/textlint-plugin-text"),
-      import("textlint-rule-preset-ja-technical-writing"),
-      import("@textlint-ja/textlint-rule-preset-ai-writing"),
-      import("textlint-rule-prh"),
-    ]);
+  const [
+    kernel,
+    interopModule,
+    textPluginModule,
+    markdownPluginModule,
+    jaTechModule,
+    aiWritingModule,
+    prhModule,
+  ] = await Promise.all([
+    import("@textlint/kernel"),
+    import("@textlint/module-interop"),
+    import("@textlint/textlint-plugin-text"),
+    import("@textlint/textlint-plugin-markdown"),
+    import("textlint-rule-preset-ja-technical-writing"),
+    import("@textlint-ja/textlint-rule-preset-ai-writing"),
+    import("textlint-rule-prh"),
+  ]);
 
   const interop = interopModule.moduleInterop;
 
-  // 句点は PR 本文だけで必須にする。コメントやコミットメッセージでは体言止めを許す
-  const jaOverrides: Record<string, unknown> =
-    context === "pr" ? {} : { "ja-no-mixed-period": false };
+  /** Markdown として解析され、地の文が散文として書かれる文脈か */
+  const isProse = context === "pr" || context === "markdown";
+
+  // 句点は PR 本文と Markdown ファイルだけで必須にする。コメントやコミットメッセージでは名詞で終わる書き方を許す
+  const jaOverrides: Record<string, unknown> = isProse ? {} : { "ja-no-mixed-period": false };
 
   // Markdown 構造を前提とする 4 ルールは、コメントやコミットメッセージでは誤検知になる
-  const aiOverrides: Record<string, unknown> =
-    context === "pr"
-      ? {}
-      : {
-          "no-ai-list-formatting": false,
-          "no-ai-emphasis-patterns": false,
-          "no-ai-colon-continuation": false,
-          "ai-tech-writing-guideline": false,
-        };
+  const aiOverrides: Record<string, unknown> = isProse
+    ? {}
+    : {
+        "no-ai-list-formatting": false,
+        "no-ai-emphasis-patterns": false,
+        "no-ai-colon-continuation": false,
+        "ai-tech-writing-guideline": false,
+      };
 
   const rules: TextlintKernelRule[] = [
     ...expandPreset(
@@ -109,6 +118,12 @@ export async function buildDescriptor(context: TargetContext): Promise<TextlintK
         pluginId: "text",
         // as: plugin モジュールの型は動的 import では解決できないため受け渡し時に落とす
         plugin: interop(textPluginModule.default ?? textPluginModule) as never,
+        options: true,
+      },
+      {
+        pluginId: "markdown",
+        // as: plugin モジュールの型は動的 import では解決できないため受け渡し時に落とす
+        plugin: interop(markdownPluginModule.default ?? markdownPluginModule) as never,
         options: true,
       },
     ],

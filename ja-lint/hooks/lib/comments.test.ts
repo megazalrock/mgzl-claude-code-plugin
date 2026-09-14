@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addedLines, containsJapanese, extractCommentBlocks } from "./comments.ts";
+import { addedLines, containsJapanese, extractCommentBlocks, isMarkdownFile } from "./comments.ts";
 
 describe("containsJapanese", () => {
   test("ひらがな", () => {
@@ -34,6 +34,18 @@ describe("addedLines", () => {
 
   test("old_string が空なら全行が追加行", () => {
     expect(addedLines("", "a\nb")).toEqual(["a", "b"]);
+  });
+});
+
+describe("isMarkdownFile", () => {
+  test("md 拡張子", () => {
+    expect(isMarkdownFile("/a/b.md")).toBe(true);
+  });
+  test("大文字の拡張子も扱う", () => {
+    expect(isMarkdownFile("/a/B.MD")).toBe(true);
+  });
+  test("md 以外", () => {
+    expect(isMarkdownFile("/a/b.ts")).toBe(false);
   });
 });
 

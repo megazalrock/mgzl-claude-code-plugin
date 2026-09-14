@@ -1,4 +1,4 @@
-export type TargetContext = "comment" | "commit" | "pr";
+export type TargetContext = "comment" | "commit" | "pr" | "markdown";
 
 export type LintTarget = {
   text: string;

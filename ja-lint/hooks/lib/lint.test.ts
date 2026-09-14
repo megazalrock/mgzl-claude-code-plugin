@@ -67,6 +67,43 @@ describe("pr 文脈", () => {
     const outcome = await lintJapanese("ユーザの一覧を表示する。", "pr");
     expect(ruleIds(outcome.errors)).toContain("prh");
   });
+
+  test("AI 的な箇条書きの強調は error になる", async () => {
+    const outcome = await lintJapanese("- **項目**: 説明です。", "pr");
+    expect(ruleIds(outcome.errors)).toContain("ai-writing/no-ai-list-formatting");
+  });
+});
+
+describe("markdown 文脈", () => {
+  test("段落の句点の無い文は error になる", async () => {
+    const outcome = await lintJapanese("これはテストの文章です", "markdown");
+    expect(ruleIds(outcome.errors)).toContain("ja-technical-writing/ja-no-mixed-period");
+  });
+
+  test("箇条書きの項目は句点を求められない", async () => {
+    const outcome = await lintJapanese("- これはテストの項目です", "markdown");
+    expect(ruleIds(outcome.errors)).not.toContain("ja-technical-writing/ja-no-mixed-period");
+  });
+
+  test("コードブロックの中は prh の対象外だが、外の段落は指摘される", async () => {
+    const outcome = await lintJapanese(
+      "```\nユーザの設定\n```\n\nユーザの設定です。",
+      "markdown",
+    );
+    const prh = outcome.errors.filter((f) => f.ruleId === "prh");
+    expect(prh.map((f) => f.quote)).toEqual(["ユーザの設定です。"]);
+  });
+
+  test("AI 的な箇条書きの強調は error になる", async () => {
+    const outcome = await lintJapanese("- **項目**: 説明です。", "markdown");
+    expect(ruleIds(outcome.errors)).toContain("ai-writing/no-ai-list-formatting");
+  });
+
+  test("prh が効く", async () => {
+    const outcome = await lintJapanese("ユーザの設定です。", "markdown");
+    const prh = outcome.errors.find((f) => f.ruleId === "prh");
+    expect(prh?.message).toContain("ユーザの => ユーザーの");
+  });
 });
 
 describe("Finding の中身", () => {

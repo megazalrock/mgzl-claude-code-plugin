@@ -71,11 +71,22 @@ const SYNTAX_BY_EXTENSION: Record<string, CommentSyntax> = {
   sql: DASH,
 };
 
-function syntaxFor(filePath: string): CommentSyntax | undefined {
+function extensionOf(filePath: string): string | undefined {
   const base = filePath.slice(filePath.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
   if (dot <= 0) return undefined;
-  return SYNTAX_BY_EXTENSION[base.slice(dot + 1).toLowerCase()];
+  return base.slice(dot + 1).toLowerCase();
+}
+
+function syntaxFor(filePath: string): CommentSyntax | undefined {
+  const extension = extensionOf(filePath);
+  if (extension === undefined) return undefined;
+  return SYNTAX_BY_EXTENSION[extension];
+}
+
+/** Markdown ファイルか。Markdown は本文そのものが lint 対象になるためコメント抽出とは経路が分かれる */
+export function isMarkdownFile(filePath: string): boolean {
+  return extensionOf(filePath) === "md";
 }
 
 /** `@param {T} name 説明` のようなタグ行から説明部分だけを取り出す */

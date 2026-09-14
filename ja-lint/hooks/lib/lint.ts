@@ -5,8 +5,14 @@ import { buildDescriptor, INFO_RULE_IDS } from "./textlint-config.ts";
 /** TextlintRuleSeverityLevelKeys.error の値 */
 const SEVERITY_ERROR = 2;
 
-/** プレーンテキストとして lint するための擬似パス。text plugin は拡張子で選ばれる */
-const VIRTUAL_PATH = "/ja-lint/input.txt";
+/**
+ * lint 対象を渡すための擬似パス。plugin は拡張子で選ばれる。
+ * pr / markdown で Markdown として解析するのは、ai-writing の箇条書き・強調・見出しのルールと
+ * ja-no-mixed-period の ListItem / Code 除外が Markdown の AST を前提にしているためである。
+ */
+function virtualPathFor(context: TargetContext): string {
+  return context === "pr" || context === "markdown" ? "/ja-lint/input.md" : "/ja-lint/input.txt";
+}
 
 /**
  * 与えた文字列を文脈に応じて lint し、error と info に振り分けて返す。
@@ -16,7 +22,7 @@ export async function lintJapanese(text: string, context: TargetContext): Promis
   const { createLinter } = await import("textlint");
   const descriptor = await buildDescriptor(context);
   const linter = createLinter({ descriptor });
-  const result = await linter.lintText(text, VIRTUAL_PATH);
+  const result = await linter.lintText(text, virtualPathFor(context));
 
   const errors: Finding[] = [];
   const infos: Finding[] = [];
