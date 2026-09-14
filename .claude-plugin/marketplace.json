@@ -18,6 +18,11 @@
       "name": "fading-memory",
       "source": "./fading-memory",
       "description": "セッションから自動で記憶を抽出し、参照されない記憶は有効期限で朽ちていく memory 機能を提供する"
+    },
+    {
+      "name": "ja-lint",
+      "source": "./ja-lint",
+      "description": "Claude Code が書く日本語（コード内コメント・コミットメッセージ・PR のタイトルと本文）を textlint で検査し、違反を hook で差し戻す"
     }
   ]
 }

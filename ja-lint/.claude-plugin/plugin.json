@@ -1,0 +1,7 @@
+{
+  "name": "ja-lint",
+  "description": "Claude Code が書く日本語（コード内コメント・コミットメッセージ・PR のタイトルと本文）を textlint で検査し、違反を hook で差し戻す",
+  "author": {
+    "name": "otto"
+  }
+}

@@ -1,0 +1,6 @@
+# 辞書は prh パッケージ（MIT）同梱の技術書向けルールセットを読み込んで使う。
+# imports の相対パスは、この prh.yml 自身の位置を基準に解決される。
+version: 1
+imports:
+  - ../node_modules/prh/prh-rules/media/WEB+DB_PRESS.yml
+rules: []
