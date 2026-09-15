@@ -33,15 +33,12 @@ model: sonnet
 
 | 種類 | テンプレート |
 |------|-------------|
-| レビュー結果 | [format-review-result.md](references/format-review-result.md) |
 | 実装計画書 | [format-implementation-plan.md](references/format-implementation-plan.md) |
 | 軽量版実装計画書 | [format-implementation-plan-lite.md](references/format-implementation-plan-lite.md) |
 | 調査レポート | [format-investigation.md](references/format-investigation.md) |
 | 技術メモ | [format-technical-memo.md](references/format-technical-memo.md) |
 | 議論まとめ | [format-discussion-summary.md](references/format-discussion-summary.md) |
 | その他 | [format-general.md](references/format-general.md) |
-
-> **注**: review:diff が出力するレビュー結果は本スキルを経由せず、上表の「レビュー結果」テンプレートに従って Write ツールで直接 !`echo $MGZL_DIR`/reviews/ に保存する。
 
 ### Step 3: ファイルの保存
 
