@@ -132,9 +132,11 @@ MCP ツールの許可リストは工程ごとに分けます。
 - メインセッションは `start_review` / `export_review` / `request_triage` を呼ぶ
 - バッチ統合エージェントは `add_findings` のみを持つ
 - 横断統合エージェントは `list_findings` / `get_finding` / `update_finding` / `delete_finding` を持つ
-- `review:fix` の修正役は `report_fix` を持つ
+- `review:fix` は `get_finding` / `report_fix` を呼ぶ
 
 投入側が既存の指摘を消す事故を、構造的に防ぐためです。
+
+ただし、この分割のうちスキル側の2層は意図の宣言にとどまります。強制される境界ではありません。エージェントの2層は `tools:` で実際に絞られます。一方スキルには `allowed-tools` を置きません。置けば `review:diff` では `Bash`・`Agent`・`AskUserQuestion` の列挙も避けられません。書き漏らせばスキルが動かなくなります。したがってメインセッションは `delete_finding` を含むすべてのツールを保持したままです。
 
 ## ファイル構成の変更
 
