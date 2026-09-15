@@ -28,6 +28,8 @@ tools:
   - mcp__idea__search_regex
   - mcp__idea__search_symbol
   - mcp__idea__search_text
+  - mcp__plugin_reviewview_reviewview__get_finding
+  - mcp__plugin_reviewview_reviewview__list_findings
 color: blue
 model: opus
 effort: high
@@ -84,6 +86,7 @@ For the investigation item given in the prompt (an open question in an implement
   - Library specifications
     - Library documentation is available via the context7 MCP
   - For the API-side implementation, you can use the `/api:ask-implementations` skill
+  - When the investigation item concerns a reviewview finding (an `f-xxxxxxxx` id), you can read the finding itself with `get_finding` and the other findings of the same review with `list_findings` to check for related or overlapping findings. These tools are read-only for you: never create, update, or delete findings, and never call `report_fix`. Reporting the verification result to reviewview is the caller's job
 
 ### Step 3: Extract patterns
 - Identify how similar features are implemented
