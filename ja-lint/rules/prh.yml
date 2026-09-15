@@ -3,11 +3,18 @@
 version: 1
 imports:
   - path: ../node_modules/prh/prh-rules/media/WEB+DB_PRESS.yml
-    # 漢字表記とかな表記を互いに指摘し合って循環する 2 ルールを外し、下の rules で置き換える。
     # ignoreRules の expected は、元ルールの expected と完全一致する文字列で指定する
     ignoreRules:
+      # 漢字表記とかな表記を互いに指摘し合って循環する 2 ルールを外し、下の rules で置き換える
       - expected: 基づ$1
       - expected: もと$1
+      # >>> ここから自動生成
+      # ja-technical-writing と正面衝突する辞書ルール。
+      # scripts/generate-prh-ignore-rules.ts の出力で置き換わる
+      - expected: 一つ一つ
+      - expected: もう一つ
+      - expected: 一つは
+      # <<< ここまで自動生成
 rules:
   # 元ルールは選択肢ごとに別のキャプチャグループを持つため、2 番目以降の選択肢に
   # マッチすると $1 が undefined になり送りがなが落ちる。

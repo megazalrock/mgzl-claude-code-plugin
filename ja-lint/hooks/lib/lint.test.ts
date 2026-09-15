@@ -147,6 +147,47 @@ describe("日本語を含まないノードの除外", () => {
   });
 });
 
+describe("prh と ja-technical-writing の衝突", () => {
+  async function prhMessages(text: string): Promise<string[]> {
+    const outcome = await lintJapanese(text, "markdown");
+    return outcome.errors.filter((f) => f.ruleId === "prh").map((f) => f.message);
+  }
+
+  test("算用数字の「1つは」は prh に差し戻されない", async () => {
+    expect(await prhMessages("- 1つは「指摘」である")).toEqual([]);
+  });
+
+  test("算用数字の「もう1つ」は prh に差し戻されない", async () => {
+    expect(await prhMessages("- もう1つは「評価・対応」である")).toEqual([]);
+  });
+
+  test("算用数字の「1つ1つ」は prh に差し戻されない", async () => {
+    expect(await prhMessages("- 1つ1つ確認する")).toEqual([]);
+  });
+
+  test("ja-technical-writing 側の漢数字の指摘は残す", async () => {
+    const outcome = await lintJapanese("- 役割は一つだけである", "markdown");
+    expect(ruleIds(outcome.errors)).toContain("ja-technical-writing/arabic-kanji-numbers");
+  });
+
+  test("衝突しない「ただ1つ」の指摘は残す", async () => {
+    expect(await prhMessages("- ただ1つの方法である")).toContain("ただ1つ => ただ一つ");
+  });
+
+  test("衝突しない「もう1度」の指摘は残す", async () => {
+    expect(await prhMessages("- もう1度実行する")).toContain("もう1度 => もう一度");
+  });
+
+  test("漢数字を算用数字へ寄せる指摘は残す", async () => {
+    expect(await prhMessages("- 二つの案がある")).toContain("二つ => 2つ");
+  });
+
+  test("手書きの ignoreRules で置き換えたルールは残す", async () => {
+    expect(await prhMessages("- 仕様にもとづく実装である")).toContain("もとづく => 基づく");
+    expect(await prhMessages("- 基となるデータである")).toContain("基と => もとと");
+  });
+});
+
 describe("Finding の中身", () => {
   test("指摘位置を含む文が quote に入る", async () => {
     const outcome = await lintJapanese("最初の文である。ユーザの一覧を表示する。", "comment");
