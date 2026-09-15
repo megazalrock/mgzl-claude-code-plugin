@@ -132,7 +132,7 @@ describe("日本語を含まないノードの除外", () => {
   });
 
   test("日本語の段落に混ざる英単語は指摘される", async () => {
-    const outcome = await lintJapanese("この関数は path を受け取る。", "markdown");
+    const outcome = await lintJapanese("この関数は Java Script で書かれている。", "markdown");
     expect(ruleIds(outcome.errors)).toContain("prh");
   });
 
@@ -170,21 +170,34 @@ describe("prh と ja-technical-writing の衝突", () => {
     expect(ruleIds(outcome.errors)).toContain("ja-technical-writing/arabic-kanji-numbers");
   });
 
-  test("衝突しない「ただ1つ」の指摘は残す", async () => {
-    expect(await prhMessages("- ただ1つの方法である")).toContain("ただ1つ => ただ一つ");
+  test("「基づく」は誤記のかな遣いだけを指摘する", async () => {
+    expect(await prhMessages("- 仕様に基ずく実装である")).toContain("基ずく => 基づく");
+    expect(await prhMessages("- 仕様にもとづく実装である")).toEqual([]);
+    expect(await prhMessages("- 基となるデータである")).toEqual([]);
+    expect(await prhMessages("- 基幹システムである")).toEqual([]);
+  });
+});
+
+describe("辞書を自前ルールに絞ったことによる誤検知の解消", () => {
+  async function prhMessages(text: string): Promise<string[]> {
+    const outcome = await lintJapanese(text, "markdown");
+    return outcome.errors.filter((f) => f.ruleId === "prh").map((f) => f.message);
+  }
+
+  test("「だけして」は指摘されない", async () => {
+    expect(await prhMessages("テストだけして終わるのは避ける。")).toEqual([]);
   });
 
-  test("衝突しない「もう1度」の指摘は残す", async () => {
-    expect(await prhMessages("- もう1度実行する")).toContain("もう1度 => もう一度");
+  test("「仕分けして」は指摘されない", async () => {
+    expect(await prhMessages("ファイルを仕分けして保存する。")).toEqual([]);
   });
 
-  test("漢数字を算用数字へ寄せる指摘は残す", async () => {
-    expect(await prhMessages("- 二つの案がある")).toContain("二つ => 2つ");
+  test("「発火」は指摘されない", async () => {
+    expect(await prhMessages("イベントが発火する仕組みである。")).toEqual([]);
   });
 
-  test("手書きの ignoreRules で置き換えたルールは残す", async () => {
-    expect(await prhMessages("- 仕様にもとづく実装である")).toContain("もとづく => 基づく");
-    expect(await prhMessages("- 基となるデータである")).toContain("基と => もとと");
+  test("「基幹」「基調」「基点」は指摘されない", async () => {
+    expect(await prhMessages("基幹システムの基調を基点にする。")).toEqual([]);
   });
 });
 

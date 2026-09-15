@@ -53,9 +53,9 @@ ja-lint: 日本語の文章に修正が必要です（error 2 件）
 
 ## 調整方法
 
-- 表記ゆれ辞書: `rules/prh.yml`。prh パッケージ（MIT）同梱の `prh-rules/media/WEB+DB_PRESS.yml` を `imports` で読み込んでいる。独自項目は同ファイルの `rules:` に追記する
+- 表記ゆれ辞書: `rules/prh.yml`。外部辞書は読み込まず、自前のルールだけで構成している。追加してよいのは「明確な誤記」と「技術用語の表記統一」だけで、文体規則・語彙の置き換え・数字表記は入れない
 - ルールの有効・無効、固有名詞などの例外（各ルールの `allows`）: `hooks/lib/textlint-config.ts` の `jaOverrides` / `aiOverrides`
-- prh と ja-technical-writing の衝突: `rules/prh.yml` の ignoreRules 自動生成区間。辞書が要求する置換後の表記そのものを ja-technical-writing が指摘してしまう辞書ルールを外している。`bun run ja-lint/scripts/generate-prh-ignore-rules.ts` で再生成する
+- prh と ja-technical-writing の衝突: 辞書が要求する置換後の表記そのものを ja-technical-writing が指摘すると、どちらで書いても差し戻される。`bun ja-lint/scripts/check-prh-conflicts.ts` で衝突を検査でき、1 件でもあれば終了コード 1 を返す。辞書へルールを足したら実行する
 - 依存は `package.json` と `bun.lock` に基づき、プラグインのキャッシュ作成時に `bun install --frozen-lockfile --ignore-scripts` で自動インストールされる
 
 ## テスト

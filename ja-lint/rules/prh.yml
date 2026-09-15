@@ -1,41 +1,221 @@
-# 辞書は prh パッケージ（MIT）同梱の技術書向けルールセットを読み込んで使う。
-# imports の相対パスは、この prh.yml 自身の位置を基準に解決される。
+# prh の校正辞書。
+#
+# WEB+DB_PRESS.yml（prh 同梱）は import しない。あれは雑誌の社内表記規則であり、
+# 人間の編集者が提案を取捨選択する前提で作られている。ja-lint は PostToolUse フックで
+# decision: block として使うため、1 件の誤検知がそのまま「書けない」に直結する。
+# 実際に「発火 => 発行」「基幹 => もと幹」や、除外文字集合による正規表現が
+# 「だけして」「仕分けして」へ誤爆する事故が起きたため、自前で厳選している。
+#
+# 追加基準:
+#   A 明確な誤記        誤字・脱字・誤変換・綴り間違いで、誤り側が正しい語として
+#                       現れる余地がないものだけ。
+#   B 技術用語の表記統一 カタカナ長音の有無、製品名・技術名の大文字小文字と区切り。
+# 入れないもの:
+#   - 文体規則。漢字を開く/閉じる、送りがな、かな表記の好み。
+#   - 語彙の置き換え。意味の異なる語への言い換え、雑誌固有の言い回し。
+#   - 数字表記。漢数字とアラビア数字の使い分けは ja-technical-writing に任せる。
+# 残す候補でも、誤り側の文字列が正しい語の一部として出現しうるものは入れない。
+# 正規表現ルールは原則入れない。入れる場合は specs を必ず付ける。
+#
+# 英数字を含む固定文字列 pattern について: prh は英数字を大小文字・全半角の区別なしで
+# 展開する（spreadAlphaNum）。そのため大小文字だけが違う表記は pattern に書けない
+# （expected 自身にマッチして自分を指摘してしまう）。区切りや綴りが異なる表記だけを書く。
+# また `-` を含む pattern は unicode フラグ下で不正な正規表現になるため書けない。
 version: 1
-imports:
-  - path: ../node_modules/prh/prh-rules/media/WEB+DB_PRESS.yml
-    # ignoreRules の expected は、元ルールの expected と完全一致する文字列で指定する
-    ignoreRules:
-      # 漢字表記とかな表記を互いに指摘し合って循環する 2 ルールを外し、下の rules で置き換える
-      - expected: 基づ$1
-      - expected: もと$1
-      # >>> ここから自動生成
-      # ja-technical-writing と正面衝突する辞書ルール。
-      # scripts/generate-prh-ignore-rules.ts の出力で置き換わる
-      - expected: 一つ一つ
-      - expected: もう一つ
-      - expected: 一つは
-      # <<< ここまで自動生成
 rules:
-  # 元ルールは選択肢ごとに別のキャプチャグループを持つため、2 番目以降の選択肢に
-  # マッチすると $1 が undefined になり送りがなが落ちる。
-  # 前半を非キャプチャグループにまとめ、送りがなのグループを 1 つだけにして直す
+  # ---------------------------------------------------------------
+  # A. 明確な誤記（日本語の誤変換・誤記）
+  # ---------------------------------------------------------------
+  - expected: 一目瞭然
+    pattern: 一目了然
+  - expected: 意思決定
+    pattern: 意志決定
+  - expected: 偉大
+    pattern: 威大
+  - expected: 苦肉の策
+    pattern: 狗肉の策
+  - expected: 自分自身
+    pattern: 自分自信
+  - expected: 情報源
+    pattern: 情報原
+  - expected: 過渡期
+    pattern: 過度期
+  - expected: 搭載
+    pattern: 塔載
+  - expected: 業者
+    pattern: 業社
+  - expected: 高嶺の花
+    pattern: 高値の花
+  - expected: 日の目
+    pattern: 陽の目
+  - expected: 至難の業
+    pattern:
+      - 至難のわざ
+      - 至難の技
+  - expected: 無駄遣い
+    pattern:
+      - 無駄使い
+      - ムダ遣い
+      - ムダ使い
+      - 無駄づかい
+      - 無駄ずかいい
+      - ムダづかい
+      - ムダずかい
+  - expected: 安定版
+    pattern: 安定板
+  - expected: 定型的
+    pattern: 定形的
+  - expected: 成功を収め
+    pattern: 成功を納め
+  - expected: 差異
+    pattern: 差違
+  - expected: 必要
+    pattern: 必用
+  - expected: 稼働
+    pattern: 稼動
+  # 元辞書は「基」「もとづ」も対象に含めるため、かな表記と漢字表記が互いを指摘し合って
+  # 循環し、「基幹」「基点」などにも誤爆した。誤記のかな遣いだけに絞る。
   - expected: 基づ$1
-    pattern: /(?:基|基ず|もとず|もとづ)([いかきくけこ])/
+    pattern: /(?:基ず|もとず)([いかきくけこ])/
     specs:
-      - from: 仕様にもとづく実装
+      - from: 仕様に基ずく実装
         to: 仕様に基づく実装
-      - from: 仕様に基いて実装する
-        to: 仕様に基づいて実装する
-      - from: 仕様に基ずいて実装する
-        to: 仕様に基づいて実装する
       - from: 仕様にもとずいて実装する
         to: 仕様に基づいて実装する
-  # 元ルールは漢字表記も開かせてしまい、上のルールと循環する。
-  # 漢字表記を正とするため、除外文字に づ を足す
-  - expected: もと$1
-    pattern: /基([^数準盤板底礎本づ])/
+      - from: 仕様にもとづく実装
+        to: 仕様にもとづく実装
+      - from: 基幹システムの基点
+        to: 基幹システムの基点
+
+  # ---------------------------------------------------------------
+  # A. 明確な誤記（カタカナ語の綴り間違い）
+  # ---------------------------------------------------------------
+  - expected: シミュレー
+    pattern: シュミレー
+  - expected: コミュニ
+    pattern: コミニュ
+  - expected: インスタンス
+    pattern: インスンタンス
+  - expected: オプション
+    pattern: オブション
+  - expected: イディオム
+    pattern: イデオム
+  - expected: ビルトイン
+    pattern: ビルドイン
+  - expected: ストレージ
+    pattern:
+      - ストレッジ
+      - ストレジ
+
+  # ---------------------------------------------------------------
+  # A. 明確な誤記（英語の綴り間違い）
+  # ---------------------------------------------------------------
+  # 元辞書は /\bXxx\b/i で大小文字も一括で正していたが、小文字形は URL や
+  # コマンド名として正しく現れるため、綴り間違いだけを固定文字列で列挙する。
+  - expected: Chromium
+    pattern: Chronium
+  - expected: Elixir
+    pattern: Elixr
+  - expected: Kotlin
+    pattern: Koltin
+  - expected: Swift
+    pattern: Swfit
+  - expected: Capistrano
+    pattern: Capistorano
+  - expected: Playground
+    pattern: Playgroud
+  - expected: Fabric
+    pattern: Fablic
+
+  # ---------------------------------------------------------------
+  # B. 技術用語の表記統一 — 長音
+  # ---------------------------------------------------------------
+  # 除外文字集合を使うが、「ユーザー」自身への再指摘を避けるには必要。
+  # また指摘文に後続 1 文字を含めた形を保つため、元辞書の pattern をそのまま使う。
+  # 「サーバ」「エディタ」などの他の長音語は、元辞書が長音なしを正としていて方向が逆であり、
+  # 「サーバサイド」のような複合語へ誤爆しうることから入れない。
+  # 「ユーザビリティ」は長音なしが定訳なので、否定先読みで除外する。
+  - expected: ユーザー$1
+    pattern: /ユーザ(?!ビリティ)([^ー])/
     specs:
-      - from: 基となるデータ
-        to: もととなるデータ
-      - from: 仕様に基づく実装
-        to: 仕様に基づく実装
+      - from: ユーザの一覧を表示する
+        to: ユーザーの一覧を表示する
+      - from: ユーザーの一覧を表示する
+        to: ユーザーの一覧を表示する
+      - from: ユーザビリティを高める
+        to: ユーザビリティを高める
+  - expected: ユーザビリティ
+    pattern: ユーザービリティ
+
+  # ---------------------------------------------------------------
+  # B. 技術用語の表記統一 — 製品名・技術名の区切り
+  # ---------------------------------------------------------------
+  - expected: JavaScript
+    pattern: Java Script
+  - expected: ECMAScript
+    pattern: ECMA Script
+  - expected: WebSocket
+    pattern: Web Socket
+  - expected: Web API
+    pattern: WebAPI
+  # 長いものから並べる。prh は pattern を書いた順の選択肢にするため、
+  # 短い表記を先に書くと、長い表記の前半だけが置き換わって末尾が残る。
+  # 「OS X」単独は「iOS X」のような他の語の末尾にもマッチするため入れない。
+  - expected: macOS
+    pattern:
+      - MacOSX
+      - Mac OS X
+      - Mac OS
+  - expected: MacBook
+    pattern: Mac Book
+  - expected: Wi-Fi
+    pattern: WiFi
+  - expected: UTF-8
+    pattern:
+      - UTF8
+      - UTF 8
+  - expected: Java EE
+    pattern: JavaEE
+  - expected: Java SE
+    pattern: JavaSE
+  - expected: CentOS
+    pattern: Cent OS
+  - expected: VirtualBox
+    pattern: Virtual Box
+  - expected: PowerPoint
+    pattern: Power Point
+  - expected: OpenGL
+    pattern: Open GL
+  - expected: MongoDB
+    pattern: Mongo DB
+  - expected: Docker Hub
+    pattern: DockerHub
+  - expected: App Store
+    pattern: AppStore
+  - expected: Red Hat
+    pattern: RedHat
+  - expected: Visual Basic
+    pattern: VisualBasic
+  - expected: Raspberry Pi
+    pattern:
+      - RaspberryPi
+      - Rasbpberry Pi
+      - Raspiberry Pi
+  - expected: Ubuntu
+    pattern: Ubuntsu
+
+  # ---------------------------------------------------------------
+  # B. 技術用語の表記統一 — 定訳
+  # ---------------------------------------------------------------
+  - expected: オブジェクト指向
+    pattern: オブジェクト志向
+  - expected: ドキュメント指向
+    pattern: ドキュメント志向
+  - expected: アスペクト指向
+    pattern: アスペクト志向
+  - expected: 列指向
+    pattern: 列志向
+  - expected: 行指向
+    pattern: 行志向
+  - expected: 疎結合
+    pattern: 粗結合
