@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { appendError } from "./lib/log.ts";
 import { ensureDirs } from "./lib/maintenance.ts";
@@ -26,6 +27,13 @@ async function main(): Promise<void> {
 
     paths = dataPaths(projectDir);
     ensureDirs(paths);
+
+    // 不在のまま worker を起動すると、子 claude がファイルを探し回って散文を返す
+    if (!existsSync(transcriptPath)) {
+      appendError(paths, `session-end: transcript 不在のため抽出をスキップ: ${transcriptPath}`);
+      return;
+    }
+
     // セッション終了をブロックしないため、抽出はデタッチした別プロセスに任せて即終了する
     const logFile = Bun.file(join(paths.root, "session-end.log"));
     const proc = Bun.spawn({

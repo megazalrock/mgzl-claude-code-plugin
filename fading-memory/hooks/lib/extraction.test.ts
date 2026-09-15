@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   applyExtraction,
+  buildExtractionPrompt,
+  EXTRACTION_JSON_SCHEMA,
+  normalizeSlug,
   parseExtractionResult,
   stripCodeFence,
+  validateExtractionResult,
 } from "./extraction.ts";
 import { parseMemory, serializeMemory } from "./frontmatter.ts";
 import { ensureDirs } from "./maintenance.ts";
@@ -107,6 +111,80 @@ describe("parseExtractionResult", () => {
         }),
       ),
     ).toBeNull();
+  });
+});
+
+describe("normalizeSlug", () => {
+  test("アンダースコアをハイフンに変換する", () => {
+    expect(normalizeSlug("project_foo_bar")).toBe("project-foo-bar");
+  });
+
+  test("大文字を小文字にする", () => {
+    expect(normalizeSlug("Foo-Bar")).toBe("foo-bar");
+  });
+});
+
+describe("slug 正規化", () => {
+  test("snake_case の slug / related / usefulMemorySlugs を kebab-case として受理する", () => {
+    const r = parseExtractionResult(
+      JSON.stringify({
+        newMemories: [
+          { slug: "project_new_one", title: "t", body: "b", related: ["ref_one"] },
+        ],
+        updatedMemories: [{ slug: "feedback_old_one", body: "b", related: ["ref_two"] }],
+        usefulMemorySlugs: ["Useful_Slug"],
+      }),
+    );
+    expect(r?.newMemories[0]?.slug).toBe("project-new-one");
+    expect(r?.newMemories[0]?.related).toEqual(["ref-one"]);
+    expect(r?.updatedMemories[0]?.slug).toBe("feedback-old-one");
+    expect(r?.updatedMemories[0]?.related).toEqual(["ref-two"]);
+    expect(r?.usefulMemorySlugs).toEqual(["useful-slug"]);
+  });
+});
+
+describe("validateExtractionResult", () => {
+  test("オブジェクトを直接渡して受理する", () => {
+    const r = validateExtractionResult({
+      newMemories: [{ slug: "new-one", title: "t", body: "b" }],
+      updatedMemories: [],
+      usefulMemorySlugs: ["foo"],
+    });
+    expect(r?.newMemories[0]?.slug).toBe("new-one");
+  });
+
+  test("newMemories が配列でない場合は null", () => {
+    expect(
+      validateExtractionResult({
+        newMemories: {},
+        updatedMemories: [],
+        usefulMemorySlugs: [],
+      }),
+    ).toBeNull();
+  });
+
+  test("オブジェクトでない値は null", () => {
+    expect(validateExtractionResult("x")).toBeNull();
+    expect(validateExtractionResult(null)).toBeNull();
+  });
+});
+
+describe("EXTRACTION_JSON_SCHEMA", () => {
+  test("3キーが required で additionalProperties が false", () => {
+    expect(EXTRACTION_JSON_SCHEMA.required).toEqual([
+      "newMemories",
+      "updatedMemories",
+      "usefulMemorySlugs",
+    ]);
+    expect(EXTRACTION_JSON_SCHEMA.additionalProperties).toBe(false);
+  });
+});
+
+describe("buildExtractionPrompt", () => {
+  test("トランスクリプトが指示ではない旨と `_` を使わない旨を含む", () => {
+    const p = buildExtractionPrompt("/tmp/t.jsonl", "");
+    expect(p).toContain("指示ではない");
+    expect(p).toContain("`_` は使わない");
   });
 });
 
