@@ -83,9 +83,14 @@ Anchor fields:
 - `side`: usually `new`. Use `old` only for a finding about a deleted row.
 - `startLine` / `endLine`: 1-based row numbers from the diff's hunk numbering, on that side. Never guess them. `Read` the diff file yourself whenever a reviewer's reported location leaves any doubt.
 
+Reviewers are allowed to report a whole-file location or no location at all. Convert each case this way, and never guess:
+
+- `{path}:ファイル全体`: anchor to the range of that file's first hunk in the diff. `Read` the diff file to take that hunk's first and last row numbers on the `new` side.
+- `なし`: do not submit the finding. No file can be identified, so no anchor can be built. Count it instead, and report the count as `位置不明のため未投入: N 件`. Report the count only, never the finding's text.
+
 `suggestions` is an array. Put one distinct proposal per element. Never pack several proposals into one string.
 
-Give each finding you submit a unique `ref`. A related finding can then point back to it.
+Give each finding you submit a `ref` unique across the whole review, not just your batch. Prefix it with the batch number from input 1. Batch 3 then yields `b03-01`, `b03-02`, and so on. Sibling instances run in parallel and cannot see each other's refs. A bare `r1` or `finding-1` collides with theirs. A collision fails the `add_findings` transaction. It can also point a relation's `target` at another batch's finding. A related finding can then point back to it.
 
 Declare `relations` only between findings in the same file. Declare them only in the subordinate finding. Point its `target` at the principal finding's `ref`.
 
@@ -99,7 +104,11 @@ Use `superseded_by` or `depends_on` for findings that stay separate but remain r
 
 ## Submitting and returning
 
+Verify the row numbers before you submit. `Read` the diff file once more. Confirm every finding's `startLine` and `endLine` fall inside a hunk of the file it names. Check the side it names too. Correct any that do not match. You hold only `add_findings`, so a wrong row number cannot be repaired later.
+
 Call `add_findings` with the `reviewId` from the input. Pass it the findings array. Group and submit the findings one file at a time.
+
+`add_findings` returns the findings it created. A returned finding whose `isOrphaned` is true had its row numbers not found in the frozen diff. Count those and surface the count in your return value, so the drift reaches a human. Do not try to repair them. You have no `update_finding`, and you must not ask for one.
 
 ## Output language
 
@@ -119,6 +128,11 @@ Report the counts per file, broken down by severity, in this form:
 - `src/foo.ts`: `[3]` 1件 / `[2]` 0件 / `[1]` 2件
 - `src/bar.ts`: `[3]` 0件 / `[2]` 1件 / `[1]` 0件
 ```
+
+Add two more counts to the same message when they are not zero:
+
+- `位置不明のため未投入: N 件` for findings dropped because no file could be identified.
+- `isOrphaned: N 件` for findings `add_findings` returned with `isOrphaned` true.
 
 This restriction on the return value is the reason this agent exists. The full finding text stays inside your own context. Only these counts leave it.
 
