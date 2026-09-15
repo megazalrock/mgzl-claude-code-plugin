@@ -33,7 +33,7 @@ $ARGUMENTS を次の4項目に解析する。
 2. レビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
    - コミット比較モード: `git diff --name-status <diff対象>` を実行する
    - staged / worktree モード: Step 1 の判定で実行した `git diff --cached --name-status` / `git diff --name-status` の出力をそのまま使う
-   - **リネーム表記の正規化**: ステータスが `R` で始まる行は、タブ区切りの 3 列目（新パス）をレビュー対象パスとして使う（2 列目は旧パス）。以降のすべての手順（絞り込み判定・差分取得・報告書の `**位置**` 欄）で正規化後の新パスを使う
+   - **リネーム表記の正規化**: ステータスが `R` で始まる行は、タブ区切りの 3 列目（新パス）をレビュー対象パスとして使う（2 列目は旧パス）。以降のすべての手順（絞り込み判定・差分取得・`@review-consolidator` へ渡す対象ファイル一覧）で正規化後の新パスを使う
    - 合わせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 8 の `@review-consolidator` 起動まで保持する:
      - コミット比較モード: `git rev-parse <diff対象>` の結果を `base_commit`、`git rev-parse HEAD` の結果を `head_commit` として保持
      - staged / worktree モード: `git rev-parse HEAD` の結果を `base_commit` と `head_commit` の両方として保持
@@ -105,6 +105,7 @@ $ARGUMENTS を次の4項目に解析する。
       - `request_triage` が返したレビューの URL
       - 重要度（`[3]` / `[2]` / `[1]`）ごとの指摘件数の内訳。8. の各 `@review-consolidator` が返した件数を合算する
       - トリアージを終えたら `reviewview-collect` で取り込めること
+      - この実行では md 報告書を作成しないこと
 
 ## メインセッションのコンテキストに関する制約
 
