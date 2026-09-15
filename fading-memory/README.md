@@ -22,8 +22,12 @@
 `session-end.log` には次のような行が 1 回の抽出につき 1 行ずつ追記される。
 
 ```json
-{"ts":"...","sessionId":"...","transcript_bytes":4846690,"extracted_bytes":202552,"omitted_messages":18,"duration_ms":5459,"exit_code":0,"memories_saved":1}
+{"ts":"...","projectDir":"/path/to/project","sessionId":"...","transcript_bytes":4846690,"extracted_bytes":202552,"omitted_messages":18,"duration_ms":5459,"exit_code":0,"memories_saved":1}
 ```
+
+`error.log` は `<ISO タイムスタンプ> [<projectDir>] <本文>` の 1 行 1 エントリ。
+
+`FADING_MEMORY_DIR` で複数プロジェクトが同じ保存先を共有している場合、両方のログが同じファイルに混ざる。`projectDir` がそのエントリを書いたセッションの cwd なので、これで発信元を切り分ける。
 - `/fading-memory:maintain`: 記憶の再構成（手動）
 
 ## 保存先の変更

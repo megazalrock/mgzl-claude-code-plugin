@@ -1,8 +1,14 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
-/** 記憶データ一式が置かれるディレクトリ群 */
+/** 記憶データ一式が置かれるディレクトリ群と、その解決元になったプロジェクト */
 export interface DataPaths {
+  /**
+   * この paths を導出したセッションの cwd。
+   * FADING_MEMORY_DIR で複数プロジェクトが同一 root を共有しうるため、
+   * ログの発信元を判別する手掛かりとして保持する。
+   */
+  projectDir: string;
   root: string;
   memoriesDir: string;
   trashDir: string;
@@ -42,6 +48,7 @@ export function dataPaths(
 ): DataPaths {
   const root = resolveRoot(projectDir, home, env);
   return {
+    projectDir,
     root,
     memoriesDir: join(root, "memories"),
     trashDir: join(root, "trash"),

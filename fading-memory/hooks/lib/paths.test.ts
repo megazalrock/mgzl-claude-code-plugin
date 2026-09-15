@@ -10,6 +10,7 @@ describe("projectSlug", () => {
 describe("dataPaths", () => {
   test("home 配下の .claude/fading-memory/<slug>/ を指す", () => {
     const p = dataPaths("/proj/a", "/home/u");
+    expect(p.projectDir).toBe("/proj/a");
     expect(p.root).toBe("/home/u/.claude/fading-memory/-proj-a");
     expect(p.memoriesDir).toBe("/home/u/.claude/fading-memory/-proj-a/memories");
     expect(p.trashDir).toBe("/home/u/.claude/fading-memory/-proj-a/trash");
@@ -81,5 +82,14 @@ describe("dataPaths (FADING_MEMORY_DIR)", () => {
     expect(p.indexFile).toBe("/var/data/fm/INDEX.md");
     expect(p.stateFile).toBe("/var/data/fm/state.json");
     expect(p.errorLog).toBe("/var/data/fm/error.log");
+  });
+
+  test("root を共有していても projectDir は呼び出し元ごとに保たれる", () => {
+    const env = { FADING_MEMORY_DIR: "/var/data/fm" };
+    const a = dataPaths("/proj/a", "/home/u", env);
+    const b = dataPaths("/proj/b", "/home/u", env);
+    expect(a.root).toBe(b.root);
+    expect(a.projectDir).toBe("/proj/a");
+    expect(b.projectDir).toBe("/proj/b");
   });
 });

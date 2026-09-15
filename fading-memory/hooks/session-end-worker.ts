@@ -17,6 +17,8 @@ const CLAUDE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** 1 回の抽出実行の結果。session-end.log へ 1 行の JSON として記録する */
 interface RunLog {
+  /** 1 つの root を複数プロジェクトが共有しうるため、行ごとに発信元の cwd を残す */
+  projectDir: string;
   sessionId: string;
   transcript_bytes: number;
   extracted_bytes: number;
@@ -37,6 +39,7 @@ async function main(): Promise<void> {
   const paths = dataPaths(projectDir);
   const startedAt = Date.now();
   const log: RunLog = {
+    projectDir: paths.projectDir,
     sessionId: sessionIdFromTranscriptPath(transcriptPath),
     transcript_bytes: 0,
     extracted_bytes: 0,
