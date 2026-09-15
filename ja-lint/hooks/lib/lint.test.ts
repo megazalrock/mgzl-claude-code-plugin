@@ -111,6 +111,42 @@ describe("markdown 文脈", () => {
   });
 });
 
+describe("日本語を含まないノードの除外", () => {
+  test("英語だけの段落は指摘されない", async () => {
+    const outcome = await lintJapanese(
+      "This function receives a path and a session, then returns the result of the lookup it performed.",
+      "markdown",
+    );
+    expect(outcome.errors).toEqual([]);
+    expect(outcome.infos).toEqual([]);
+  });
+
+  test("英語だけの箇条書きは指摘されない", async () => {
+    const outcome = await lintJapanese("- **Testing**: run the unit tests first.", "markdown");
+    expect(outcome.errors).toEqual([]);
+  });
+
+  test("英語だけの見出しは指摘されない", async () => {
+    const outcome = await lintJapanese("# Role and responsibility", "markdown");
+    expect(outcome.errors).toEqual([]);
+  });
+
+  test("日本語の段落に混ざる英単語は指摘される", async () => {
+    const outcome = await lintJapanese("この関数は path を受け取る。", "markdown");
+    expect(ruleIds(outcome.errors)).toContain("prh");
+  });
+
+  test("日本語の箇条書きは従来どおり指摘される", async () => {
+    const outcome = await lintJapanese("- **項目**: 説明です。", "markdown");
+    expect(ruleIds(outcome.errors)).toContain("ai-writing/no-ai-list-formatting");
+  });
+
+  test("コメント文脈でも英語だけの文は指摘されない", async () => {
+    const outcome = await lintJapanese("Read the given path and collect the session data.", "comment");
+    expect(outcome.errors).toEqual([]);
+  });
+});
+
 describe("Finding の中身", () => {
   test("指摘位置を含む文が quote に入る", async () => {
     const outcome = await lintJapanese("最初の文である。ユーザの一覧を表示する。", "comment");

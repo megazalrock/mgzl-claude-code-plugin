@@ -1,6 +1,12 @@
 import { fileURLToPath } from "node:url";
-import type { TextlintKernelDescriptor, TextlintKernelRule } from "@textlint/kernel";
+import type {
+  TextlintFilterRuleReporter,
+  TextlintKernelDescriptor,
+  TextlintKernelFilterRule,
+  TextlintKernelRule,
+} from "@textlint/kernel";
 import type { TargetContext } from "./commands.ts";
+import { containsJapanese } from "./comments.ts";
 
 /**
  * severity オプションが効かないルールの ruleId 集合。
@@ -55,6 +61,36 @@ function expandPreset(
   }
   return rules;
 }
+
+/**
+ * 日本語を含まない Str ノードを検査対象から外す filter rule。
+ * プリセットのルールはどれも日本語の文章を前提にしており、英語で書かれた地の文へ当たると
+ * 一文の長さ・読点の数・句点の有無・prh の言い換えが軒並み誤検知になる。
+ * ノード内に日本語が 1 文字でもあれば従来どおり検査するので、
+ * 日本語の段落に混ざる英単語への指摘は残る。
+ */
+type FilterRuleContext = Parameters<TextlintFilterRuleReporter>[0];
+type FilterRuleNode = NonNullable<Parameters<FilterRuleContext["getSource"]>[0]>;
+
+const ignoreNonJapanese: TextlintFilterRuleReporter = (context) => {
+  const { Syntax, shouldIgnore, getSource } = context;
+  const ignoreWhenNotJapanese = (node: FilterRuleNode): void => {
+    if (containsJapanese(getSource(node))) return;
+    shouldIgnore(node.range, {});
+  };
+  // Str だけでは足りない: 一文の長さや箇条書きの体裁を見るルールは
+  // インライン要素をまたぐ範囲で報告するため、ブロック単位でも判定する
+  return {
+    [Syntax.Str]: ignoreWhenNotJapanese,
+    [Syntax.Paragraph]: ignoreWhenNotJapanese,
+    [Syntax.ListItem]: ignoreWhenNotJapanese,
+    [Syntax.Header]: ignoreWhenNotJapanese,
+  };
+};
+
+const filterRules: TextlintKernelFilterRule[] = [
+  { ruleId: "ja-lint/ignore-non-japanese", rule: ignoreNonJapanese },
+];
 
 /** 文脈ごとの descriptor を組み立てる。textlint 系は起動コスト回避のため動的 import する */
 export async function buildDescriptor(context: TargetContext): Promise<TextlintKernelDescriptor> {
@@ -112,7 +148,7 @@ export async function buildDescriptor(context: TargetContext): Promise<TextlintK
 
   return new kernel.TextlintKernelDescriptor({
     rules,
-    filterRules: [],
+    filterRules,
     plugins: [
       {
         pluginId: "text",
