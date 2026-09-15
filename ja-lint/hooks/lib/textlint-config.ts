@@ -88,8 +88,25 @@ const ignoreNonJapanese: TextlintFilterRuleReporter = (context) => {
   };
 };
 
+/**
+ * インラインコードを検査対象から外す filter rule。
+ * インラインコードにはログ出力やコマンドの実行例をそのまま引用することが多く、
+ * 引用元の文体や長さは書き手が直せないため、一文の長さや文体の混在の指摘が誤検知になる。
+ * ここで除外するのは Code（インラインコード）だけで、
+ * フェンス付きのコードブロックは別種別の CodeBlock なので従来どおりプラグイン側で除外される。
+ */
+const ignoreInlineCode: TextlintFilterRuleReporter = (context) => {
+  const { Syntax, shouldIgnore } = context;
+  return {
+    [Syntax.Code]: (node: FilterRuleNode): void => {
+      shouldIgnore(node.range, {});
+    },
+  };
+};
+
 const filterRules: TextlintKernelFilterRule[] = [
   { ruleId: "ja-lint/ignore-non-japanese", rule: ignoreNonJapanese },
+  { ruleId: "ja-lint/ignore-inline-code", rule: ignoreInlineCode },
 ];
 
 /** 文脈ごとの descriptor を組み立てる。textlint 系は起動コスト回避のため動的 import する */
@@ -118,7 +135,19 @@ export async function buildDescriptor(context: TargetContext): Promise<TextlintK
   const isProse = context === "pr" || context === "markdown";
 
   // 句点は PR 本文と Markdown ファイルだけで必須にする。コメントやコミットメッセージでは名詞で終わる書き方を許す
-  const jaOverrides: Record<string, unknown> = isProse ? {} : { "ja-no-mixed-period": false };
+  const jaOverrides: Record<string, unknown> = {
+    // prefer を空にして、本文を「ですます」・箇条書きを「である」に固定するプリセットの既定を外す。
+    // 既定のままだと文体が固定されるため、どちらの文体で統一された文書でも
+    // 本文と箇条書きの一方が必ず違反となり、互いに矛盾する修正を要求してしまう。
+    // 空にすると各セクション内で実際に混在したときだけ指摘される。
+    "no-mix-dearu-desumasu": {
+      preferInHeader: "",
+      preferInBody: "",
+      preferInList: "",
+      strict: false,
+    },
+    ...(isProse ? {} : { "ja-no-mixed-period": false }),
+  };
 
   // Markdown 構造を前提とする 4 ルールは、コメントやコミットメッセージでは誤検知になる
   const aiOverrides: Record<string, unknown> = isProse
