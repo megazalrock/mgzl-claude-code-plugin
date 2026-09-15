@@ -31,6 +31,7 @@ export async function lintJapanese(text: string, context: TargetContext): Promis
       ruleId: message.ruleId,
       message: message.message,
       quote: extractQuote(text, message.index),
+      line: message.line,
     };
     const isInfo = INFO_RULE_IDS.has(message.ruleId) || message.severity !== SEVERITY_ERROR;
     if (isInfo) {

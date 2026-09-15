@@ -4,6 +4,8 @@ export type Finding = {
   message: string;
   /** 指摘位置を含む文。長い場合は前後を省略記号で切り詰めてある */
   quote: string;
+  /** lint にかけたテキスト内での行番号（1 始まり）。変更行への絞り込みに使う */
+  line: number;
 };
 
 /** lint 結果を block 対象（error）と参考情報（info）に分けたもの */
@@ -44,8 +46,8 @@ export function readStringField(obj: Record<string, unknown>, key: string): stri
 const SENTENCE_BOUNDARY = /[。\n]/;
 
 /**
- * 指摘位置を含む「文」を切り出す。
- * Edit の new_string からはファイル上の行番号が分からないため、位置は引用で示す。
+ * 指摘位置を含む「文」を切り出す。index は text 内のオフセットとして解釈する。
+ * 行番号ではなく引用で位置を示すのは、Claude が編集箇所を探す手がかりとして文面のほうが確実なため。
  */
 export function extractQuote(text: string, index: number, maxLength = 60): string {
   const clamped = Math.min(Math.max(index, 0), Math.max(text.length - 1, 0));

@@ -70,8 +70,8 @@ describe("formatReason", () => {
   test("error のみのとき件数と一覧を出す", () => {
     const outcome: LintOutcome = {
       errors: [
-        { ruleId: "ja-technical-writing/ja-no-redundant-expression", message: "冗長です", quote: "取得を行う。" },
-        { ruleId: "prh", message: "ユーザの => ユーザーの", quote: "ユーザの一覧を表示する。" },
+        { ruleId: "ja-technical-writing/ja-no-redundant-expression", message: "冗長です", quote: "取得を行う。", line: 1 },
+        { ruleId: "prh", message: "ユーザの => ユーザーの", quote: "ユーザの一覧を表示する。", line: 1 },
       ],
       infos: [],
     };
@@ -87,7 +87,7 @@ describe("formatReason", () => {
   test("info のみのとき参考セクションだけを出す", () => {
     const outcome: LintOutcome = {
       errors: [],
-      infos: [{ ruleId: "ai-writing/ai-tech-writing-guideline", message: "簡潔にできます", quote: "まず最初に。" }],
+      infos: [{ ruleId: "ai-writing/ai-tech-writing-guideline", message: "簡潔にできます", quote: "まず最初に。", line: 1 }],
     };
     expect(formatReason(outcome)).toBe(
       ["参考（info 1 件）", "- 「まず最初に。」 [ai-writing/ai-tech-writing-guideline] 簡潔にできます"].join("\n"),
@@ -96,8 +96,8 @@ describe("formatReason", () => {
 
   test("error と info が両方あるとき空行で区切る", () => {
     const outcome: LintOutcome = {
-      errors: [{ ruleId: "prh", message: "ユーザの => ユーザーの", quote: "ユーザの。" }],
-      infos: [{ ruleId: "ai-writing/ai-tech-writing-guideline", message: "簡潔に", quote: "まず最初に。" }],
+      errors: [{ ruleId: "prh", message: "ユーザの => ユーザーの", quote: "ユーザの。", line: 1 }],
+      infos: [{ ruleId: "ai-writing/ai-tech-writing-guideline", message: "簡潔に", quote: "まず最初に。", line: 1 }],
     };
     expect(formatReason(outcome)).toBe(
       [
@@ -116,7 +116,7 @@ describe("formatReason", () => {
 
   test("改行を含むメッセージは 1 行目だけにする", () => {
     const outcome: LintOutcome = {
-      errors: [{ ruleId: "prh", message: "1 行目\n解説: https://example.com", quote: "あ。" }],
+      errors: [{ ruleId: "prh", message: "1 行目\n解説: https://example.com", quote: "あ。", line: 1 }],
       infos: [],
     };
     expect(formatReason(outcome)).toContain("[prh] 1 行目");

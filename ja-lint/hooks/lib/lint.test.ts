@@ -104,6 +104,11 @@ describe("markdown 文脈", () => {
     const prh = outcome.errors.find((f) => f.ruleId === "prh");
     expect(prh?.message).toContain("ユーザの => ユーザーの");
   });
+
+  test("指摘には lint 対象テキスト内の行番号が付く", async () => {
+    const outcome = await lintJapanese("# 見出し\n\nユーザの設定です。", "markdown");
+    expect(outcome.errors.map((f) => f.line)).toEqual([3]);
+  });
 });
 
 describe("Finding の中身", () => {

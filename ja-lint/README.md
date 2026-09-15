@@ -5,7 +5,7 @@ Claude Code が書く日本語を textlint で検査するプラグインであ�
 ## 検査対象
 
 - Edit / Write で書かれたソースコード内のコメント（Edit は追加行のみ）
-- Write / Edit で書かれた Markdown ファイル（`.md`、Edit は追加行のみ）
+- Write / Edit で書かれた Markdown ファイル（`.md`、Edit は編集後のファイル全文を検査して書き換えた行の指摘だけを報告する）
 - `git commit` のコミットメッセージ（`-m` / `--message` / `-F` / `--file` / heredoc）
 - `gh pr create` / `gh pr edit` のタイトルと本文（`--title` / `--body` / `--body-file`）
 
@@ -32,13 +32,14 @@ Claude の応答文そのもの、人間が直接書いた文章は対象外で�
 - `git commit` / `gh pr` は PreToolUse で検査し、error があれば `permissionDecision: "deny"` でコマンド実行を拒否する。info だけなら `additionalContext` で参考情報として返す
 - Edit / Write は PostToolUse で検査し、error があれば上位の `decision: "block"` と `reason` で指摘を返す。info だけなら `additionalContext` で返す。PostToolUse はツール実行後に走るため編集自体は取り消されないが、reason は修正指示として Claude に届く
 - 日本語（ひらがな・カタカナ・漢字）を 1 文字も含まない場合は textlint を読み込まずに終了する
+- Markdown の Edit は編集後のファイル全文を lint する。frontmatter の区切りやコードフェンスを保ったまま解析するためで、報告は書き換えた行に載る指摘だけに絞る。全文を読めない場合は差分の行だけを見る経路へ落ちる
 - hook 自身が失敗した場合は stderr に 1 行残して何も返さない（ツール実行は止めない）
 
 既知の限界:
 
 - 文字列リテラル内の `//` や `#` をコメントと誤認することがある（日本語を含む場合のみ影響）
 - 1 回の Edit で離れた場所に追加した複数のコメント行は 1 段落として連結され、行をまたぐルールが誤検知することがある
-- Edit で段落の一部だけを差し替えると追加行が文の途中で切れ、句点の誤検知につながることもある
+- コメントの Edit で段落の一部だけを差し替えると追加行が文の途中で切れ、句点の誤検知につながることもある
 
 出力例:
 
