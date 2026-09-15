@@ -2,5 +2,33 @@
 # imports の相対パスは、この prh.yml 自身の位置を基準に解決される。
 version: 1
 imports:
-  - ../node_modules/prh/prh-rules/media/WEB+DB_PRESS.yml
-rules: []
+  - path: ../node_modules/prh/prh-rules/media/WEB+DB_PRESS.yml
+    # 漢字表記とかな表記を互いに指摘し合って循環する 2 ルールを外し、下の rules で置き換える。
+    # ignoreRules の expected は、元ルールの expected と完全一致する文字列で指定する
+    ignoreRules:
+      - expected: 基づ$1
+      - expected: もと$1
+rules:
+  # 元ルールは選択肢ごとに別のキャプチャグループを持つため、2 番目以降の選択肢に
+  # マッチすると $1 が undefined になり送りがなが落ちる。
+  # 前半を非キャプチャグループにまとめ、送りがなのグループを 1 つだけにして直す
+  - expected: 基づ$1
+    pattern: /(?:基|基ず|もとず|もとづ)([いかきくけこ])/
+    specs:
+      - from: 仕様にもとづく実装
+        to: 仕様に基づく実装
+      - from: 仕様に基いて実装する
+        to: 仕様に基づいて実装する
+      - from: 仕様に基ずいて実装する
+        to: 仕様に基づいて実装する
+      - from: 仕様にもとずいて実装する
+        to: 仕様に基づいて実装する
+  # 元ルールは漢字表記も開かせてしまい、上のルールと循環する。
+  # 漢字表記を正とするため、除外文字に づ を足す
+  - expected: もと$1
+    pattern: /基([^数準盤板底礎本づ])/
+    specs:
+      - from: 基となるデータ
+        to: もととなるデータ
+      - from: 仕様に基づく実装
+        to: 仕様に基づく実装
