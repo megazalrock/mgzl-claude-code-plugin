@@ -32,18 +32,22 @@ $ARGUMENTS を次の5項目に解析する。
      3. どちらも空 → **merge-base モード**: デフォルトブランチ（`git symbolic-ref --short refs/remotes/origin/HEAD` で解決し、失敗時は `main`、それも実在しなければ `master`）と現在のブランチのマージベースを `git merge-base HEAD <デフォルトブランチ>` で求め、その SHA を diff 対象とする（以降はコミット比較モードとして扱う）
    - 未追跡（untracked）ファイルはどのモードでも判定・レビュー対象に含めない
 2. レビュー対象ファイル一覧を取得する（A=新規 / M=既存変更 などのステータスは絞り込み判定に使う）
-   - コミット比較モード: `git diff --name-status <diff対象>` を実行する
-   - staged / worktree モード: Step 1 の判定で実行した `git diff --cached --name-status` / `git diff --name-status` の出力をそのまま使う
-   - **リネーム表記の正規化**: ステータスが `R` で始まる行は、タブ区切りの 3 列目（新パス）をレビュー対象パスとして使う（2 列目は旧パス）。以降のすべての手順（絞り込み判定・差分取得・`@review-consolidator` へ渡す対象ファイル一覧）で正規化後の新パスを使う
-   - 合わせて **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 8 の `@review-consolidator` 起動まで保持する:
+   - 先に **BASE ハッシュ** と **HEAD ハッシュ** をフル SHA で解決し、Step 8 の `@review-consolidator` 起動まで保持する
      - コミット比較モード: `git rev-parse <diff対象>` の結果を `base_commit`、`git rev-parse HEAD` の結果を `head_commit` として保持
      - staged / worktree モード: `git rev-parse HEAD` の結果を `base_commit` と `head_commit` の両方として保持
      - どちらも短縮せずフル 40 桁の SHA-1 を使う
+   - コミット比較モード: `git diff --name-status <base_commit> <head_commit>` を実行する
+     - 7. の差分書き出しと基準を揃え、作業ツリーだけに差分があるファイルを混ぜないため
+   - staged / worktree モード: Step 1 の判定で実行した `git diff --cached --name-status` / `git diff --name-status` の出力をそのまま使う
+   - **リネーム表記の正規化**: ステータスが `R` で始まる行は、タブ区切りの 3 列目（新パス）をレビュー対象パスとして使う（2 列目は旧パス）。以降のすべての手順（絞り込み判定・差分取得・`@review-consolidator` へ渡す対象ファイル一覧）で正規化後の新パスを使う
 3. 絞り込み指定がある場合、ステータス・ファイルパス・必要に応じて差分内容から該当性を判断し、ファイル一覧を絞り込む
 4. レビュー対象ファイル一覧（絞り込み後）が空の場合はその旨をユーザーに通知し終了
 5. **レビュー対象をバッチにまとめ、「バッチ × レビュー観点」の組み合わせごとに1つのサブエージェントを並列に起動する**
   - 5-1. **各ファイルの差分行数を取得する**
-    - `git diff --numstat <diff対象> -- <レビュー対象ファイル（絞り込み後）...>`（staged モードでは `git diff --cached --numstat -- <...>`、worktree モードでは `git diff --numstat -- <...>`）を **1 回だけ** 実行し、各ファイルの (insertions + deletions) の合計行数を取得する
+    - 各ファイルの (insertions + deletions) の合計行数を、次のコマンドを **1 回だけ** 実行して取得する
+      - コミット比較モード: `git diff --numstat <base_commit> <head_commit> -- <レビュー対象ファイル（絞り込み後）...>`
+      - staged モード: `git diff --cached --numstat -- <...>`
+      - worktree モード: `git diff --numstat -- <...>`
     - **リネーム表記の正規化**: パスに `=>` を含む行は新パス側を取り出して使う。中括弧形式 `dir/{old.ts => new.ts}` は `dir/new.ts` に、中括弧なしの `old => new` 形式は `=>` の右側を使う。リネーム表記のままでは `git diff -- <filepath>` に渡せないため
   - 5-2. **観点グループに分ける**
     - **テストファイルの判定**: 以下のいずれかに当てはまるものをテストファイルとして扱う。パスを `/` で区切ったセグメント単位で判定する（プロダクションコードの `testUtil.ts` や `latest/` のような名前を誤って拾わないため）
@@ -81,7 +85,9 @@ $ARGUMENTS を次の5項目に解析する。
    - コミット比較モードと merge-base モードでは、2. で解決した `base_commit` を `base` に、`head_commit` を `head` に渡す
    - staged モードと worktree モードは `base` と `head` を省略してデフォルトに任せる。省略時のデフォルトは `base` が HEAD、`head` が作業ツリーの未コミット変更である
    - 凍結される diff が統合エージェントの行番号の基準とずれると、アンカーが無関係な行に着くか isOrphaned で返る
-   - MCP サーバの `--cwd` はレビュー対象のリポジトリと一致している前提とする。ずれていると別のリポジトリの diff が凍結される
+   - `cwd` には `git rev-parse --show-toplevel` の結果（絶対パス）を渡す
+     - MCP サーバの `--cwd` に依存せず、レビュー対象のリポジトリを明示するため
+     - 渡さないと MCP サーバ起動時の `--cwd` が使われ、別のリポジトリの diff が凍結され得る
 7. バッチごとの diff をファイルへ書き出す
    - タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し全バッチに使う
    - 取得したら `mkdir -p "$TMPDIR/review-diff-<timestamp>"` を 1 回だけ実行する。リダイレクトは親ディレクトリを作らないため
