@@ -1,6 +1,6 @@
 ---
 name: report-plugin-issue
-description: mgzl / cbo / fading-memory プラグイン自体の問題点を GitHub リポジトリ megazalrock/mgzl-claude-code-plugin の issue に起票する。引数があればその内容を、引数が無ければセッションの会話内容から問題点を抽出する。`-y` で確認をスキップ。「プラグインの問題をissueにして」「issueに起票して」「issueを立てて」などの依頼時に使用する。
+description: mgzl / cbo / fading-memory / ja-lint プラグイン自体の問題点を GitHub リポジトリ megazalrock/mgzl-claude-code-plugin の issue に起票する。引数があればその内容を、引数が無ければセッションの会話内容から問題点を抽出する。`-y` で確認をスキップ。「プラグインの問題をissueにして」「issueに起票して」「issueを立てて」などの依頼時に使用する。
 argument-hint: [-y] [問題点の説明]
 ---
 
@@ -8,7 +8,7 @@ argument-hint: [-y] [問題点の説明]
 
 - 引数: $ARGUMENTS
 - 起票先リポジトリ: `megazalrock/mgzl-claude-code-plugin`（固定）
-- プラグインの実体: `common/` = mgzl プラグイン / `cbo/` = cbo プラグイン / `fading-memory/` = fading-memory プラグイン
+- プラグインの実体: `common/` = mgzl プラグイン / `cbo/` = cbo プラグイン / `fading-memory/` = fading-memory プラグイン / `ja-lint/` = ja-lint プラグイン
 
 ## 引数解析
 
@@ -42,7 +42,7 @@ argument-hint: [-y] [問題点の説明]
 
 #### セッション由来モードの場合
 
-1. これまでの会話内容を振り返り、mgzl / cbo / fading-memory プラグイン自体の不具合・改善要望を抽出する
+1. これまでの会話内容を振り返り、mgzl / cbo / fading-memory / ja-lint プラグイン自体の不具合・改善要望を抽出する
    - 抽出対象は、このセッション内で実際に実行・観測された事象に限る。実行して観測した根拠（実行したコマンド、表示された出力やエラー、実際に起きた挙動）を会話から示せないものは候補にしない
 2. 次のものは抽出対象に含めない:
    - 作業対象プロダクトのコードの問題（プラグインの問題ではないため）
@@ -65,7 +65,7 @@ argument-hint: [-y] [問題点の説明]
 
 抽出した問題点それぞれについて、以下を順に確認する。
 
-4. **対象プラグインの判定**: 問題の所在が `common/` 配下なら mgzl、`cbo/` 配下なら cbo、`fading-memory/` 配下なら fading-memory。複数にまたがる場合はプラグインごとに issue を分割する
+4. **対象プラグインの判定**: 問題の所在が `common/` 配下なら mgzl、`cbo/` 配下なら cbo、`fading-memory/` 配下なら fading-memory、`ja-lint/` 配下なら ja-lint。複数にまたがる場合はプラグインごとに issue を分割する
 5. **該当箇所の特定**: 対象の SKILL.md・エージェント定義・スクリプトのリポジトリ相対パスを特定する。行番号まで分かれば併記する
 6. **重複チェック**: `gh issue list --repo megazalrock/mgzl-claude-code-plugin --state all --search "<キーワード>"` で既存 issue と重複していないか確認する
    - 重複していた場合はその候補を外し、既存 issue の番号を添えてユーザーに報告する
@@ -94,6 +94,7 @@ argument-hint: [-y] [問題点の説明]
     - `gh label create "plugin:mgzl" --repo megazalrock/mgzl-claude-code-plugin --color 1D76DB --description "mgzl プラグイン (common/) に関する issue" --force`
     - `gh label create "plugin:cbo" --repo megazalrock/mgzl-claude-code-plugin --color 5319E7 --description "cbo プラグイン (cbo/) に関する issue" --force`
     - `gh label create "plugin:fading-memory" --repo megazalrock/mgzl-claude-code-plugin --color 0E8A16 --description "fading-memory プラグイン (fading-memory/) に関する issue" --force`
+    - `gh label create "plugin:ja-lint" --repo megazalrock/mgzl-claude-code-plugin --color D93F0B --description "ja-lint プラグイン (ja-lint/) に関する issue" --force`
 12. Write ツールで本文ファイルをスクラッチパッド配下に作成する
 13. `gh issue create --repo megazalrock/mgzl-claude-code-plugin --title "<タイトル>" --label "<種別ラベル>" --label "<プラグインラベル>" --body-file "<本文ファイルのパス>"` を実行する
 14. 起票した issue の URL を全件ユーザーに報告する
@@ -102,9 +103,9 @@ argument-hint: [-y] [問題点の説明]
 
 ### タイトル
 
-`[mgzl] <問題の要約>` / `[cbo] <問題の要約>` / `[fading-memory] <問題の要約>`
+`[mgzl] <問題の要約>` / `[cbo] <問題の要約>` / `[fading-memory] <問題の要約>` / `[ja-lint] <問題の要約>`
 
-- 接頭辞 `[mgzl]` / `[cbo]` / `[fading-memory]` は必須
+- 接頭辞 `[mgzl]` / `[cbo]` / `[fading-memory]` / `[ja-lint]` は必須
 - 要約は日本語で、何がどうなるのかが 1 行で分かるように書く
 - 対象のスキル名・エージェント名を要約に含める
   - 例: `[cbo] review:diff がレビュアーに差分本文を渡せず指摘0件で完了する`
@@ -114,7 +115,7 @@ argument-hint: [-y] [問題点の説明]
 
 次の 2 種類を必ず付与する。
 
-- プラグインラベル（必須・1 つ）: `plugin:mgzl` / `plugin:cbo` / `plugin:fading-memory`
+- プラグインラベル（必須・1 つ）: `plugin:mgzl` / `plugin:cbo` / `plugin:fading-memory` / `plugin:ja-lint`
 - 種別ラベル（必須・1 つ）: `bug`（動作しない・意図と違う挙動）/ `enhancement`（新機能・改善要望）/ `documentation`（記述の誤り・不足のみ）
 
 ### 本文
