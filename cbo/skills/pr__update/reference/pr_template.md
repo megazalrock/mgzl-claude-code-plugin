@@ -13,6 +13,4 @@
 ## How to confirm
 1.
 
-## Notion Ticket
-
 ## Remarks
