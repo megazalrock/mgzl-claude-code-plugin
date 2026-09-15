@@ -1,7 +1,7 @@
 ---
 name: review:diff
 description: 指定されたコミットやブランチとの差分をレビュー
-argument-hint: [branch/tag/commit] [--target <絞り込み指定>] [--simple] [--cross]
+argument-hint: [branch/tag/commit] [--target <絞り込み指定>] [--simple] [--cross] [--report]
 model: sonnet
 ---
 
@@ -10,12 +10,13 @@ model: sonnet
 
 ## 引数
 
-$ARGUMENTS を次の4項目に解析する。
+$ARGUMENTS を次の5項目に解析する。
 
 - **diff 対象**（省略可）: 最初のフラグ以外の引数。branch/tag/commit を指定する。省略時はタスク 1. の「diff モードの決定」に従って自動決定する
 - **`--target <絞り込み指定>`**（省略可）: レビュー対象ファイルを絞り込む自然言語の指定。`--target` の直後から次のフラグまたは末尾までを値として扱う（例: 「新規ファイルのみ」「既存ファイルのみ」「認証に関係するファイルのみ」「`src/api/` 以下」）
 - **`--simple`**（省略可）: 簡易レビューモードを有効化する
 - **`--cross`**（省略可）: ファイルをまたぐ同根の指摘をまとめる機能。デフォルトでは無効にする
+- **`--report`**（省略可）: レビュー結果を md 報告書として書き出す。デフォルトでは書き出さない。指摘の正本は reviewview にあり、md は求められたときだけ生成する派生物のため
 
 ## コンテキスト
 
@@ -113,14 +114,21 @@ $ARGUMENTS を次の4項目に解析する。
 9. `--cross` が指定されている場合のみ `@review-cross-consolidator` を1件だけ起動する
    - 渡す入力は `reviewId` だけ
    - 8. の全インスタンスが完了してから起動する
-10. `request_triage` を呼んでからユーザーへ通知して終了する
+10. `--report` が指定されている場合のみ `export_review` で md 報告書を生成させる
+    - 8.（`--cross` 指定時は 9.）の全インスタンスが完了してから呼ぶ。投入前に呼ぶと空の報告書になる
+    - 引数は `reviewId` に 6. の `reviewId`、`outputDir` に `!`echo $MGZL_DIR`/reviews/<reviewId>/` を渡す。`includeTriage` は渡さない（この時点でトリアージは付いていない）
+    - `outputDir` にレビューごとの専用ディレクトリを切るのは、`export_review` が出力先直下の `*.md` を毎回すべて削除してから書き直すため。`reviews/` 直下を渡すと過去の報告書が消える
+    - 戻り値は `{ outputDir, indexPath, fileCount, findingCount, orphanCount }` のみで本文は返らない。保存先として `indexPath` と `outputDir` を控える
+    - 報告書は生成時点のスナップショット。トリアージ後の判定込みで読みたい場合は同じ `outputDir` に `includeTriage: true` で再生成できる
+11. `request_triage` を呼んでからユーザーへ通知して終了する
     - `request_triage` に 6. の `reviewId` を渡す
     - ユーザーへ伝える内容は次のとおり
       - `request_triage` が返したレビューの URL
       - 重要度（`[3]` / `[2]` / `[1]`）ごとの指摘件数の内訳。8. の各 `@review-consolidator` が返した件数を合算する
       - 位置不明のため未投入の件数と isOrphaned の件数（統合エージェントが返した場合のみ）
+      - `--report` 指定時は md 報告書の保存先。10. の戻り値の `indexPath` と `outputDir` をそのまま伝える
+      - `--report` 未指定時は、報告書が必要なら今回の `reviewId` を `export_review` に渡せば後から生成できること（レビューをやり直す必要はない）
       - トリアージを終えたら `reviewview-collect` で取り込めること
-      - この実行では md 報告書を作成しないこと
 
 ## メインセッションのコンテキストに関する制約
 
@@ -128,4 +136,6 @@ $ARGUMENTS を次の4項目に解析する。
 
 - 差分ファイル（`diff-<NN>.diff`）をメインセッションで Read してはならない
 - 差分を取得するコマンドは必ずファイルへリダイレクトする。標準出力で受け取ってはならない
-- ユーザーへの通知は、統合エージェントが返した件数と `request_triage` の戻り値だけで組み立てる
+- 生成された md 報告書（`index.md` とファイルごとの md）をメインセッションで Read してはならない
+- 報告書の保存先パスは `export_review` の戻り値から取る。ディレクトリを走査して探してはならない
+- ユーザーへの通知は、統合エージェントが返した件数と `request_triage` の戻り値（`--report` 指定時は `export_review` の戻り値も）だけで組み立てる

@@ -25,7 +25,7 @@
 ```
 $MGZL_DIR/
 ├── implementations/          # 実装計画書
-├── reviews/                  # レビュー結果（md 報告書）
+├── reviews/<reviewId>/       # レビュー結果（reviewview の export_review が生成する md 報告書）
 └── tmp/                      # 一時ファイル・スクリーンショット
 ```
 
