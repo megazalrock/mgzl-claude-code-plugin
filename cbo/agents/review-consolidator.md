@@ -60,6 +60,10 @@ Within one file, apply these rules:
 
 Map each surviving finding to reviewview's `FindingInput` shape.
 
+`summary` holds the merged problem statement as one sentence. Use inline Markdown only. Do not put a code fence or a list here.
+
+`rationale` holds the merged rationale and evidence. Quote the relevant code, or cite a row, so a human can verify without opening an editor. A code fence is fine here.
+
 Severity:
 
 - `[3]` blocking maps to `error`.
@@ -83,7 +87,15 @@ Anchor fields:
 
 Give each finding you submit a unique `ref`. A related finding can then point back to it.
 
-Declare `relations` only between findings in the same file. Declare them only in the subordinate finding. Point its `target` at the principal finding's `ref`. reviewview rejects a forward reference to a finding not yet submitted. Findings from other files, or other batches, are not visible to you yet.
+Declare `relations` only between findings in the same file. Declare them only in the subordinate finding. Point its `target` at the principal finding's `ref`.
+
+Pick a `type` for each relation:
+
+- `duplicate_of`: the two findings share one root. Consolidation already merges duplicates, so this type rarely applies here.
+- `superseded_by`: fixing the target finding removes the need for this finding.
+- `depends_on`: fixing the target finding changes this finding's premise.
+
+Use `superseded_by` or `depends_on` for findings that stay separate but remain related to each other. reviewview rejects a forward reference to a finding not yet submitted. Findings from other files, or other batches, are not visible to you yet.
 
 ## Submitting and returning
 
