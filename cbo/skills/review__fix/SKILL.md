@@ -27,6 +27,9 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
 
 4. 修正対象の指摘を把握し、並列に修正する
   - `triageReason` に技術的な理由で従えない指摘は修正せず、`report_fix` を `outcome: blocked` で呼ぶ。`message` に理由を書いて、この指摘を以降の対象から除く
+  - `suggestions` が 2 件以上あり `triageReason` がない指摘は、`-y` の有無にかかわらず AskUserQuestion で採用する提案を確認する
+    - 選択肢には `suggestions` の各要素を提示する
+  - 選んだ提案は、以降その指摘の `triageReason` として扱う
   - **各指摘について、起動する実装エージェント種別を判定する**（起動するのは 1 指摘につき 1 種類、集合ではない）
     - **修正対象がテストコードの場合**: `@test-implementer`
     - **それ以外の場合**: `@code-implementer`
