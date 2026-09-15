@@ -83,7 +83,10 @@ $ARGUMENTS を次の5項目に解析する。
 6. reviewview にレビューを作る
    - `start_review` を `findings` なしで呼び、`reviewId` を受け取る。この時点で diff が凍結される
    - コミット比較モードと merge-base モードでは、2. で解決した `base_commit` を `base` に、`head_commit` を `head` に渡す
-   - staged モードと worktree モードは `base` と `head` を省略してデフォルトに任せる。省略時のデフォルトは `base` が HEAD、`head` が作業ツリーの未コミット変更である
+   - staged モードでは、2. で解決した `base_commit` を `base` に、予約値 `'index'` を `head` に渡す
+     - `'index'` はステージ済みの内容（`git diff --cached` 相当）を凍結させる予約値。Step 7 の diff ファイルも `git diff --cached` から作るため、統合エージェントの行番号の基準と一致する
+     - 省略すると作業ツリーの未コミット変更（`HEAD..worktree`）が凍結され、未ステージの変更があるとステージ済み差分と食い違う
+   - worktree モードは `base` と `head` を省略してデフォルトに任せる。省略時のデフォルトは `base` が HEAD、`head` が作業ツリーの未コミット変更である
    - 凍結される diff が統合エージェントの行番号の基準とずれると、アンカーが無関係な行に着くか isOrphaned で返る
    - `cwd` には `git rev-parse --show-toplevel` の結果（絶対パス）を渡す
      - MCP サーバの `--cwd` に依存せず、レビュー対象のリポジトリを明示するため
