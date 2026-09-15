@@ -77,14 +77,28 @@ $ARGUMENTS を次の4項目に解析する。
     - 30 以下の場合は確認せずそのまま起動する（通常のレビューで不要な問いかけを出さないため）
 6. reviewview にレビューを作る
    - `start_review` を `findings` なしで呼び、`reviewId` を受け取る。この時点で diff が凍結される
+   - コミット比較モードと merge-base モードでは、2. で解決した `base_commit` を `base` に、`head_commit` を `head` に渡す
+   - staged モードと worktree モードは `base` と `head` を省略してデフォルトに任せる。省略時のデフォルトは `base` が HEAD、`head` が作業ツリーの未コミット変更である
+   - 凍結される diff が統合エージェントの行番号の基準とずれると、アンカーが無関係な行に着くか isOrphaned で返る
+   - MCP サーバの `--cwd` はレビュー対象のリポジトリと一致している前提とする。ずれていると別のリポジトリの diff が凍結される
 7. バッチごとの diff をファイルへ書き出す
-   - 差分を取得するコマンドはモード別に次のとおりで、5. までの判定結果をそのまま使う
-     - コミット比較モード: `git diff <base_commit> <head_commit> -- <filepath1> <filepath2> ...`
-     - staged モード: `git diff --cached -- <filepath1> <filepath2> ...`
-     - worktree モード: `git diff -- <filepath1> <filepath2> ...`
-   - コミット比較モードで作業ツリーの差分ではなくコミット間の差分を使うのは、行番号の基準を統一するため
-   - 実行するコマンドの末尾には必ず `> "$TMPDIR/review-diff-<timestamp>/diff-<NN>.diff"` を付けてファイルへリダイレクトする。標準出力で受け取るとメインセッションのコンテキストに差分本文が乗るため
    - タイムスタンプは `bun run "${CLAUDE_PLUGIN_ROOT}/skills/document-saver/scripts/get-timestamp.ts"` で取得し全バッチに使う
+   - 取得したら `mkdir -p "$TMPDIR/review-diff-<timestamp>"` を 1 回だけ実行する。リダイレクトは親ディレクトリを作らないため
+   - 差分を取得するコマンドはモード別に次のとおりで、5. までの判定結果をそのまま使う。末尾のリダイレクトは省略できない
+
+     ```sh
+     # コミット比較モード
+     git diff <base_commit> <head_commit> -- <filepath1> <filepath2> ... > "$TMPDIR/review-diff-<timestamp>/diff-<NN>.diff"
+
+     # staged モード
+     git diff --cached -- <filepath1> <filepath2> ... > "$TMPDIR/review-diff-<timestamp>/diff-<NN>.diff"
+
+     # worktree モード
+     git diff -- <filepath1> <filepath2> ... > "$TMPDIR/review-diff-<timestamp>/diff-<NN>.diff"
+     ```
+
+   - 標準出力で受け取るとメインセッションのコンテキストに差分本文が乗るため、必ずファイルへリダイレクトする
+   - コミット比較モードで作業ツリーの差分ではなくコミット間の差分を使うのは、行番号の基準を統一するため
    - `<NN>` は非テストバッチ群、テストバッチ群の順に全バッチを通して 01 から振る。番号が衝突するとファイルが上書きされ静かに壊れる
 8. `@review-consolidator` をバッチ数だけ並列に起動する
    - 各インスタンスへ次の7項目を渡す

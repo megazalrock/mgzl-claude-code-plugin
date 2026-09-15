@@ -17,7 +17,13 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
   - 引数の finding id が 0 件の場合、ユーザーに確認して処理を停止する（対象の選定はこのスキルの責務ではない）
 
 2. 各 finding の内容を取得する
-  - finding id ごとに `get_finding` を呼び、summary・rationale・suggestions・anchor を取得する
+  - finding id ごとに `get_finding` を呼び、summary・rationale・suggestions・anchor・`triage`・`decidedAt` を取得する
+  - `decidedAt` が null の指摘には着手しない。人間がトリアージを確定していない旨をユーザーへ伝え、その id を対象から外す
+  - `triage` が「対応しない」「スコープ外」「偽陽性」のいずれかなら修正しない。反論もしない。判定をユーザーへ伝え、その id を対象から外す
+  - `triage` が「要検証」の指摘は検証だけを行う。修正はせず `report_fix` を `outcome: verified` で呼び、以降の修正対象から外す
+    - `triageReason` は検証してほしい観点の指示として読む
+    - 妥当だと分かっても修正はしない
+  - `triage` が「修正する」の指摘だけを 3. 以降の対象とする
   - `triageReason` が付いている場合は、人間が書いた対応方針の指示として保持する
 
 3. 実行確認を行う
@@ -29,6 +35,7 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
   - `triageReason` に技術的な理由で従えない指摘は修正せず、`report_fix` を `outcome: blocked` で呼ぶ。`message` に理由を書いて、この指摘を以降の対象から除く
   - `suggestions` が 2 件以上あり `triageReason` がない指摘は、`-y` の有無にかかわらず AskUserQuestion で採用する提案を確認する
     - 選択肢には `suggestions` の各要素を提示する
+    - ユーザーが採用案を選ばなかった場合は、その指摘を「採用案未指定によりスキップ」として対象から外し、最終レポートに載せる
   - 選んだ提案は、以降その指摘の `triageReason` として扱う
   - **各指摘について、起動する実装エージェント種別を判定する**（起動するのは 1 指摘につき 1 種類、集合ではない）
     - **修正対象がテストコードの場合**: `@test-implementer`
@@ -92,7 +99,9 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
     ```
     ## 修正完了
     - 修正済み: f-a1b2c3d4, f-e5f6a7b8
+    - 検証のみ: f-99887766（結果: ...）
     - blocked: f-11223344（理由: ...）
+    - スキップ: f-55667788（理由: 未確定 / 対応しない / 採用案未指定 など）
     - 修正完了後レビュー: 指摘 N 件 / 修正 M 回
     ```
 
