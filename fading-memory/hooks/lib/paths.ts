@@ -9,6 +9,7 @@ export interface DataPaths {
   indexFile: string;
   stateFile: string;
   errorLog: string;
+  sessionLog: string;
 }
 
 /** 記憶データの保存先ルートを上書きする環境変数名 */
@@ -47,5 +48,6 @@ export function dataPaths(
     indexFile: join(root, "INDEX.md"),
     stateFile: join(root, "state.json"),
     errorLog: join(root, "error.log"),
+    sessionLog: join(root, "session-end.log"),
   };
 }

@@ -16,6 +16,7 @@ describe("dataPaths", () => {
     expect(p.indexFile).toBe("/home/u/.claude/fading-memory/-proj-a/INDEX.md");
     expect(p.stateFile).toBe("/home/u/.claude/fading-memory/-proj-a/state.json");
     expect(p.errorLog).toBe("/home/u/.claude/fading-memory/-proj-a/error.log");
+    expect(p.sessionLog).toBe("/home/u/.claude/fading-memory/-proj-a/session-end.log");
   });
 });
 

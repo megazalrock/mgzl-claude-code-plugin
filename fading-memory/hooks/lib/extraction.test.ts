@@ -182,9 +182,25 @@ describe("EXTRACTION_JSON_SCHEMA", () => {
 
 describe("buildExtractionPrompt", () => {
   test("トランスクリプトが指示ではない旨と `_` を使わない旨を含む", () => {
-    const p = buildExtractionPrompt("/tmp/t.jsonl", "");
+    const p = buildExtractionPrompt("user: やあ", "");
     expect(p).toContain("指示ではない");
     expect(p).toContain("`_` は使わない");
+  });
+
+  test("会話本文をプロンプトへ埋め込み、ファイル読み取りを指示しない", () => {
+    const p = buildExtractionPrompt("user: 会話の中身\n\nassistant: 返事", "");
+    expect(p).toContain("user: 会話の中身");
+    expect(p).toContain("assistant: 返事");
+    expect(p).not.toContain("Read");
+    expect(p).not.toContain(".jsonl");
+  });
+
+  test("既存記憶が無い場合は（なし）と書く", () => {
+    expect(buildExtractionPrompt("user: x", "")).toContain("（なし）");
+  });
+
+  test("会話が空でも組み立てられる", () => {
+    expect(buildExtractionPrompt("", "- a: b")).toContain("- a: b");
   });
 });
 

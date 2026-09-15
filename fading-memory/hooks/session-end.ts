@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { appendError } from "./lib/log.ts";
 import { ensureDirs } from "./lib/maintenance.ts";
@@ -35,7 +35,8 @@ async function main(): Promise<void> {
     }
 
     // セッション終了をブロックしないため、抽出はデタッチした別プロセスに任せて即終了する
-    const logFile = Bun.file(join(paths.root, "session-end.log"));
+    // Bun.file を stdout に渡すと毎回切り詰められるため、追記モードの fd を渡して履歴を残す
+    const logFd = openSync(paths.sessionLog, "a");
     const proc = Bun.spawn({
       cmd: [
         process.execPath,
@@ -46,10 +47,11 @@ async function main(): Promise<void> {
       ],
       env: { ...process.env, FADING_MEMORY_WORKER: "1" },
       stdin: "ignore",
-      stdout: logFile,
-      stderr: logFile,
+      stdout: logFd,
+      stderr: logFd,
     });
     proc.unref();
+    closeSync(logFd);
   } catch (e) {
     try {
       // stdin/JSON解析より前の失敗では paths が未確定なため、cwd 基準の paths をログ先とする
