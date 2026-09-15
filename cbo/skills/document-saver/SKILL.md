@@ -1,6 +1,6 @@
 ---
 name: document-saver
-description: 調査内容や議論のまとめを統一フォーマットの.mdファイルとして保存するスキル。「.mdにまとめて」「ドキュメントを保存」「調査結果をまとめて」「これを記録して」「ナレッジとして保存」「メモを残して」「議論をまとめて保存」「レビュー結果を保存」などの依頼時に呼び出される。
+description: 調査内容や議論のまとめを統一フォーマットの.mdファイルとして保存するスキル。「.mdにまとめて」「ドキュメントを保存」「調査結果をまとめて」「これを記録して」「ナレッジとして保存」「メモを残して」「議論をまとめて保存」などの依頼時に呼び出される。
 allowed-tools: Write, Read, Glob, Bash(bun run */scripts/get-timestamp.ts)
 model: sonnet
 ---
@@ -10,7 +10,6 @@ model: sonnet
 ### Step 1: 種類の特定とファイル名の決定
 
 以下のいずれかのドキュメント種類を特定する：
-- **レビュー結果**: レビューエージェント（reviewer-for-logic、reviewer-for-design、reviewer-for-security-performance、reviewer-for-test-code）が出力したレビュー結果
 - **実装計画書**: implementation-plan-creator サブエージェントが出力した実装計画書
 - **軽量版実装計画書**: implementation-plan-creator-lite サブエージェントが出力した、コードサンプルを排した実装計画書
 - **調査レポート**: コードベースや技術調査の結果
