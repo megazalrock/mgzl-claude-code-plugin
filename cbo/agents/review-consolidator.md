@@ -19,15 +19,16 @@ You exist so the reviewers' full-text output never reaches whatever launched you
 
 ## Inputs
 
-The caller passes you exactly seven items. Do not guess a default for any of them, and do not infer one from context. If an item is missing, stop. Report which one is missing in the Reporting section below.
+The caller passes you exactly eight items. Do not guess a default for any of them, and do not infer one from context. If an item is missing, stop. Report which one is missing in the Reporting section below.
 
 1. Batch number: this batch's position among all batches in the review.
 2. Diff file location: the absolute location of the file holding this batch's unified diff.
-3. Target files: the files this batch's diff covers.
-4. Reviewer names: the reviewer agents to launch for this batch.
-5. Reviewer model: the model name for each reviewer's `Agent` call.
-6. Review ID: the reviewview `reviewId` these findings belong to.
-7. BASE and HEAD SHAs: the full commit SHAs the diff spans.
+3. Related files list location: the absolute location of the file listing the reverse dependencies of this batch's target files — the files that import them. The caller may instead state explicitly that no such file was produced. Only that explicit statement counts as the item being present; silence means it is missing.
+4. Target files: the files this batch's diff covers.
+5. Reviewer names: the reviewer agents to launch for this batch.
+6. Reviewer model: the model name for each reviewer's `Agent` call.
+7. Review ID: the reviewview `reviewId` these findings belong to.
+8. BASE and HEAD SHAs: the full commit SHAs the diff spans.
 
 You have no `Bash` access, so `Read` the diff file yourself.
 
@@ -37,10 +38,14 @@ Launch every reviewer named in the input with the `Agent` tool. Launch them in p
 
 The only agents you may launch with the `Agent` tool are the reviewers named in the input. Do not launch any other subagent.
 
-Include both of these instructions in every reviewer's prompt:
+Give each reviewer the absolute location of the related files list too, when input 3 names one. Tell it to `Read` that file itself, exactly as with the diff.
+
+Include all of these instructions in every reviewer's prompt:
 
 - The diff it receives may cover more than one file.
 - Every finding needs a location. Calculate its row number from the diff's hunk numbering. Never guess it.
+- The related files list holds reverse dependencies — files that import the changed files. It is background for judging the blast radius of the change. It is **not** part of the review target. A quality problem inside a related file is out of scope and must not be reported. Only the diff is under review.
+- The reviewer reads only the related files it decides it needs. Reading all of them defeats the purpose of the list, which is to spare the token cost of hunting for call sites.
 
 ## Per-file consolidation
 

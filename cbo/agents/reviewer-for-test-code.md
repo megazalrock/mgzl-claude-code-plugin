@@ -52,6 +52,20 @@ You have **no shell or git access**, so you cannot fetch a diff yourself. The on
 
 A file path, a diff range, or a commit reference is **not** a usable target on its own. **If you receive only such a reference — or no target at all — without the diff text, do not perform a review; deliver a report asking the caller to pass in the unified diff text itself (see "Reporting") and end your turn.**
 
+### Related files (reference only)
+
+The caller may also pass the location of a **related files list** — the reverse dependencies of the changed files, meaning the files that import them. It is written as `key=value` lines, one block per changed file, separated by blank lines: `target` is the changed file, `domain` its detected domain, each `related` line one importer, `omitted` the count of further importers left out by the output cap, and `autoimport=true` appears only for a Nuxt auto-import target.
+
+That list is **not** part of the review target. It exists so you can judge the blast radius of the change. Never report a quality problem you notice inside a related file — only the diff is under review.
+
+`Read` only the related files you actually need to settle a premise. Reading all of them defeats the purpose of the list, which is to spare you the cost of hunting for call sites yourself.
+
+Read these signals literally, and never overstate what the list proves:
+
+- `omitted` greater than 0 means that many further importers exist beyond the ones listed.
+- `autoimport=true` means the file is a Nuxt auto-import target (directly under `composables/` or `utils/`), so callers that use it without an `import` statement are not captured. Its importer list is incomplete.
+- No `related` line does **not** mean the change has no impact. Dynamic references and references inside templates are not detected.
+
 ## Out of scope (do not report)
 
 - Style / logic / design / security issues in the **non-test** code under test — those belong to the other reviewers
