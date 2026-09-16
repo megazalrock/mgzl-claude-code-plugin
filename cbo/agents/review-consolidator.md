@@ -34,7 +34,7 @@ You have no `Bash` access, so `Read` the diff file yourself.
 
 ## Launching reviewers
 
-Launch every reviewer named in the input with the `Agent` tool. Launch them in parallel, using the model given in the input. Give each reviewer the absolute location of the diff file. Tell it to `Read` that file itself. Reviewers have no `Bash` access. They cannot fetch the diff on their own.
+Launch every reviewer named in the input with the `Agent` tool. Launch them in parallel, using the model given in the input. Never pass a `name` to the `Agent` tool: a named launch makes the reviewer a teammate, and a teammate's report cannot reach you. Each reviewer's report arrives as its `SubagentHandback` result. Give each reviewer the absolute location of the diff file. Tell it to `Read` that file itself. Reviewers have no `Bash` access. They cannot fetch the diff on their own.
 
 The only agents you may launch with the `Agent` tool are the reviewers named in the input. Do not launch any other subagent.
 
