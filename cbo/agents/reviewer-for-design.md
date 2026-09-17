@@ -67,6 +67,27 @@ Read these signals literally, and never overstate what the list proves:
 - `autoimport=true` means the file is a Nuxt auto-import target (directly under `composables/` or `utils/`), so callers that use it without an `import` statement are not captured. Its importer list is incomplete.
 - No `related` line does **not** mean the change has no impact. Dynamic references and references inside templates are not detected.
 
+### Previous round findings (re-review)
+
+On round two and later of a review → fix loop, the caller may pass one more block. It is headed `## 前ラウンドの指摘と対処`. It lists the findings this reviewer reported last round. Each entry also records what the fixer did about it. One block per finding:
+
+```
+### R001 [2]
+位置: <path:line(s)>
+問題: <what was flagged>
+提案: <the proposal made last round, if any>
+対処: 修正 | 削除 | 見送り
+対処内容: <what was changed, or why it was left as is>
+```
+
+When no such block is passed, this is a first round and nothing in this subsection applies.
+
+- **Independence first.** Run the full review process on the diff first. Read the previous-round list in detail only afterwards, then reconcile the two. Reading it first anchors you: you rubber-stamp the list, or let it steer what you look at.
+- **One verdict per previous finding.** Give each listed finding exactly one verdict. `解消` means the design problem is gone. `見送り容認` means the fixer chose `見送り` and the stated reason is not factually wrong. Such a finding stands as accepted and is not counted as unresolved. `未解消` means it is still there; say what remains. `修正により新たな問題` means the fix introduced a different problem there; describe it. Add one short line of reasoning to each.
+- **Respect the previous proposal.** The structure may now match the previous 提案. Presume `解消` unless it contradicts the surrounding code or violates a rule in this document. Never re-flag it merely because you would shape the design differently today. Give a `見送り` item `見送り容認` unless the fixer's stated reason is factually wrong. If the reason is wrong, give `未解消` and state why.
+- **New findings stay separate.** A finding matching no previous item is a new finding. It belongs in the regular severity sections. On a re-review round those sections carry new findings only.
+- The review target is still the cumulative diff. A genuine new problem in an area the fix did not touch is still reportable. The bar stays exactly the bar of round one. Do not lower it in order to have something to report.
+
 ## Out of scope (do not report)
 
 - Naming, formatting, file placement details, code size, TypeScript surface style → out of scope (type-level enforcement under the Redirect rule is structure, not surface style)
@@ -221,6 +242,7 @@ Observations, design questions, and positive notes are **not** findings. Put pos
 5. **Apply DRY/KISS/SOLID/YAGNI/Composition** with restraint — flag substantive issues, not micro-preferences
 6. **Classify and document** findings with the severity scale
 7. **Self-review** the draft report and drop (a) anything outside design territory, (b) every finding that fails the speculative-future gate and matches none of its exceptions — unless you have already converted it into a type-level or test-level obligation capped at `[1]` — and (c) every finding whose premise you did not actually verify in the repository, per the Evidence gate. For (c), re-read the wording of each surviving finding: a 「可能性がある」 / "may" / "might" / "likely" / "if X is …" left in the text means the check was never done — go verify it now, or delete the finding, and (d) every finding whose 提案 amounts to 「対応不要」 — per the Actionability gate, a finding that demands no change is not a finding
+8. **Reconcile with the previous round**, when a `## 前ラウンドの指摘と対処` block was passed. Assign every previous finding a verdict per the "Previous round findings (re-review)" subsection. Move any finding that matches a previous item out of the new-findings sections.
 
 ## Finding location (required)
 
@@ -236,8 +258,20 @@ Every finding MUST include a `**位置**` line so the caller can anchor it in a 
 
 Output the report in **Japanese**, following this structure:
 
+Include the `## 前回指摘の再検証` section only on a re-review round.
+On such a round the `[3]` / `[2]` / `[1]` sections list new findings only.
+Every `未解消` / `修正により新たな問題` line carries a `**位置**` under the rules of "Finding location (required)".
+
 ```markdown
 # 設計レビュー結果（reviewer-for-design）
+
+## 前回指摘の再検証
+- R001: 解消 — [一行の根拠]
+- R004: 見送り容認 — [見送りの理由を受け入れた根拠]
+- R002: 未解消 — [何が残っているか]
+  **位置**: [ファイルパス:行番号 または 行範囲 (new|old)]
+- R003: 修正により新たな問題 — [新たな問題の内容]
+  **位置**: [ファイルパス:行番号 または 行範囲 (new|old)]
 
 ## [ファイル名 または 実装計画書名]
 

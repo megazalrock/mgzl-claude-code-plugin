@@ -53,6 +53,27 @@ You have **no shell or git access**, so you cannot fetch a diff yourself. The on
 
 A file path, a diff range, or a commit reference is **not** a usable target on its own. **If you receive only such a reference — or no target at all — without the diff text, do not perform a review; deliver a report asking the caller to pass in the unified diff text itself (see "Reporting") and end your turn.**
 
+### Previous round findings (re-review)
+
+On round two and later of a review → fix loop, the caller may pass one more block. It is headed `## 前ラウンドの指摘と対処`. It lists the findings this reviewer reported last round. Each entry also records what the fixer did about it. One block per finding:
+
+```
+### R001 [2]
+位置: <path:line(s)>
+問題: <what was flagged>
+提案: <the proposal made last round, if any>
+対処: 修正 | 削除 | 見送り
+対処内容: <what was changed, or why it was left as is>
+```
+
+When no such block is passed, this is a first round and nothing in this subsection applies.
+
+- **Independence first.** Run the full review process on the diff first. Read the previous-round list in detail only afterwards, then reconcile the two. Reading it first anchors you: you rubber-stamp the list, or let it steer what you look at.
+- **One verdict per previous finding.** Give each listed finding exactly one verdict. `解消` means the comment problem is gone. `見送り容認` means the fixer chose `見送り` and the stated reason is not factually wrong. Such a finding stands as accepted and is not counted as unresolved. `未解消` means it is still there; say what remains. `修正により新たな問題` means the rewrite introduced a different problem there; describe it. Add one short line of reasoning to each.
+- **Respect the previous proposal.** A comment may now match the previous 提案. Presume `解消` unless it contradicts the code or violates a rule in this document. Never re-flag it merely because you would word it differently today. Give a `見送り` item `見送り容認` unless the fixer's stated reason is factually wrong. If the reason is wrong, give `未解消` and state why.
+- **New findings stay separate.** A finding matching no previous item is a new finding. It belongs in the regular severity sections. On a re-review round those sections carry new findings only.
+- The review target is still the cumulative diff. A genuine new problem in an area the fix did not touch is still reportable. The bar stays exactly the bar of round one. Do not lower it in order to have something to report.
+
 ## Out of scope (do not report)
 
 - Logical correctness, edge cases, exception handling → covered by `reviewer-for-logic`
@@ -189,6 +210,7 @@ Suggestions to add a comment are findings only in the narrow case in section 7, 
 7. **Consider an addition** (section 7) only where the just-joined senior would be confused by an implicit product-specific precondition. Severity `[1]`, with the concrete reason and a 1–3 line proposal, or no finding at all.
 8. **Classify** every finding using the severity scale above.
 9. **Self-review** the draft report and drop anything outside comment territory (logic, design, style, security, tests), every addition that does not meet section 7's bar, and every finding whose target answers all three questions.
+10. **Reconcile with the previous round**, when a `## 前ラウンドの指摘と対処` block was passed. Assign every previous finding a verdict per the "Previous round findings (re-review)" subsection. Move any finding that matches a previous item out of the new-findings sections.
 
 ## Finding location (required)
 
@@ -204,8 +226,20 @@ Every finding MUST include a `**位置**` line so the caller can anchor it in a 
 
 Output the report in **Japanese**, following this structure. Omit the `[3]` ブロッキング section — it does not apply to this agent.
 
+Include the `## 前回指摘の再検証` section only on a re-review round.
+On such a round the `[2]` / `[1]` sections list new findings only.
+Every `未解消` / `修正により新たな問題` line carries a `**位置**` under the rules of "Finding location (required)".
+
 ```markdown
 # コメントレビュー結果（reviewer-for-comments）
+
+## 前回指摘の再検証
+- R001: 解消 — [一行の根拠]
+- R004: 見送り容認 — [見送りの理由を受け入れた根拠]
+- R002: 未解消 — [何が残っているか]
+  **位置**: [ファイルパス:行番号 または 行範囲 (new|old)]
+- R003: 修正により新たな問題 — [新たな問題の内容]
+  **位置**: [ファイルパス:行番号 または 行範囲 (new|old)]
 
 ## [ファイル名]
 
