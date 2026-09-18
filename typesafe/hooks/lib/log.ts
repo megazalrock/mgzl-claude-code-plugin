@@ -5,12 +5,20 @@ import type { GateScores, Outcome, ShortlistItem } from "./pipeline.ts";
 /** pipeline の 3 経路に、入口で打ち切った skipped と失敗した error を足したもの */
 export type LogOutcome = Outcome | "skipped" | "error";
 
+/** フックが発火したイベント。event を持たない既存レコードは UserPromptSubmit とみなす */
+export type HookEvent = "UserPromptSubmit" | "PreToolUse";
+
 export type LogRecord = {
   /** ISO 8601 */
   ts: string;
   session_id: string;
   cwd: string;
-  /** 依頼文の全文。評価セットへそのまま転記できるようにする */
+  event: HookEvent;
+  /** PreToolUse のときのみ。"Bash" / "Agent" */
+  tool_name?: string;
+  /** サブエージェント内で発火したときのみ */
+  agent_type?: string;
+  /** UserPromptSubmit は依頼文の全文、PreToolUse は組み立て後の request 文 */
   prompt: string;
   outcome: LogOutcome;
   winner: string | null;

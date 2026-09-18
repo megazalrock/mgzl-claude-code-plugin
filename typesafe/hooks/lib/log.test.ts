@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { append, LOG_FILE_NAME, type LogRecord } from "./log.ts";
+import { append, type HookEvent, LOG_FILE_NAME, type LogRecord } from "./log.ts";
 
 const root = mkdtempSync(join(tmpdir(), "typesafe-log-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -10,13 +10,16 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 const BASE: Omit<LogRecord, "ts"> = {
   session_id: "sess-1",
   cwd: "/Users/otto/workspace/mgzl-claude-code-plugin",
+  event: "UserPromptSubmit",
   prompt: "この変更をコミットして",
   outcome: "suggested",
   winner: "mgzl:commiting-to-git",
   gate: {
-    acts_on_user_system: 0.9,
-    would_follow_documented_procedure: 0.8,
-    prose_suffices: 0.1,
+    scores: {
+      "gate::acts_on_user_system": 0.9,
+      "gate::would_follow_documented_procedure": 0.8,
+      "gate::prose_suffices": 0.1,
+    },
     mean: 0.8666666666666667,
   },
   shortlist: [{ name: "mgzl:commiting-to-git", wideProbability: 0.7, rerankProbability: 0.9, fits: 0.95 }],
@@ -90,5 +93,42 @@ describe("append", () => {
     );
     const line = readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd();
     expect(JSON.parse(line).error).toBe("TypeSafe System One returned 500");
+  });
+
+  test("event を記録する", () => {
+    const dataDir = join(root, "events");
+    append(BASE, dataDir);
+    const line = readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd();
+    expect(JSON.parse(line).event).toBe("UserPromptSubmit");
+  });
+
+  test("PreToolUse では tool_name と agent_type も記録する", () => {
+    const dataDir = join(root, "pretooluse");
+    const event: HookEvent = "PreToolUse";
+    append(
+      {
+        ...BASE,
+        event,
+        tool_name: "Bash",
+        agent_type: "mgzl:budgeted-investigator",
+        prompt:
+          'The assistant is about to perform this action:\nCommit the staged changes\ngit commit -m "fix: x"',
+        gate: { scores: { "gate::routine_step": 0.05 }, mean: 0.95 },
+      },
+      dataDir,
+    );
+    const record = JSON.parse(readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd());
+    expect(record.event).toBe("PreToolUse");
+    expect(record.tool_name).toBe("Bash");
+    expect(record.agent_type).toBe("mgzl:budgeted-investigator");
+    expect(record.gate).toEqual({ scores: { "gate::routine_step": 0.05 }, mean: 0.95 });
+  });
+
+  test("tool_name / agent_type を渡さなければキー自体が入らない", () => {
+    const dataDir = join(root, "no-tool-fields");
+    append(BASE, dataDir);
+    const record = JSON.parse(readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd());
+    expect("tool_name" in record).toBe(false);
+    expect("agent_type" in record).toBe(false);
   });
 });
