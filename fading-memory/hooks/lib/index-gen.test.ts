@@ -30,6 +30,20 @@ describe("sortForIndex", () => {
     const list = [mem("low", {}), mem("keep", { permanent: true }), mem("high", { score: 5 })];
     expect(sortForIndex(list).map((m) => m.slug)).toEqual(["keep", "high", "low"]);
   });
+
+  test("permanent 同士は作成日時の降順（新しいものが先頭）で、slug 順ではない", () => {
+    const list = [
+      mem("a-old", { permanent: true, created: "2026-01-01T00:00:00.000Z" }),
+      mem("z-new", { permanent: true, created: "2026-03-01T00:00:00.000Z" }),
+      mem("m-mid", { permanent: true, created: "2026-02-01T00:00:00.000Z" }),
+    ];
+    expect(sortForIndex(list).map((m) => m.slug)).toEqual(["z-new", "m-mid", "a-old"]);
+  });
+
+  test("permanent 同士で作成日時が同じなら slug 順", () => {
+    const list = [mem("b", { permanent: true }), mem("a", { permanent: true })];
+    expect(sortForIndex(list).map((m) => m.slug)).toEqual(["a", "b"]);
+  });
 });
 
 describe("renderIndex", () => {
