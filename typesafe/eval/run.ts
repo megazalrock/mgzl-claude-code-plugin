@@ -31,14 +31,19 @@ export function parseArgs(argv: readonly string[]): Args {
     if (value === undefined) continue;
     if (flag === "--cwd") cwd = value;
     if (flag === "--golden") golden = value;
-    if (flag === "--concurrency") concurrency = Number.parseInt(value, 10);
+    if (flag === "--concurrency") {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) throw new Error(`--concurrency must be a number, got '${value}'`);
+      concurrency = parsed;
+    }
   }
   if (cwd === undefined) throw new Error("--cwd is required");
   return { cwd, golden, concurrency };
 }
 
+/** error があるケースは winner が null でも「たまたま expected: null と一致した」扱いにしない */
 function isCorrect(row: EvalRow): boolean {
-  return row.winner === row.expected;
+  return row.error === undefined && row.winner === row.expected;
 }
 
 function bandIndex(fits: number): number {
@@ -57,6 +62,7 @@ function rate(hits: number, total: number): string {
 export function buildReport(rows: readonly EvalRow[]): string {
   const withSkill = rows.filter((row) => row.expected !== null);
   const withoutSkill = rows.filter((row) => row.expected === null);
+  const errored = rows.filter((row) => row.error !== undefined);
   const wrong = withSkill.filter((row) => row.winner !== row.expected);
   const unneeded = withoutSkill.filter((row) => row.winner !== null);
 
@@ -64,11 +70,13 @@ export function buildReport(rows: readonly EvalRow[]): string {
     `total=${rows.length}`,
     `with_skill=${withSkill.length}`,
     `without_skill=${withoutSkill.length}`,
+    `errors=${errored.length}`,
     `wrong_suggestion_rate=${rate(wrong.length, withSkill.length)}`,
     `unneeded_suggestion_rate=${rate(unneeded.length, withoutSkill.length)}`,
   ];
 
-  const suggested = rows.filter((row) => row.winner !== null);
+  // error があった行は fits を持たないため帯の分母から除外する
+  const suggested = rows.filter((row) => row.winner !== null && row.error === undefined);
   for (let index = 0; index < BAND_COUNT; index++) {
     const inBand = suggested.filter((row) => bandIndex(row.maxFits) === index);
     if (inBand.length === 0) continue;

@@ -83,6 +83,46 @@ describe("buildReport", () => {
     expect(report).toContain(`mismatch request="${"あ".repeat(60)}"`);
     expect(report).not.toContain("あ".repeat(61));
   });
+
+  test("該当なしで例外になった場合は不一致に出るが unneeded_suggestion_rate には含めない", () => {
+    const report = buildReport([
+      {
+        request: "Slack のチャンネルにこの結果を投稿して",
+        expected: null,
+        winner: null,
+        gateMean: 0,
+        maxFits: 0,
+        error: "Jev did not answer the 'which' choice question (call 1)",
+      },
+    ]);
+    expect(report).toContain("errors=1");
+    expect(report).toContain("unneeded_suggestion_rate=0.000");
+    expect(report).toContain(
+      'mismatch request="Slack のチャンネルにこの結果を投稿して" expected=null winner=null gate=0.00 fits=0.00 error="Jev did not answer the \'which\' choice question (call 1)"',
+    );
+  });
+
+  test("該当ありで例外になった場合は wrong_suggestion_rate に含まれ不一致に 1 回だけ出る", () => {
+    const report = buildReport([
+      {
+        request: "今の変更をコミットして",
+        expected: "mgzl:commiting-to-git",
+        winner: null,
+        gateMean: 0,
+        maxFits: 0,
+        error: "roster is empty",
+      },
+    ]);
+    expect(report).toContain("errors=1");
+    expect(report).toContain("wrong_suggestion_rate=1.000");
+    const mismatchCount = report
+      .split("\n")
+      .filter((line) => line.startsWith("mismatch")).length;
+    expect(mismatchCount).toBe(1);
+    expect(report).toContain(
+      'mismatch request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.00 fits=0.00 error="roster is empty"',
+    );
+  });
 });
 
 describe("parseArgs", () => {
@@ -101,6 +141,12 @@ describe("parseArgs", () => {
 
   test("--cwd が無ければ例外にする", () => {
     expect(() => parseArgs([])).toThrow("--cwd is required");
+  });
+
+  test("--concurrency が数値でなければ例外にする", () => {
+    expect(() => parseArgs(["--cwd", "/x", "--concurrency", "abc"])).toThrow(
+      "--concurrency must be a number, got 'abc'",
+    );
   });
 });
 
