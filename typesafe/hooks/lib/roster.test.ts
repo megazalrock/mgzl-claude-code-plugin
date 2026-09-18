@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { BODY_CHARS, discover, MAX_ENTRIES, parseFrontmatter } from "./roster.ts";
+import { agentHasSkillTool, BODY_CHARS, discover, MAX_ENTRIES, parseFrontmatter } from "./roster.ts";
 
 const root = mkdtempSync(join(tmpdir(), "typesafe-roster-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -250,5 +250,119 @@ describe("discover", () => {
     writeSkill(fixture.skillsDir, "alpha", "name: alpha\ndescription: アルファをする");
     writeFileSync(join(fixture.cwd, ".claude", "settings.json"), "{ broken");
     expect(discover(fixture.cwd, { home: fixture.home })).toHaveLength(1);
+  });
+});
+
+function writeAgent(agentsDir: string, fileName: string, frontmatter: string): void {
+  mkdirSync(agentsDir, { recursive: true });
+  writeFileSync(join(agentsDir, `${fileName}.md`), `---\n${frontmatter}\n---\n\nエージェント本文。\n`);
+}
+
+describe("agentHasSkillTool", () => {
+  test("general-purpose は定義ファイルが無くても Skill あり", () => {
+    const fixture = newFixture();
+    expect(agentHasSkillTool("general-purpose", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("プラグインの agents/ を引き、tools に Skill があれば true", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(
+      join(installPath, "agents"),
+      "helper",
+      "name: helper\ndescription: 手伝う\nmodel: sonnet\ntools: Read, Grep, Skill",
+    );
+    expect(agentHasSkillTool("demo:helper", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("プラグイン接頭辞が無い agent_type でも同じ定義に解決する", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(
+      join(installPath, "agents"),
+      "helper",
+      "name: helper\ndescription: 手伝う\nmodel: sonnet\ntools: Read, Grep, Skill",
+    );
+    expect(agentHasSkillTool("helper", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("tools に Skill が無ければ false", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(
+      join(installPath, "agents"),
+      "reader",
+      "name: reader\ndescription: 読むだけ\nmodel: sonnet\ntools: Read, Grep, Glob",
+    );
+    expect(agentHasSkillTool("demo:reader", fixture.cwd, { home: fixture.home })).toBe(false);
+  });
+
+  test("tools フィールドが無ければ全ツール扱いで true", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(join(installPath, "agents"), "free", "name: free\ndescription: 何でもする\nmodel: sonnet");
+    expect(agentHasSkillTool("demo:free", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("tools: * は全ツール扱いで true", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(
+      join(installPath, "agents"),
+      "star",
+      'name: star\ndescription: 何でもする\nmodel: sonnet\ntools: "*"',
+    );
+    expect(agentHasSkillTool("demo:star", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("tools が配列表記でも読む", () => {
+    const fixture = singlePluginFixture();
+    const installPath = join(fixture.installRoot, "demo");
+    writeAgent(
+      join(installPath, "agents"),
+      "bracket",
+      'name: bracket\ndescription: 手伝う\nmodel: sonnet\ntools: [Read, "Skill"]',
+    );
+    expect(agentHasSkillTool("demo:bracket", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("定義ファイルが見つからなければ false", () => {
+    const fixture = singlePluginFixture();
+    expect(agentHasSkillTool("demo:missing", fixture.cwd, { home: fixture.home })).toBe(false);
+  });
+
+  test("組み込みエージェント名は定義が無いので false", () => {
+    const fixture = newFixture();
+    expect(agentHasSkillTool("Explore", fixture.cwd, { home: fixture.home })).toBe(false);
+  });
+
+  test("~/.claude/agents/ の定義を引く", () => {
+    const fixture = newFixture();
+    writeAgent(
+      join(fixture.home, ".claude", "agents"),
+      "user-agent",
+      "name: user-agent\ndescription: ユーザー定義\nmodel: sonnet\ntools: Read, Skill",
+    );
+    expect(agentHasSkillTool("user-agent", fixture.cwd, { home: fixture.home })).toBe(true);
+  });
+
+  test("<cwd>/.claude/agents/ の定義を引く", () => {
+    const fixture = newFixture();
+    writeAgent(
+      join(fixture.cwd, ".claude", "agents"),
+      "proj-agent",
+      "name: proj-agent\ndescription: プロジェクト定義\nmodel: sonnet\ntools: Read",
+    );
+    expect(agentHasSkillTool("proj-agent", fixture.cwd, { home: fixture.home })).toBe(false);
+  });
+
+  test("ファイル名と name が食い違う定義はフロントマターの name で解決する", () => {
+    const fixture = newFixture();
+    writeAgent(
+      join(fixture.home, ".claude", "agents"),
+      "01-renamed",
+      "name: real-name\ndescription: 名前が違う\nmodel: sonnet\ntools: Read, Skill",
+    );
+    expect(agentHasSkillTool("real-name", fixture.cwd, { home: fixture.home })).toBe(true);
   });
 });

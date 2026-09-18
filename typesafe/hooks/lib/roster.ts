@@ -17,6 +17,8 @@ export type RosterEntry = {
 export type Frontmatter = {
   name?: string;
   description?: string;
+  /** エージェント定義の `tools:` の生の値。スキルには存在しない */
+  tools?: string;
   disableModelInvocation: boolean;
 };
 
@@ -124,6 +126,7 @@ export function parseFrontmatter(text: string): { frontmatter: Frontmatter; body
     }
     if (key === "name") frontmatter.name = value;
     if (key === "description") frontmatter.description = value;
+    if (key === "tools") frontmatter.tools = value;
     if (key === "disable-model-invocation") frontmatter.disableModelInvocation = value === "true";
   }
 
@@ -241,4 +244,87 @@ export function discover(cwd: string, options: DiscoverOptions = {}): RosterEntr
     return all.slice(0, MAX_ENTRIES);
   }
   return all;
+}
+
+/** `tools:` の値を配列表記・カンマ区切りのどちらでも読む */
+function parseToolList(raw: string): string[] {
+  const inner = raw.startsWith("[") && raw.endsWith("]") ? raw.slice(1, -1) : raw;
+  return inner
+    .split(",")
+    .map((item) => stripQuotes(item.trim()))
+    .filter((item) => item !== "");
+}
+
+/** ディレクトリから `<name>.md` を、無ければフロントマターの name が一致する .md を探す */
+function readAgentDefinition(dir: string, name: string): string | undefined {
+  try {
+    return readFileSync(join(dir, `${name}.md`), "utf8");
+  } catch {
+    // ファイル名とフロントマターの name が食い違う定義もあるため、総当たりへ落とす
+  }
+  let fileNames: string[];
+  try {
+    fileNames = readdirSync(dir).sort();
+  } catch {
+    return undefined;
+  }
+  for (const fileName of fileNames) {
+    if (!fileName.endsWith(".md")) continue;
+    let text: string;
+    try {
+      text = readFileSync(join(dir, fileName), "utf8");
+    } catch {
+      continue;
+    }
+    if (parseFrontmatter(text).frontmatter.name === name) return text;
+  }
+  return undefined;
+}
+
+/**
+ * agent_type に対応する定義ファイルの中身を返す。
+ * agent_type にプラグイン接頭辞が付く場合と付かない場合の両方を受けられるようにしてある。
+ * 接頭辞があればそのプラグインだけを見る。
+ */
+function findAgentDefinition(agentType: string, cwd: string, home: string): string | undefined {
+  const colon = agentType.indexOf(":");
+  const pluginPrefix = colon === -1 ? undefined : agentType.slice(0, colon);
+  const bare = colon === -1 ? agentType : agentType.slice(colon + 1);
+
+  for (const key of enabledPluginKeys(cwd, home)) {
+    const pluginName = key.split("@")[0] ?? key;
+    if (pluginPrefix !== undefined && pluginName !== pluginPrefix) continue;
+    const installPath = installPathFor(key, cwd, home);
+    if (installPath === undefined) continue;
+    const text = readAgentDefinition(join(installPath, "agents"), bare);
+    if (text !== undefined) return text;
+  }
+  for (const dir of [join(home, ".claude", "agents"), join(cwd, ".claude", "agents")]) {
+    const text = readAgentDefinition(dir, bare);
+    if (text !== undefined) return text;
+  }
+  return undefined;
+}
+
+/**
+ * サブエージェント内で発火したとき、そのエージェントが Skill ツールを持つかを推定する。
+ * hook の stdin にはツール一覧が渡らないため定義ファイルから逆算する。
+ * 判定できないものは false に倒す。提案が出ないだけで作業は止まらない。
+ */
+export function agentHasSkillTool(
+  agentType: string,
+  cwd: string,
+  options: DiscoverOptions = {},
+): boolean {
+  // general-purpose は定義ファイルを持たないが全ツールを持つことが実証済み
+  if (agentType === "general-purpose") return true;
+  const home = options.home ?? process.env["HOME"] ?? homedir();
+  const text = findAgentDefinition(agentType, cwd, home);
+  if (text === undefined) return false;
+  const { frontmatter } = parseFrontmatter(text);
+  const tools = frontmatter.tools;
+  if (tools === undefined || tools === "") return true;
+  const list = parseToolList(tools);
+  if (list.includes("*")) return true;
+  return list.includes("Skill");
 }
