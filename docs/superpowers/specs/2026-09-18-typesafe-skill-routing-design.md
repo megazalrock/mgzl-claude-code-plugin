@@ -168,8 +168,8 @@ state は両コールとも `{ request: prompt, recent_context: "" }`。
   （集計時に `1 - noul` に反転する）
 
 `gate = mean(acts_on_user_system, would_follow_documented_procedure, 1 - prose_suffices)`。
-`gate < GATE_THRESHOLD` なら結果 `gate_quiet` で終了（Call 2 を呼ばない）。
 `which.probabilities` を降順に並べ上位 `SHORTLIST` 件をショートリストにする。
+`gate < GATE_THRESHOLD` なら結果 `gate_quiet` で終了（Call 2 を呼ばない）。このときも `shortlist` には Call 1 の上位候補を `wideProbability` 付きで残す（評価の材料にするため）。
 
 ### Call 2（ショートリストを深く読む）
 
