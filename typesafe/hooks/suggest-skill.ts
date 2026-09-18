@@ -71,8 +71,13 @@ function logSkipped(payload: Payload | undefined, rosterSize: number): void {
   });
 }
 
+// main の進行に応じて更新し、途中で失敗しても catch 側でエラーログに payload / rosterSize を残せるようにする
+let currentPayload: Payload | undefined;
+let currentRosterSize = 0;
+
 async function main(): Promise<void> {
   const payload = parsePayload(await Bun.stdin.text());
+  currentPayload = payload;
   const apiKey = process.env["TYPESAFE_API_KEY"] ?? "";
   if (payload === undefined) {
     // stdin が壊れていて payload が組み立てられない場合も、記録だけは残す
@@ -90,13 +95,16 @@ async function main(): Promise<void> {
     });
     return;
   }
-  // 明示的なスキル呼び出し（/ 始まり）には提案が不要で、キー未設定なら機能そのものが無効
-  if (payload.prompt === "" || payload.prompt.startsWith("/") || apiKey === "") {
+  // キー未設定は機能そのものが無効なので、skipped の記録すら残さない
+  if (apiKey === "") return;
+  // 明示的なスキル呼び出し（/ 始まり）には提案が不要
+  if (payload.prompt === "" || payload.prompt.startsWith("/")) {
     logSkipped(payload, 0);
     return;
   }
 
   const roster = discover(payload.cwd);
+  currentRosterSize = roster.length;
   if (roster.length === 0) {
     logSkipped(payload, 0);
     return;
@@ -127,15 +135,15 @@ try {
   const message = e instanceof Error ? e.message : String(e);
   process.stderr.write(`typesafe suggest-skill: ${message}\n`);
   append({
-    session_id: "",
-    cwd: process.cwd(),
-    prompt: "",
+    session_id: currentPayload?.sessionId ?? "",
+    cwd: currentPayload?.cwd ?? process.cwd(),
+    prompt: currentPayload?.prompt ?? "",
     outcome: "error",
     winner: null,
     gate: null,
     shortlist: [],
     elapsedMs: 0,
-    rosterSize: 0,
+    rosterSize: currentRosterSize,
     error: message,
   });
 }

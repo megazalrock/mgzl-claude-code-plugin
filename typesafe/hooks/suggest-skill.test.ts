@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -103,13 +103,15 @@ const CALL2_ANSWER = {
 };
 
 describe("suggest-skill フック", () => {
-  test("TYPESAFE_API_KEY 未設定なら無出力で exit 0", async () => {
+  test("TYPESAFE_API_KEY 未設定なら無出力で exit 0 で、ログにも何も書かない", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-nolog-"));
     const result = await runHook(
       { prompt: "この変更をコミットして", cwd: process.cwd(), session_id: "s1" },
-      {},
+      { CLAUDE_PLUGIN_DATA: dataDir },
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
+    expect(existsSync(join(dataDir, "suggestions.jsonl"))).toBe(false);
   });
 
   test("prompt が / で始まるなら無出力で exit 0", async () => {
@@ -134,6 +136,22 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
+  });
+
+  test("API に到達できないエラーでも、ログには元の prompt と session_id を残す", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-errorlog-"));
+    const result = await runHook(
+      { prompt: "この変更をコミットして", cwd: process.cwd(), session_id: "s4b" },
+      { ...UNREACHABLE, CLAUDE_PLUGIN_DATA: dataDir },
+    );
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const lines = readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    const record = JSON.parse(lines[0] ?? "{}");
+    expect(record.outcome).toBe("error");
+    expect(record.prompt).toBe("この変更をコミットして");
+    expect(record.session_id).toBe("s4b");
   });
 
   test("stdin が壊れた JSON でも無出力で exit 0", async () => {

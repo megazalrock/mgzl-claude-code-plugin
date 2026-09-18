@@ -44,8 +44,28 @@ describe("append", () => {
     expect(JSON.parse(lines[1] ?? "{}").outcome).toBe("gate_quiet");
   });
 
-  test("dataDir が未指定なら何も書かない", () => {
-    expect(() => append(BASE, undefined)).not.toThrow();
+  test("dataDir が未指定かつ CLAUDE_PLUGIN_DATA も未設定なら何も書かない", () => {
+    const saved = process.env["CLAUDE_PLUGIN_DATA"];
+    delete process.env["CLAUDE_PLUGIN_DATA"];
+    try {
+      expect(() => append(BASE, undefined)).not.toThrow();
+    } finally {
+      if (saved !== undefined) process.env["CLAUDE_PLUGIN_DATA"] = saved;
+    }
+  });
+
+  test("dataDir 未指定でも CLAUDE_PLUGIN_DATA があればそこに書く（フォールバック）", () => {
+    const saved = process.env["CLAUDE_PLUGIN_DATA"];
+    const dataDir = join(root, "env-fallback");
+    process.env["CLAUDE_PLUGIN_DATA"] = dataDir;
+    try {
+      append(BASE, undefined);
+      const line = readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd();
+      expect(JSON.parse(line).prompt).toBe("この変更をコミットして");
+    } finally {
+      if (saved === undefined) delete process.env["CLAUDE_PLUGIN_DATA"];
+      else process.env["CLAUDE_PLUGIN_DATA"] = saved;
+    }
   });
 
   test("書き込みに失敗しても例外を投げない", () => {
