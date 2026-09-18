@@ -1,5 +1,11 @@
 import { append, type HookEvent } from "./lib/log.ts";
-import { type SuggestResult, suggest, TOOL_FRAMING } from "./lib/pipeline.ts";
+import {
+  type Framing,
+  PROMPT_FRAMING,
+  type SuggestResult,
+  suggest,
+  TOOL_FRAMING,
+} from "./lib/pipeline.ts";
 import { buildToolRequest } from "./lib/request.ts";
 import { agentHasSkillTool, discover } from "./lib/roster.ts";
 
@@ -122,28 +128,33 @@ let currentPayload: Payload | undefined;
 let currentRosterSize = 0;
 let currentRequest = "";
 
-async function runUserPromptSubmit(payload: Payload, apiKey: string): Promise<void> {
-  // 明示的なスキル呼び出し（/ 始まり）には提案が不要
-  if (payload.prompt === "" || payload.prompt.startsWith("/")) {
-    logSkipped(payload, 0, payload.prompt);
-    return;
-  }
-  currentRequest = payload.prompt;
+/**
+ * 2 つのイベントに共通する提案の本体。roster の取得から stdout への注入とログの記録までを持つ。
+ * イベントごとに違うのは request 文・framing・注入する文面の組み立て方の 3 つだけ。
+ */
+async function runSuggestion(
+  payload: Payload,
+  request: string,
+  framing: Framing,
+  toContext: (result: SuggestResult) => string | undefined,
+  apiKey: string,
+): Promise<void> {
+  currentRequest = request;
 
   const roster = discover(payload.cwd);
   currentRosterSize = roster.length;
   if (roster.length === 0) {
-    logSkipped(payload, 0, payload.prompt);
+    logSkipped(payload, 0, request);
     return;
   }
 
-  const result = await suggest(payload.prompt, roster, { apiKey });
-  const context = additionalContext(result);
+  const result = await suggest(request, roster, { apiKey }, framing);
+  const context = toContext(result);
   if (context !== undefined) emit(payload.event, context);
 
   append({
     ...recordBase(payload),
-    prompt: payload.prompt,
+    prompt: request,
     outcome: result.outcome,
     winner: result.winner,
     gate: result.gate,
@@ -152,6 +163,15 @@ async function runUserPromptSubmit(payload: Payload, apiKey: string): Promise<vo
     elapsedMs: result.elapsedMs,
     rosterSize: roster.length,
   });
+}
+
+async function runUserPromptSubmit(payload: Payload, apiKey: string): Promise<void> {
+  // 明示的なスキル呼び出し（/ 始まり）には提案が不要
+  if (payload.prompt === "" || payload.prompt.startsWith("/")) {
+    logSkipped(payload, 0, payload.prompt);
+    return;
+  }
+  await runSuggestion(payload, payload.prompt, PROMPT_FRAMING, additionalContext, apiKey);
 }
 
 async function runPreToolUse(payload: Payload, apiKey: string): Promise<void> {
@@ -166,30 +186,7 @@ async function runPreToolUse(payload: Payload, apiKey: string): Promise<void> {
     logSkipped(payload, 0, "");
     return;
   }
-  currentRequest = request;
-
-  const roster = discover(payload.cwd);
-  currentRosterSize = roster.length;
-  if (roster.length === 0) {
-    logSkipped(payload, 0, request);
-    return;
-  }
-
-  const result = await suggest(request, roster, { apiKey }, TOOL_FRAMING);
-  const context = toolAdditionalContext(result);
-  if (context !== undefined) emit(payload.event, context);
-
-  append({
-    ...recordBase(payload),
-    prompt: request,
-    outcome: result.outcome,
-    winner: result.winner,
-    gate: result.gate,
-    shortlist: result.shortlist,
-    rerankConfidence: result.rerankConfidence,
-    elapsedMs: result.elapsedMs,
-    rosterSize: roster.length,
-  });
+  await runSuggestion(payload, request, TOOL_FRAMING, toolAdditionalContext, apiKey);
 }
 
 async function main(): Promise<void> {
