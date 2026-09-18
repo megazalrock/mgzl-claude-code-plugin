@@ -33,9 +33,60 @@ function stripQuotes(value: string): string {
   return quoted && value.length >= 2 ? value.slice(1, -1) : value;
 }
 
+const BLOCK_SCALAR_INDICATORS = new Set([">", ">-", "|", "|-"]);
+
+/**
+ * YAML のブロックスカラー（`>`, `>-`, `|`, `|-`）本文を読み取る。
+ * 開始行の次から、空行または字下げされた行が続く限り取り込み、
+ * 最初のインデント無し行（または frontmatter の終端）で打ち切る。
+ * 共通の先頭インデントを剥がし、折り畳み(`>`)は空白で、リテラル(`|`)は改行で連結する。
+ * 戻り値の最終的な整形は呼び出し側の `.trim()` に委ねる。
+ */
+function readBlockScalar(
+  lines: string[],
+  start: number,
+  scanEnd: number,
+  folded: boolean,
+): { value: string; next: number } {
+  const rawLines: string[] = [];
+  let next = start;
+  while (next < scanEnd) {
+    const line = lines[next] ?? "";
+    if (line.trim() === "") {
+      rawLines.push("");
+      next++;
+      continue;
+    }
+    if (!/^[ \t]/.test(line)) break;
+    rawLines.push(line);
+    next++;
+  }
+
+  const indents = rawLines
+    .filter((line) => line.trim() !== "")
+    .map((line) => line.match(/^[ \t]*/)?.[0].length ?? 0);
+  const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
+  const dedented = rawLines.map((line) => (line === "" ? "" : line.slice(minIndent)));
+
+  if (!folded) return { value: dedented.join("\n"), next };
+
+  const paragraphs: string[] = [];
+  let paragraph: string[] = [];
+  for (const line of dedented) {
+    if (line === "") {
+      paragraphs.push(paragraph.join(" "));
+      paragraph = [];
+      continue;
+    }
+    paragraph.push(line);
+  }
+  if (paragraph.length > 0) paragraphs.push(paragraph.join(" "));
+  return { value: paragraphs.join("\n"), next };
+}
+
 /**
  * SKILL.md の先頭フロントマターを行単位で読む簡易パーサ。
- * 外部依存を持たないため、ネストやブロックスカラーは扱わず key: value だけを見る。
+ * 外部依存を持たないため、ネストは扱わず key: value（および `>`/`|` ブロックスカラー）だけを見る。
  */
 export function parseFrontmatter(text: string): { frontmatter: Frontmatter; body: string } {
   const frontmatter: Frontmatter = { disableModelInvocation: false };
@@ -51,12 +102,26 @@ export function parseFrontmatter(text: string): { frontmatter: Frontmatter; body
   }
   const scanEnd = end === -1 ? lines.length : end;
 
-  for (let i = 1; i < scanEnd; i++) {
+  let i = 1;
+  while (i < scanEnd) {
     const line = lines[i] ?? "";
     const colon = line.indexOf(":");
-    if (colon <= 0) continue;
+    if (colon <= 0) {
+      i++;
+      continue;
+    }
     const key = line.slice(0, colon).trim();
-    const value = stripQuotes(line.slice(colon + 1).trim());
+    const rawValue = line.slice(colon + 1).trim();
+    let value: string;
+    if (BLOCK_SCALAR_INDICATORS.has(rawValue)) {
+      const folded = rawValue.startsWith(">");
+      const block = readBlockScalar(lines, i + 1, scanEnd, folded);
+      value = block.value.trim();
+      i = block.next;
+    } else {
+      value = stripQuotes(rawValue);
+      i++;
+    }
     if (key === "name") frontmatter.name = value;
     if (key === "description") frontmatter.description = value;
     if (key === "disable-model-invocation") frontmatter.disableModelInvocation = value === "true";

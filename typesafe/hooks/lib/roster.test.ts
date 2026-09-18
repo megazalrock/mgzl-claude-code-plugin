@@ -82,6 +82,28 @@ describe("parseFrontmatter", () => {
     expect(parsed.frontmatter.name).toBe("alpha");
     expect(parsed.body).toBe("");
   });
+
+  test("description: >- のブロックスカラーは空白で連結する", () => {
+    const parsed = parseFrontmatter(
+      `---\nname: alpha\ndescription: >-\n  一行目です。\n  二行目です。\n---\n本文\n`,
+    );
+    expect(parsed.frontmatter.description).toBe("一行目です。 二行目です。");
+  });
+
+  test("description: | のブロックスカラーは改行で連結する", () => {
+    const parsed = parseFrontmatter(
+      `---\nname: alpha\ndescription: |\n  一行目です。\n  二行目です。\n---\n本文\n`,
+    );
+    expect(parsed.frontmatter.description).toBe("一行目です。\n二行目です。");
+  });
+
+  test("ブロックスカラーの直後のキーは飲み込まれず読まれる", () => {
+    const parsed = parseFrontmatter(
+      `---\ndescription: >-\n  説明です。\nname: alpha\n---\n本文\n`,
+    );
+    expect(parsed.frontmatter.description).toBe("説明です。");
+    expect(parsed.frontmatter.name).toBe("alpha");
+  });
 });
 
 describe("discover", () => {
