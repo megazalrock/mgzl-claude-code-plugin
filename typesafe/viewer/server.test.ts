@@ -52,7 +52,12 @@ describe("startViewer", () => {
       const res = await fetch(`${viewer.url}`);
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/html");
-      expect(await res.text()).toContain("typesafe suggestions viewer");
+      const html = await res.text();
+      expect(html).toContain("typesafe suggestions viewer");
+      expect(html).toContain("id=\"filters\"");
+      expect(html).toContain("id=\"list\"");
+      expect(html).toContain("id=\"detail\"");
+      expect(html).toContain("new EventSource(\"/events\")");
     } finally {
       viewer.stop();
     }
