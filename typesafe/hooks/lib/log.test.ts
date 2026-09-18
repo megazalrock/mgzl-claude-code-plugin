@@ -23,7 +23,18 @@ const BASE: Omit<LogRecord, "ts"> = {
     mean: 0.8666666666666667,
   },
   shortlist: [{ name: "mgzl:commiting-to-git", wideProbability: 0.7, rerankProbability: 0.9, fits: 0.95 }],
-  rerankConfidence: 0.88,
+  calls: [
+    {
+      url: "https://api.typesafe.ai/v1/systemone",
+      request: {
+        model: "jev-latest",
+        state: { request: "この変更をコミットして", recent_context: "" },
+        questions: { q: { type: "noul", instructions: "Is this a request?" } },
+      },
+      response: { status: 200, body: { model: "jev-latest", answers: {} } },
+      elapsedMs: 180,
+    },
+  ],
   elapsedMs: 412,
   rosterSize: 48,
   error: undefined,
@@ -45,6 +56,17 @@ describe("append", () => {
     expect(first.winner).toBe("mgzl:commiting-to-git");
     expect(first.rosterSize).toBe(48);
     expect(JSON.parse(lines[1] ?? "{}").outcome).toBe("gate_quiet");
+  });
+
+  test("ファイル名は suggestions-v2.jsonl", () => {
+    expect(LOG_FILE_NAME).toBe("suggestions-v2.jsonl");
+  });
+
+  test("calls に API の生の往復をそのまま載せる", () => {
+    const dataDir = join(root, "calls");
+    append(BASE, dataDir);
+    const record = JSON.parse(readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd());
+    expect(record.calls).toEqual(BASE.calls);
   });
 
   test("dataDir が未指定かつ CLAUDE_PLUGIN_DATA も未設定なら何も書かない", () => {
@@ -86,7 +108,7 @@ describe("append", () => {
         winner: null,
         gate: null,
         shortlist: [],
-        rerankConfidence: undefined,
+        calls: [],
         error: "TypeSafe System One returned 500",
       },
       dataDir,

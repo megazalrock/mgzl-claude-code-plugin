@@ -1,3 +1,4 @@
+import type { JevCall } from "./lib/jev.ts";
 import { append, type HookEvent } from "./lib/log.ts";
 import {
   type Framing,
@@ -118,15 +119,17 @@ function logSkipped(payload: Payload, rosterSize: number, prompt: string): void 
     winner: null,
     gate: null,
     shortlist: [],
+    calls: [],
     elapsedMs: 0,
     rosterSize,
   });
 }
 
-// main の進行に応じて更新し、途中で失敗しても catch 側でエラーログに payload / rosterSize / request を残せるようにする
+// main の進行に応じて更新し、途中で失敗しても catch 側でエラーログに payload / rosterSize / request / calls を残せるようにする
 let currentPayload: Payload | undefined;
 let currentRosterSize = 0;
 let currentRequest = "";
+let currentCalls: JevCall[] = [];
 
 /**
  * 2 つのイベントに共通する提案の本体。roster の取得から stdout への注入とログの記録までを持つ。
@@ -140,6 +143,7 @@ async function runSuggestion(
   apiKey: string,
 ): Promise<void> {
   currentRequest = request;
+  currentCalls = [];
 
   const roster = discover(payload.cwd);
   currentRosterSize = roster.length;
@@ -148,7 +152,17 @@ async function runSuggestion(
     return;
   }
 
-  const result = await suggest(request, roster, { apiKey }, framing);
+  const result = await suggest(
+    request,
+    roster,
+    {
+      apiKey,
+      onCall: (call) => {
+        currentCalls.push(call);
+      },
+    },
+    framing,
+  );
   const context = toContext(result);
   if (context !== undefined) emit(payload.event, context);
 
@@ -159,7 +173,7 @@ async function runSuggestion(
     winner: result.winner,
     gate: result.gate,
     shortlist: result.shortlist,
-    rerankConfidence: result.rerankConfidence,
+    calls: currentCalls,
     elapsedMs: result.elapsedMs,
     rosterSize: roster.length,
   });
@@ -207,6 +221,7 @@ async function main(): Promise<void> {
       winner: null,
       gate: null,
       shortlist: [],
+      calls: [],
       elapsedMs: 0,
       rosterSize: 0,
       error: "malformed stdin payload",
@@ -241,6 +256,7 @@ try {
     winner: null,
     gate: null,
     shortlist: [],
+    calls: currentCalls,
     elapsedMs: 0,
     rosterSize: currentRosterSize,
     error: message,

@@ -147,7 +147,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    expect(existsSync(join(dataDir, "suggestions.jsonl"))).toBe(false);
+    expect(existsSync(join(dataDir, "suggestions-v2.jsonl"))).toBe(false);
   });
 
   test("prompt が / で始まるなら無出力で exit 0", async () => {
@@ -182,7 +182,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const lines = readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd().split("\n");
+    const lines = readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd().split("\n");
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "{}");
     expect(record.outcome).toBe("error");
@@ -201,7 +201,7 @@ describe("suggest-skill フック", () => {
     const result = await runHook("{ broken", { CLAUDE_PLUGIN_DATA: dataDir });
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    expect(existsSync(join(dataDir, "suggestions.jsonl"))).toBe(false);
+    expect(existsSync(join(dataDir, "suggestions-v2.jsonl"))).toBe(false);
   });
 
   test("stdin が壊れた JSON でもキーが設定されていれば error として 1 行ログに残す", async () => {
@@ -212,7 +212,7 @@ describe("suggest-skill フック", () => {
     });
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const lines = readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd().split("\n");
+    const lines = readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd().split("\n");
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "{}");
     expect(record.outcome).toBe("error");
@@ -284,7 +284,7 @@ describe("suggest-skill フック", () => {
       );
       expect(result.exitCode).toBe(0);
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
       );
       expect(record.event).toBe("PreToolUse");
       expect(record.tool_name).toBe("Bash");
@@ -321,7 +321,7 @@ describe("suggest-skill フック", () => {
         },
       );
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
       );
       expect(record.tool_name).toBe("Agent");
       expect(record.prompt).toBe(
@@ -418,7 +418,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
     expect(record.event).toBe("PreToolUse");
   });
@@ -491,7 +491,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
     expect(record.agent_type).toBe("reader");
   });
@@ -513,7 +513,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
   });
 
@@ -532,10 +532,71 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("error");
     expect(record.event).toBe("PreToolUse");
     expect(record.tool_name).toBe("Bash");
+  });
+
+  test("提案ありなら 2 コール分の生の往復を calls に残す", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-calls-"));
+    const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      await runHook(
+        { prompt: "demo スキルを使って", cwd: home, session_id: "c1" },
+        {
+          TYPESAFE_API_KEY: "sk-test",
+          TYPESAFE_BASE_URL: server.url,
+          HOME: home,
+          CLAUDE_PLUGIN_DATA: dataDir,
+        },
+      );
+      const record = JSON.parse(
+        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+      );
+      expect(record.calls).toHaveLength(2);
+      expect(record.calls[0].url).toBe(`${server.url}/v1/systemone`);
+      expect(record.calls[0].response.status).toBe(200);
+      expect(record.calls[0].response.body).toEqual(CALL1_SUGGESTED);
+      // Call 1 の質問には gate が、Call 2 には fits が載るので順序はこれで判別できる
+      expect(Object.keys(record.calls[0].request.questions)).toContain(
+        "gate::acts_on_user_system",
+      );
+      expect(record.calls[1].response.body).toEqual(CALL2_ANSWER);
+      expect(Object.keys(record.calls[1].request.questions)).toContain("fits::demo");
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("Call 1 の応答が欠けて失敗しても、そこまでの calls は残る", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-calls-error-"));
+    // which が無いので pipeline は Call 1 の直後に失敗する
+    const server = startFakeServer([
+      { model: "test", answers: { "gate::acts_on_user_system": { type: "noul", noul: 0.9 } } },
+    ]);
+    try {
+      const result = await runHook(
+        { prompt: "demo スキルを使って", cwd: home, session_id: "c2" },
+        {
+          TYPESAFE_API_KEY: "sk-test",
+          TYPESAFE_BASE_URL: server.url,
+          HOME: home,
+          CLAUDE_PLUGIN_DATA: dataDir,
+        },
+      );
+      expect(result.exitCode).toBe(0);
+      const record = JSON.parse(
+        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+      );
+      expect(record.outcome).toBe("error");
+      expect(record.calls).toHaveLength(1);
+      expect(record.calls[0].response.status).toBe(200);
+    } finally {
+      server.stop();
+    }
   });
 
   test("UserPromptSubmit の既存の挙動は変わらない（提案ありの文面と hookEventName）", async () => {

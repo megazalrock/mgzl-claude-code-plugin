@@ -214,7 +214,6 @@ describe("suggest", () => {
 
     expect(result.outcome).toBe("suggested");
     expect(result.winner).toBe("reviewview:reviewview-prepare");
-    expect(result.rerankConfidence).toBe(0.87);
     expect(result.shortlist.map((item) => item.name)).toEqual([
       "reviewview:reviewview-prepare",
       "mgzl:commiting-to-git",

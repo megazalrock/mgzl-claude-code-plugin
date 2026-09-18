@@ -104,9 +104,13 @@ hook の stdin にはサブエージェントのツール一覧が渡らない�
 
 ## ログ
 
-`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`event`（`UserPromptSubmit` / `PreToolUse`）、`tool_name`（`PreToolUse` のときのみ。`Bash` / `Agent`）、`agent_type`（サブエージェント内で発火したときのみ）、`prompt`、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
+`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions-v2.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`event`（`UserPromptSubmit` / `PreToolUse`）、`tool_name`（`PreToolUse` のときのみ。`Bash` / `Agent`）、`agent_type`（サブエージェント内で発火したときのみ）、`prompt`、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`calls`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
+
+旧い `suggestions.jsonl` はそのまま残すが、もう読みも書きもしない。新旧のレコードは形が違うので混ぜて集計しない。
 
 `prompt` には `UserPromptSubmit` なら依頼文の全文が、`PreToolUse` なら組み立て後の request 文が入る。`gate` は `{ scores: { <質問キー>: <反転前の noul> }, mean: <反転適用後の平均> }` の形で、`scores` のキーは framing ごとに変わる（プロンプト向けは 3 キー、ツール向けは `gate::routine_step` の 1 キー）。`event` を持たない古いレコードは `UserPromptSubmit` とみなして集計する。この変更より前に書かれたレコードは `gate` が `{ scores, mean }` ではなく `acts_on_user_system` / `would_follow_documented_procedure` / `prose_suffices` / `mean` を直接持つ旧い平坦な形なので、読み取り側は `gate.mean` だけに依存すること。
+
+`calls` にはそのターンで実際に投げた System One の往復が、投げた順に入る。1 要素が 1 往復で、`url`、`request`（送信した body そのもの。`model` / `state` / `questions`）、`response`（`{ status, body }`。応答が得られなかった場合は `null`、JSON として読めない本文は `body` に生の文字列）、`error`（失敗した往復のみ。HTTP エラーの文言・fetch の例外・応答の形が想定外だった旨）、`elapsedMs` を持つ。**ヘッダは要求側・応答側とも一切記録しない。** `Authorization` に API キーが載るためである。API を呼ばなかった経路（`skipped`、stdin 不正）では空配列になり、途中で失敗した場合はそこまでに完了した往復だけが残る（Call 1 で失敗すれば 1 要素）。
 
 `outcome` が `gate_quiet`（gate の平均が閾値未満で Call 2 を呼ばなかった場合）でも、`shortlist` には Call 1 の上位候補が残る。ただしこのとき各要素が持つのは `wideProbability` だけで、Call 2 を経ていないため `rerankProbability` / `fits` は付かない。
 

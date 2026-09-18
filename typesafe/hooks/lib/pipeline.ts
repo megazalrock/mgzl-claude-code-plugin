@@ -51,7 +51,6 @@ export type SuggestResult = {
   winner: string | null;
   gate: GateScores;
   shortlist: ShortlistItem[];
-  rerankConfidence?: number;
   elapsedMs: number;
 };
 
@@ -243,7 +242,6 @@ export async function suggest(
     winner: rerankWhich.choice,
     gate,
     shortlist,
-    rerankConfidence: rerankWhich.confidence,
     elapsedMs,
   };
 }
