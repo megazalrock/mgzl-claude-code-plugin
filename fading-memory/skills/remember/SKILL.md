@@ -27,11 +27,22 @@ fading-memory の記憶データを作成する。保存先の決定・frontmatt
 1. 記憶する対象を決める。引数: 「$ARGUMENTS」
    - 引数が空でない場合: その指示が示す対象についての記憶を作成する
    - 引数が空の場合: 現在のセッションの会話内容から、上記ルールに該当するナレッジを抽出する（複数件になってもよい）
-2. 既存の記憶一覧を取得する:
-   `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}"`
-   - 出力は1件1行の key=value 形式（slug / title）
-   - 既存の記憶と同じ関心の内容は newMemories にせず、updatedMemories として既存 slug の内容を書き直す
-   - `malformed=` の行があればユーザーに報告する（修復・削除はしない）
+2. 既存の記憶と重複していないかを判定する:
+   1. 既存の記憶一覧を取得する:
+      `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}"`
+      - 出力は1件1行の key=value 形式（slug / title）
+      - `malformed=` の行があればユーザーに報告する（修復・削除はしない）
+   2. 保存しようとする記憶ごとに title を決め、重複判定スクリプトへ stdin で渡す:
+      ```bash
+      bun run "${CLAUDE_SKILL_DIR}/scripts/check-duplicates.ts" "${CLAUDE_PROJECT_DIR}" <<'EOF'
+      {"candidates":["<1件目の title>","<2件目の title>"]}
+      EOF
+      ```
+   3. 出力を解釈する。`candidate=` の番号は渡した candidates の順番に対応する
+      - `typesafe=unavailable`: 判定は使えない。1 で取得した一覧を見て自分で判断する（理由を報告に含めなくてよい）
+      - `verdict=duplicate`: `top=` の先頭 slug の記憶を Read し、同じ関心であることを確かめてから updatedMemories でその slug を書き直す。読んで違うと分かれば newMemories にしてよい
+      - `verdict=ambiguous`: `top=` の各 slug を Read して比較し、同じ関心があれば updatedMemories、なければ newMemories
+      - `verdict=new`: newMemories にする。ただし一覧を見て明らかに同じ関心の記憶があると分かる場合は updatedMemories にしてよい
 3. 記憶データを JSON で組み立て、stdin から保存スクリプトに渡す:
    ```bash
    bun run "${CLAUDE_SKILL_DIR}/scripts/save-memories.ts" "${CLAUDE_PROJECT_DIR}" <<'EOF'

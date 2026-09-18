@@ -7,6 +7,14 @@
 - SessionStart: trash の掃除 → 目次生成（有効期限内の記憶のみ）→ コンテキスト注入
 - 寿命: `expiresAt = (lastReferenced ?? created) + (baseTtlDays[origin] + score × 7日)`。基本 TTL は自動抽出 15 日・remember 30 日で、役立ったと判定されるたびに起点が前進し score が 1 増える。期限を過ぎた記憶は削除されず index.md に載らなくなるだけで、更新または加点で復帰する。`/fading-memory:remember-permanent`（人間が明示的に呼び出したときだけ動くスキル）で作成した記憶は permanent となり、有効期限を持たず index.md から外れず maintain でも削除されない
 - SessionEnd: 軽量モデルで記憶抽出 + 役立ち判定（バックグラウンド）
+
+## remember の重複判定
+
+`/fading-memory:remember`（および `remember-permanent`）は、保存前に `scripts/check-duplicates.ts` で新しい記憶の title が既存記憶の重複かどうかを判定する。環境変数 `TYPESAFE_API_KEY` が設定されていれば TypeSafe System One (Jev) の choice 質問へ「新しい記憶の title」対「既存記憶の title + none」を投げ、`duplicate` / `ambiguous` / `new` の 3 通りと候補 slug を返す。
+
+キーが無い、ネットワークやタイムアウトで失敗した、応答の形が想定外だった場合はスクリプトが `typesafe=unavailable reason=...` を 1 行返して正常終了し、Claude は従来どおり記憶一覧を目視して判断する。判定を止めても保存は止まらない。
+
+判定閾値（none 確率 0.45 以上で新規、0.30 以下かつ confidence 0.55 以上で重複、その間は曖昧）は issue #54 の評価実験 `typesafe/eval/memory-dedup` の実測から導いた値で、`hooks/lib/config.ts` の `config.dedup` に置いてある。criteria は 1 問 255 件が上限（[choice の仕様](https://docs.typesafe.ai/primitives/choice)）のため、記憶が 254 件を超えたら質問を塊に分け、塊ごとの none 確率の最小値で統合する。
 - `~/.claude/fading-memory/<スラッグ>/session-end.log`: 抽出 1 回ごとの統計を追記する JSON Lines
 
 ## SessionEnd の抽出フロー
