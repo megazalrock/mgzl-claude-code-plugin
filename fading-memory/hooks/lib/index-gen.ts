@@ -11,8 +11,13 @@ export function sortForIndex(memories: LoadedMemory[]): LoadedMemory[] {
   });
 }
 
-export function renderIndex(memories: LoadedMemory[]): string {
-  const lines = sortForIndex(memories).map(
+/**
+ * 目次に載せるのは有効期限内の記憶だけ。退色した記憶はファイルとして残り、
+ * 更新または加点で起点が前進すれば再び載る。絞り込みはここだけで行い、loadMemories は全件を返す
+ */
+export function renderIndex(memories: LoadedMemory[], now: number): string {
+  const visible = memories.filter((m) => expiresAt(m.meta) > now);
+  const lines = sortForIndex(visible).map(
     (m) => `- [${m.meta.title}](memories/${m.slug}.md)`,
   );
   return ["# fading-memory 目次", "", ...lines, ""].join("\n");

@@ -5,7 +5,7 @@ import { dataPaths } from "../../../hooks/lib/paths.ts";
 
 const paths = dataPaths(process.cwd());
 ensureDirs(paths);
-writeFileSync(paths.indexFile, renderIndex(loadMemories(paths).memories));
+writeFileSync(paths.indexFile, renderIndex(loadMemories(paths).memories, Date.now()));
 
 let state: Record<string, unknown> = {};
 try {

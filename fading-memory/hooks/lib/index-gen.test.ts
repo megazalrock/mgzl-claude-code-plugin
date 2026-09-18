@@ -3,6 +3,9 @@ import type { MemoryMeta } from "./frontmatter.ts";
 import { renderIndex, sortForIndex } from "./index-gen.ts";
 import type { LoadedMemory } from "./maintenance.ts";
 
+const DAY = 24 * 60 * 60 * 1000;
+const CREATED_MS = Date.parse("2026-01-01T00:00:00.000Z");
+
 function mem(slug: string, over: Partial<MemoryMeta>): LoadedMemory {
   return {
     slug,
@@ -31,7 +34,19 @@ describe("sortForIndex", () => {
 
 describe("renderIndex", () => {
   test("タイトルと相対パスのリストを出力する", () => {
-    const text = renderIndex([mem("a", {})]);
+    const text = renderIndex([mem("a", {})], CREATED_MS);
     expect(text).toContain("- [title of a](memories/a.md)");
+  });
+
+  test("有効期限を過ぎた記憶は載せず、permanent は常に載せる", () => {
+    const now = CREATED_MS + 400 * DAY;
+    const text = renderIndex([mem("faded", {}), mem("keep", { permanent: true })], now);
+    expect(text).toContain("- [title of keep](memories/keep.md)");
+    expect(text).not.toContain("faded");
+  });
+
+  test("期限ちょうどの記憶は載せない", () => {
+    const now = CREATED_MS + 15 * DAY;
+    expect(renderIndex([mem("edge", {})], now)).not.toContain("edge");
   });
 });

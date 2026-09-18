@@ -33,7 +33,7 @@ async function main(): Promise<void> {
       appendError(paths, `frontmatter を解析できないため除外: ${malformed.join(", ")}`);
     }
 
-    const index = renderIndex(memories);
+    const index = renderIndex(memories, now);
     writeFileSync(paths.indexFile, index);
 
     // 記憶が 0 件でもコンテキストを出す。スキルの description だけでは自発的な remember の
