@@ -277,3 +277,72 @@ describe("applyExtraction", () => {
     expect(updated?.meta.score).toBe(0);
   });
 });
+
+describe("applyExtraction の permanent 指定", () => {
+  test("既定では新規記憶の permanent は false", () => {
+    const paths = setup();
+    applyExtraction(
+      paths,
+      { newMemories: [{ slug: "plain", title: "t", body: "b" }], updatedMemories: [], usefulMemorySlugs: [] },
+      NOW_ISO,
+      "manual",
+    );
+    const doc = parseMemory(readFileSync(join(paths.memoriesDir, "plain.md"), "utf8"));
+    expect(doc?.meta.permanent).toBe(false);
+  });
+
+  test("permanent: true を渡すと新規記憶が permanent になる", () => {
+    const paths = setup();
+    applyExtraction(
+      paths,
+      { newMemories: [{ slug: "forever", title: "t", body: "b" }], updatedMemories: [], usefulMemorySlugs: [] },
+      NOW_ISO,
+      "manual",
+      { permanent: true },
+    );
+    const doc = parseMemory(readFileSync(join(paths.memoriesDir, "forever.md"), "utf8"));
+    expect(doc?.meta.permanent).toBe(true);
+  });
+
+  test("permanent: true の更新は既存の非 permanent 記憶を昇格させる", () => {
+    const paths = setup();
+    applyExtraction(
+      paths,
+      { newMemories: [], updatedMemories: [{ slug: "foo", body: "promoted" }], usefulMemorySlugs: [] },
+      NOW_ISO,
+      "manual",
+      { permanent: true },
+    );
+    const doc = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
+    expect(doc?.body).toBe("promoted");
+    expect(doc?.meta.permanent).toBe(true);
+  });
+
+  test("permanent 指定なしの更新は既存の permanent を降格させない", () => {
+    const paths = setup();
+    writeFileSync(
+      join(paths.memoriesDir, "kept.md"),
+      serializeMemory({
+        meta: {
+          title: "kept",
+          created: "2026-08-01T00:00:00.000Z",
+          updated: "2026-08-01T00:00:00.000Z",
+          lastReferenced: null,
+          score: 0,
+          permanent: true,
+          origin: "manual",
+          related: [],
+        },
+        body: "old",
+      }),
+    );
+    applyExtraction(
+      paths,
+      { newMemories: [], updatedMemories: [{ slug: "kept", body: "new" }], usefulMemorySlugs: [] },
+      NOW_ISO,
+      "auto",
+    );
+    const doc = parseMemory(readFileSync(join(paths.memoriesDir, "kept.md"), "utf8"));
+    expect(doc?.meta.permanent).toBe(true);
+  });
+});

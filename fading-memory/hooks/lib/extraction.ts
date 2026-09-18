@@ -164,12 +164,20 @@ function uniqueSlug(existing: Set<string>, slug: string): string {
   return `${slug}-${n}`;
 }
 
+/** applyExtraction の任意設定 */
+export interface ApplyOptions {
+  /** 作成・更新する記憶を permanent（期限なし）にするか */
+  permanent?: boolean;
+}
+
 export function applyExtraction(
   paths: DataPaths,
   result: ExtractionResult,
   nowIso: string,
   origin: MemoryOrigin,
+  options: ApplyOptions = {},
 ): ApplyReport {
+  const permanent = options.permanent ?? false;
   const report: ApplyReport = { created: [], updated: [], scored: [], skipped: [] };
   const existing = new Set(loadMemories(paths).memories.map((m) => m.slug));
 
@@ -185,7 +193,7 @@ export function applyExtraction(
           updated: nowIso,
           lastReferenced: null,
           score: 0,
-          permanent: false,
+          permanent,
           origin,
           related: n.related ?? [],
         },
@@ -207,6 +215,9 @@ export function applyExtraction(
     doc.body = u.body;
     doc.meta.updated = nowIso;
     doc.meta.lastReferenced = nowIso;
+    // permanent は昇格のみ。既存の permanent な記憶が通常の更新経路を通っただけで
+    // 期限つきへ降格すると、恒久化したはずの記憶が知らぬ間に目次から消えるため
+    if (permanent) doc.meta.permanent = true;
     if (u.related !== undefined) doc.meta.related = u.related;
     writeFileSync(file, serializeMemory(doc));
     report.updated.push(u.slug);
