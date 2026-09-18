@@ -241,7 +241,6 @@
       return;
     }
     const table = document.createElement("table");
-    const max = record.ranking[0].probability;
     for (const item of record.ranking) {
       const tr = document.createElement("tr");
       if (item.name === "none") tr.classList.add("none");
@@ -255,7 +254,7 @@
       const bar = document.createElement("td");
       bar.className = "bar";
       const fill = document.createElement("div");
-      fill.style.width = `${max > 0 ? (item.probability / max) * 100 : 0}%`;
+      fill.style.width = `${item.probability * 100}%`;
       bar.appendChild(fill);
       tr.append(name, p, bar);
       table.appendChild(tr);
@@ -279,7 +278,9 @@
       const res = await fetch("/api/records");
       if (!res.ok) throw new Error(`status ${res.status}`);
       const json = await res.json();
-      state.records = json.records;
+      // fetch 中に SSE で届いた record を取りこぼさないよう、応答に含まれない ts のものだけ後ろに継ぎ足す
+      const seen = new Set(json.records.map((r) => r.ts));
+      state.records = json.records.concat(state.records.filter((r) => !seen.has(r.ts)));
       state.droppedLines = json.warnings.droppedLines;
       showBanner("");
       if (state.selectedTs === null && followEl.checked && state.records.length > 0) {

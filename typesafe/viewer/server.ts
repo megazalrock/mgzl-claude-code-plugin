@@ -78,7 +78,7 @@ export function startViewer(options: ViewerOptions): Viewer {
   }
 
   function poll(): void {
-    let size = -2;
+    let size: number;
     try {
       size = statSync(options.file).size;
     } catch {
@@ -91,6 +91,9 @@ export function startViewer(options: ViewerOptions): Viewer {
       records.length = 0;
       droppedLines = 0;
       broadcast(sseFrame("reset", "{}"));
+      // client は reset を受けたら /api/records を取り直すので、読み直した各行を record として送ると二重配信になる
+      ingest(result.lines);
+      return;
     }
     for (const view of ingest(result.lines)) {
       broadcast(sseFrame("record", JSON.stringify(view)));
@@ -99,8 +102,6 @@ export function startViewer(options: ViewerOptions): Viewer {
 
   // 起動時の全件読み込みも同じ経路。offset 0 からの差分読み取りに等しい
   poll();
-  const pollTimer = setInterval(poll, pollMs);
-  const pingTimer = setInterval(() => broadcast(new TextEncoder().encode(": ping\n\n")), pingMs);
 
   const server = Bun.serve({
     hostname: HOST,
@@ -140,6 +141,10 @@ export function startViewer(options: ViewerOptions): Viewer {
     },
   });
 
+  // bind 失敗時にタイマーだけが残らないよう、Bun.serve が成功してから起動する
+  const pollTimer = setInterval(poll, pollMs);
+  const pingTimer = setInterval(() => broadcast(new TextEncoder().encode(": ping\n\n")), pingMs);
+
   return {
     url: `http://${HOST}:${server.port}/`,
     stop() {
@@ -159,19 +164,20 @@ export function startViewer(options: ViewerOptions): Viewer {
 }
 
 if (import.meta.main) {
-  const { values } = parseArgs({
-    args: Bun.argv.slice(2),
-    options: {
-      file: { type: "string" },
-      port: { type: "string" },
-    },
-  });
-  const port = values.port === undefined ? DEFAULT_PORT : Number(values.port);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    console.error(`error=invalid port: ${values.port}`);
-    process.exit(1);
-  }
   try {
+    // 引数解析の失敗も stack trace ではなく error= 1 行で返すため、同じ try に入れている
+    const { values } = parseArgs({
+      args: Bun.argv.slice(2),
+      options: {
+        file: { type: "string" },
+        port: { type: "string" },
+      },
+    });
+    const port = values.port === undefined ? DEFAULT_PORT : Number(values.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+      console.error(`error=invalid port: ${values.port}`);
+      process.exit(1);
+    }
     const viewer = startViewer({ file: values.file ?? DEFAULT_LOG_FILE, port });
     console.log(`url=${viewer.url}`);
     console.log(`file=${values.file ?? DEFAULT_LOG_FILE}`);
