@@ -119,16 +119,17 @@ describe("startViewer", () => {
     }
   });
 
-  test("ping が続く限り SSE 接続は Bun の既定アイドル時間を超えて維持される", async () => {
+  // ping 間隔を Bun の既定 idleTimeout（10 秒。実際の切断は約 12 秒）より意図的に長く取り、idleTimeout の指定を落とすと失敗するようにしている
+  test("ping 間隔が Bun の既定アイドル時間より長くても SSE 接続は維持される", async () => {
     const file = join(root, "f.jsonl");
-    const viewer = startViewer({ file, port: 0, pollMs: 1000, pingMs: 3000 });
+    const viewer = startViewer({ file, port: 0, pollMs: 1000, pingMs: 14000 });
     try {
       const sse = await fetch(`${viewer.url}events`);
       const reader = sse.body?.getReader();
       if (reader === undefined) throw new Error("no body");
       const decoder = new TextDecoder();
       let buffer = "";
-      const deadline = Date.now() + 12000;
+      const deadline = Date.now() + 16000;
       let closed = false;
       while (Date.now() < deadline) {
         const next = await Promise.race([
@@ -146,7 +147,7 @@ describe("startViewer", () => {
       }
       await reader.cancel();
       expect(closed).toBe(false);
-      expect(buffer.split(": ping").length - 1).toBeGreaterThanOrEqual(3);
+      expect(buffer.split(": ping").length - 1).toBeGreaterThanOrEqual(1);
     } finally {
       viewer.stop();
     }
