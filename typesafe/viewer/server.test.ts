@@ -118,4 +118,37 @@ describe("startViewer", () => {
       viewer.stop();
     }
   });
+
+  test("ping が続く限り SSE 接続は Bun の既定アイドル時間を超えて維持される", async () => {
+    const file = join(root, "f.jsonl");
+    const viewer = startViewer({ file, port: 0, pollMs: 1000, pingMs: 3000 });
+    try {
+      const sse = await fetch(`${viewer.url}events`);
+      const reader = sse.body?.getReader();
+      if (reader === undefined) throw new Error("no body");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const deadline = Date.now() + 12000;
+      let closed = false;
+      while (Date.now() < deadline) {
+        const next = await Promise.race([
+          reader.read(),
+          new Promise<{ done: true; value: undefined }>((resolve) =>
+            setTimeout(() => resolve({ done: true, value: undefined }), deadline - Date.now()),
+          ),
+        ]);
+        if (next.done) {
+          // race の timeout でも done になるので、締切前に done なら本当に切れている
+          closed = Date.now() < deadline - 50;
+          break;
+        }
+        buffer += decoder.decode(next.value, { stream: true });
+      }
+      await reader.cancel();
+      expect(closed).toBe(false);
+      expect(buffer.split(": ping").length - 1).toBeGreaterThanOrEqual(3);
+    } finally {
+      viewer.stop();
+    }
+  }, 20000);
 });

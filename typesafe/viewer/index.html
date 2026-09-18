@@ -8,11 +8,13 @@
   :root {
     --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d0d7de; --panel: #f6f8fa;
     --accent: #0969da; --bar: #54aeff; --bar-none: #d4a72c; --win: #dafbe1; --err: #ffebe9;
+    --ok: #1a7f37; --warn: #bf8700; --fail: #cf222e;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d; --panel: #161b22;
       --accent: #58a6ff; --bar: #1f6feb; --bar-none: #9e6a03; --win: #1a3d2a; --err: #4a1c1c;
+      --ok: #3fb950; --warn: #d29922; --fail: #f85149;
     }
   }
   * { box-sizing: border-box; }
@@ -26,6 +28,9 @@
   #follow-group { margin-left: auto; }
   #stats { color: var(--muted); }
   #banner { display: none; padding: 6px 16px; background: var(--err); }
+  .conn { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--ok); }
+  .conn.reconnecting { background: var(--warn); }
+  .conn.failed { background: var(--fail); }
   main { display: grid; grid-template-columns: minmax(320px, 40%) 1fr; height: calc(100vh - 48px); }
   #list { overflow: auto; border-right: 1px solid var(--line); }
   .row { display: grid; grid-template-columns: 64px auto auto 1fr; gap: 8px; align-items: baseline; padding: 6px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -64,8 +69,8 @@
   </div>
   <label class="group" id="follow-group"><input type="checkbox" id="follow" checked> 最新に追従</label>
   <div id="stats"></div>
+  <span id="conn" class="conn" title="接続中"></span>
 </header>
-<div id="banner"></div>
 <main>
   <div id="list"></div>
   <div id="detail"><div class="empty">左の一覧から選んでくださいまし</div></div>
@@ -87,7 +92,7 @@
   const listEl = $("list");
   const detailEl = $("detail");
   const statsEl = $("stats");
-  const bannerEl = $("banner");
+  const connEl = $("conn");
   const followEl = $("follow");
 
   function buildChips() {
@@ -268,9 +273,10 @@
     renderDetail(options !== undefined && options.forceDetail === true);
   }
 
-  function showBanner(text) {
-    bannerEl.textContent = text;
-    bannerEl.style.display = text ? "block" : "none";
+  /** 接続状態は文字ではなく色の点で示す。帯だと出入りで一覧が上下にずれるため */
+  function setConn(state, text) {
+    connEl.className = state === "ok" ? "conn" : `conn ${state}`;
+    connEl.title = text;
   }
 
   async function loadAll() {
@@ -282,20 +288,20 @@
       const seen = new Set(json.records.map((r) => r.ts));
       state.records = json.records.concat(state.records.filter((r) => !seen.has(r.ts)));
       state.droppedLines = json.warnings.droppedLines;
-      showBanner("");
+      setConn("ok", "接続中");
       if (state.selectedTs === null && followEl.checked && state.records.length > 0) {
         state.selectedTs = visibleRecords()[0]?.ts ?? null;
       }
       render();
     } catch (error) {
-      showBanner(`records の取得に失敗: ${error.message}`);
+      setConn("failed", `records の取得に失敗: ${error.message}`);
     }
   }
 
   function connect() {
     const source = new EventSource("/events");
     // 再接続のたびに全件取り直して、切断中の取りこぼしを埋める
-    source.onopen = () => { loadAll(); };
+    source.onopen = () => { setConn("ok", "接続中"); loadAll(); };
     source.addEventListener("record", (ev) => {
       const record = JSON.parse(ev.data);
       state.records.push(record);
@@ -309,7 +315,7 @@
       detailShownTs = undefined;
       loadAll();
     });
-    source.onerror = () => { showBanner("サーバーとの接続が切れました。再接続を待っています"); };
+    source.onerror = () => { setConn("reconnecting", "再接続中"); };
   }
 
   buildChips();

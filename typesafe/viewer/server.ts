@@ -23,6 +23,12 @@ export type Viewer = {
 export const DEFAULT_PORT = 47391;
 export const DEFAULT_POLL_MS = 1000;
 export const DEFAULT_PING_MS = 15000;
+/**
+ * SSE 接続のアイドル上限（秒）。ping 間隔（15 秒）の 2 倍。
+ * 既定の 10 秒だと ping より短いため SSE が毎回切られる。
+ * 0（無効）にしないのは、ping すら書けない死んだ接続を回収する安全網を残すため。
+ */
+export const IDLE_TIMEOUT_S = 30;
 const HOST = "127.0.0.1";
 
 /** Claude Code が typesafe プラグインに与える CLAUDE_PLUGIN_DATA の実体。hook 側と同じファイル名を使う */
@@ -106,6 +112,7 @@ export function startViewer(options: ViewerOptions): Viewer {
   const server = Bun.serve({
     hostname: HOST,
     port: options.port,
+    idleTimeout: IDLE_TIMEOUT_S,
     fetch(req) {
       const { pathname } = new URL(req.url);
       if (pathname === "/") {
