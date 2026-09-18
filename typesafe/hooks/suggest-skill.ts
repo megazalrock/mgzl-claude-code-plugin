@@ -62,7 +62,7 @@ function parsePayload(raw: string): Payload | undefined {
   };
 }
 
-/** ログの共通部分。PreToolUse のときだけ tool_name / agent_type を載せる */
+/** ログの共通部分。tool_name は PreToolUse のときだけ、agent_type はサブエージェント内で発火して値があるときだけ載せる */
 function recordBase(payload: Payload): {
   session_id: string;
   cwd: string;
@@ -175,17 +175,18 @@ async function runUserPromptSubmit(payload: Payload, apiKey: string): Promise<vo
 }
 
 async function runPreToolUse(payload: Payload, apiKey: string): Promise<void> {
-  // サブエージェント内での発火は、Skill ツールを持たないと推定したら API を呼ばずに終わる
-  if (payload.agentId !== "" && !agentHasSkillTool(payload.agentType, payload.cwd)) {
-    logSkipped(payload, 0, "");
-    return;
-  }
-
   const request = buildToolRequest({ toolName: payload.toolName, toolInput: payload.toolInput });
   if (request === undefined) {
     logSkipped(payload, 0, "");
     return;
   }
+
+  // サブエージェント内での発火は、Skill ツールを持たないと推定したら API を呼ばずに終わる
+  if (payload.agentId !== "" && !agentHasSkillTool(payload.agentType, payload.cwd)) {
+    logSkipped(payload, 0, request);
+    return;
+  }
+
   await runSuggestion(payload, request, TOOL_FRAMING, toolAdditionalContext, apiKey);
 }
 

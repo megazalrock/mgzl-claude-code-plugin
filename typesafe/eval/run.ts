@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { HookEvent } from "../hooks/lib/log.ts";
-import { PROMPT_FRAMING, suggest, TOOL_FRAMING } from "../hooks/lib/pipeline.ts";
+import { type Framing, PROMPT_FRAMING, suggest, TOOL_FRAMING } from "../hooks/lib/pipeline.ts";
 import { buildToolRequest } from "../hooks/lib/request.ts";
 import { discover } from "../hooks/lib/roster.ts";
 
@@ -153,6 +153,11 @@ export function readGolden(parsed: unknown): GoldenCase[] {
   });
 }
 
+/** イベントごとの framing 選択。PreToolUse は行為向け、それ以外はプロンプト向け */
+export function framingFor(event: HookEvent): Framing {
+  return event === "PreToolUse" ? TOOL_FRAMING : PROMPT_FRAMING;
+}
+
 /** 上限 concurrency の単純なワーカープールで評価する */
 async function runAll(
   cases: readonly GoldenCase[],
@@ -170,7 +175,7 @@ async function runAll(
       const index = next++;
       const item = cases[index];
       if (item === undefined) return;
-      const framing = item.event === "PreToolUse" ? TOOL_FRAMING : PROMPT_FRAMING;
+      const framing = framingFor(item.event);
       try {
         const result = await suggest(item.request, roster, { apiKey }, framing);
         rows[index] = {

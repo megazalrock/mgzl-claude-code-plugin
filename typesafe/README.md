@@ -106,7 +106,7 @@ hook の stdin にはサブエージェントのツール一覧が渡らない�
 
 `CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`event`（`UserPromptSubmit` / `PreToolUse`）、`tool_name`（`PreToolUse` のときのみ。`Bash` / `Agent`）、`agent_type`（サブエージェント内で発火したときのみ）、`prompt`、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
 
-`prompt` には `UserPromptSubmit` なら依頼文の全文が、`PreToolUse` なら組み立て後の request 文が入る。`gate` は `{ scores: { <質問キー>: <反転前の noul> }, mean: <反転適用後の平均> }` の形で、`scores` のキーは framing ごとに変わる（プロンプト向けは 3 キー、ツール向けは `gate::routine_step` の 1 キー）。`event` を持たない古いレコードは `UserPromptSubmit` とみなして集計する。
+`prompt` には `UserPromptSubmit` なら依頼文の全文が、`PreToolUse` なら組み立て後の request 文が入る。`gate` は `{ scores: { <質問キー>: <反転前の noul> }, mean: <反転適用後の平均> }` の形で、`scores` のキーは framing ごとに変わる（プロンプト向けは 3 キー、ツール向けは `gate::routine_step` の 1 キー）。`event` を持たない古いレコードは `UserPromptSubmit` とみなして集計する。この変更より前に書かれたレコードは `gate` が `{ scores, mean }` ではなく `acts_on_user_system` / `would_follow_documented_procedure` / `prose_suffices` / `mean` を直接持つ旧い平坦な形なので、読み取り側は `gate.mean` だけに依存すること。
 
 `outcome` が `gate_quiet`（gate の平均が閾値未満で Call 2 を呼ばなかった場合）でも、`shortlist` には Call 1 の上位候補が残る。ただしこのとき各要素が持つのは `wideProbability` だけで、Call 2 を経ていないため `rerankProbability` / `fits` は付かない。
 

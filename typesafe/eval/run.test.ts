@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildReport, type EvalRow, parseArgs, readGolden } from "./run.ts";
+import { PROMPT_FRAMING, TOOL_FRAMING } from "../hooks/lib/pipeline.ts";
+import { buildReport, type EvalRow, framingFor, parseArgs, readGolden } from "./run.ts";
 
 const ROWS: EvalRow[] = [
   {
@@ -168,6 +169,16 @@ describe("buildReport", () => {
     expect(report).toContain(
       "event=PreToolUse total=2 with_skill=1 without_skill=1 errors=0 wrong_suggestion_rate=0.000 unneeded_suggestion_rate=1.000",
     );
+  });
+});
+
+describe("framingFor", () => {
+  test("PreToolUse は TOOL_FRAMING", () => {
+    expect(framingFor("PreToolUse")).toBe(TOOL_FRAMING);
+  });
+
+  test("UserPromptSubmit は PROMPT_FRAMING", () => {
+    expect(framingFor("UserPromptSubmit")).toBe(PROMPT_FRAMING);
   });
 });
 
