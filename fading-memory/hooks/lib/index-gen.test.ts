@@ -15,6 +15,7 @@ function mem(slug: string, over: Partial<MemoryMeta>): LoadedMemory {
       lastReferenced: null,
       score: 0,
       permanent: false,
+      origin: "auto",
       related: [],
       ...over,
     },

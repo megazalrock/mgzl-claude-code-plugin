@@ -9,6 +9,7 @@ const doc: MemoryDoc = {
     lastReferenced: null,
     score: 0,
     permanent: false,
+    origin: "manual",
     related: ["other-slug", "another"],
   },
   body: "本文1行目\n\n本文3行目",
@@ -42,5 +43,15 @@ describe("serializeMemory / parseMemory", () => {
   test("score が数値でない場合は null", () => {
     const broken = serializeMemory(doc).replace("score: 0", "score: abc");
     expect(parseMemory(broken)).toBeNull();
+  });
+
+  test("origin を持たない旧形式は auto として読む", () => {
+    const legacy = serializeMemory(doc).replace("origin: manual\n", "");
+    expect(parseMemory(legacy)?.meta.origin).toBe("auto");
+  });
+
+  test("未知の origin は auto として読む", () => {
+    const broken = serializeMemory(doc).replace("origin: manual", "origin: unknown");
+    expect(parseMemory(broken)?.meta.origin).toBe("auto");
   });
 });

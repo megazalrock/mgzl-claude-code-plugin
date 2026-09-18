@@ -14,6 +14,7 @@ function meta(over: Partial<MemoryMeta>): MemoryMeta {
     lastReferenced: null,
     score: 0,
     permanent: false,
+    origin: "auto",
     related: [],
     ...over,
   };

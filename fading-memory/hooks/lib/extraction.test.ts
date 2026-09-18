@@ -31,6 +31,7 @@ function setup() {
         lastReferenced: null,
         score: 0,
         permanent: false,
+        origin: "auto",
         related: [],
       },
       body: "old body",

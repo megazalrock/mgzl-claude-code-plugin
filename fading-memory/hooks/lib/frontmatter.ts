@@ -1,3 +1,6 @@
+/** 記憶の出自。auto は SessionEnd の自動抽出、manual は remember スキルによる明示的な保存 */
+export type MemoryOrigin = "auto" | "manual";
+
 /** 記憶データの frontmatter。正データはこの構造の .md ファイルのみ */
 export interface MemoryMeta {
   title: string;
@@ -6,6 +9,7 @@ export interface MemoryMeta {
   lastReferenced: string | null;
   score: number;
   permanent: boolean;
+  origin: MemoryOrigin;
   related: string[];
 }
 
@@ -51,6 +55,9 @@ export function parseMemory(text: string): MemoryDoc | null {
   const lastRefRaw = raw["lastReferenced"];
   const lastReferenced = lastRefRaw === undefined || lastRefRaw === "null" ? null : lastRefRaw;
 
+  // origin を持たない旧ファイルと未知の値は auto として読む（この機能の導入前はすべて自動抽出だった）
+  const origin: MemoryOrigin = raw["origin"] === "manual" ? "manual" : "auto";
+
   return {
     meta: {
       title,
@@ -59,6 +66,7 @@ export function parseMemory(text: string): MemoryDoc | null {
       lastReferenced,
       score,
       permanent: raw["permanent"] === "true",
+      origin,
       related,
     },
     body,
@@ -75,6 +83,7 @@ export function serializeMemory(doc: MemoryDoc): string {
     `lastReferenced: ${m.lastReferenced ?? "null"}`,
     `score: ${m.score}`,
     `permanent: ${m.permanent}`,
+    `origin: ${m.origin}`,
     `related: [${m.related.join(", ")}]`,
     "---",
     "",

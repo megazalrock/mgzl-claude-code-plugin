@@ -28,6 +28,7 @@ function writeMemory(dir: string, slug: string, createdMs: number, permanent = f
         lastReferenced: null,
         score: 0,
         permanent,
+        origin: "auto",
         related: [],
       },
       body: "b",
