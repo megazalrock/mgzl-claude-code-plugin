@@ -216,6 +216,7 @@ describe("applyExtraction", () => {
         usefulMemorySlugs: ["foo", "unknown"],
       },
       NOW_ISO,
+      "auto",
     );
     expect(report.created).toEqual(["foo-2"]);
     expect(report.updated).toEqual(["foo"]);
@@ -225,6 +226,7 @@ describe("applyExtraction", () => {
     const created = parseMemory(readFileSync(join(paths.memoriesDir, "foo-2.md"), "utf8"));
     expect(created?.meta.created).toBe(NOW_ISO);
     expect(created?.meta.score).toBe(0);
+    expect(created?.meta.origin).toBe("auto");
 
     const updated = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
     expect(updated?.body).toBe("new body");
@@ -244,10 +246,32 @@ describe("applyExtraction", () => {
         usefulMemorySlugs: ["foo", "foo"],
       },
       NOW_ISO,
+      "auto",
     );
     expect(report.scored).toEqual(["foo"]);
 
     const doc = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
     expect(doc?.meta.score).toBe(1);
+  });
+
+  test("manual で新規作成すると origin が manual になり、更新では既存の origin を維持する", () => {
+    const paths = setup();
+    applyExtraction(
+      paths,
+      {
+        newMemories: [{ slug: "by-hand", title: "手動", body: "b" }],
+        updatedMemories: [{ slug: "foo", body: "rewritten" }],
+        usefulMemorySlugs: [],
+      },
+      NOW_ISO,
+      "manual",
+    );
+
+    const created = parseMemory(readFileSync(join(paths.memoriesDir, "by-hand.md"), "utf8"));
+    expect(created?.meta.origin).toBe("manual");
+
+    const updated = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
+    expect(updated?.body).toBe("rewritten");
+    expect(updated?.meta.origin).toBe("auto");
   });
 });

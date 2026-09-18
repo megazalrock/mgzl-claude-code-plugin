@@ -33,7 +33,7 @@ if (result === null) {
 
 const paths = dataPaths(projectDir);
 ensureDirs(paths);
-const report = applyExtraction(paths, result, new Date().toISOString());
+const report = applyExtraction(paths, result, new Date().toISOString(), "manual");
 
 // state.json の lastMaintainedAt はメンテナンス実施の記録なのでここでは触らない
 writeFileSync(paths.indexFile, renderIndex(loadMemories(paths).memories));

@@ -157,7 +157,7 @@ async function main(): Promise<void> {
       }
     }
 
-    const report = applyExtraction(paths, result, new Date().toISOString());
+    const report = applyExtraction(paths, result, new Date().toISOString(), "auto");
     log.memories_saved = report.created.length + report.updated.length;
     emitLog();
   } catch (e) {

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseMemory, serializeMemory } from "./frontmatter.ts";
+import { parseMemory, serializeMemory, type MemoryOrigin } from "./frontmatter.ts";
 import { loadMemories } from "./maintenance.ts";
 import type { DataPaths } from "./paths.ts";
 
@@ -168,6 +168,7 @@ export function applyExtraction(
   paths: DataPaths,
   result: ExtractionResult,
   nowIso: string,
+  origin: MemoryOrigin,
 ): ApplyReport {
   const report: ApplyReport = { created: [], updated: [], scored: [], skipped: [] };
   const existing = new Set(loadMemories(paths).memories.map((m) => m.slug));
@@ -185,6 +186,7 @@ export function applyExtraction(
           lastReferenced: null,
           score: 0,
           permanent: false,
+          origin,
           related: n.related ?? [],
         },
         body: n.body,
