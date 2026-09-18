@@ -11,32 +11,28 @@ const ROWS: EvalRow[] = [
     expected: "mgzl:commiting-to-git",
     winner: "mgzl:commiting-to-git",
     event: "UserPromptSubmit",
-    gateMean: 0.82,
-    maxFits: 0.91,
+    noneProbability: 0.04,
   },
   {
     request: "このプロジェクトの AutoMemory を棚卸しして",
     expected: "mgzl:audit-memory",
     winner: "fading-memory:maintain",
     event: "UserPromptSubmit",
-    gateMean: 0.71,
-    maxFits: 0.55,
+    noneProbability: 0.12,
   },
   {
     request: "モナドとは何ですか",
     expected: null,
     winner: null,
     event: "UserPromptSubmit",
-    gateMean: 0.12,
-    maxFits: 0,
+    noneProbability: 0.93,
   },
   {
     request: "Slack のチャンネルにこの結果を投稿して",
     expected: null,
     winner: "mgzl:create-issue",
     event: "UserPromptSubmit",
-    gateMean: 0.64,
-    maxFits: 0.41,
+    noneProbability: 0.45,
   },
 ];
 
@@ -50,21 +46,23 @@ describe("buildReport", () => {
     expect(report).toContain("unneeded_suggestion_rate=0.500");
   });
 
-  test("勝者の fits を 0.1 刻みの帯にして件数と正解率を出す", () => {
+  test("noneProbability を 0.1 刻みの帯にして件数・提案数・正解率を出す", () => {
     const report = buildReport(ROWS);
-    expect(report).toContain("band=0.4-0.5 count=1 accuracy=0.000");
-    expect(report).toContain("band=0.5-0.6 count=1 accuracy=0.000");
-    expect(report).toContain("band=0.9-1.0 count=1 accuracy=1.000");
-    expect(report).not.toContain("band=0.0-0.1");
+    expect(report).toContain("band=0.0-0.1 count=1 suggested=1 accuracy=1.000");
+    expect(report).toContain("band=0.1-0.2 count=1 suggested=1 accuracy=0.000");
+    expect(report).toContain("band=0.4-0.5 count=1 suggested=1 accuracy=0.000");
+    // 提案しなかった行も帯に入る（none の確率が高いほど提案されないことを見るため）
+    expect(report).toContain("band=0.9-1.0 count=1 suggested=0 accuracy=1.000");
+    expect(report).not.toContain("band=0.2-0.3");
   });
 
   test("不一致ケースを一覧で出す", () => {
     const report = buildReport(ROWS);
     expect(report).toContain(
-      'mismatch event=UserPromptSubmit request="このプロジェクトの AutoMemory を棚卸しして" expected=mgzl:audit-memory winner=fading-memory:maintain gate=0.71 fits=0.55',
+      'mismatch event=UserPromptSubmit request="このプロジェクトの AutoMemory を棚卸しして" expected=mgzl:audit-memory winner=fading-memory:maintain none_p=0.12',
     );
     expect(report).toContain(
-      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=mgzl:create-issue gate=0.64 fits=0.41',
+      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=mgzl:create-issue none_p=0.45',
     );
   });
 
@@ -75,12 +73,11 @@ describe("buildReport", () => {
         expected: "mgzl:commiting-to-git",
         winner: null,
         event: "UserPromptSubmit",
-        gateMean: 0.2,
-        maxFits: 0,
+        noneProbability: 0.2,
       },
     ]);
     expect(report).toContain("wrong_suggestion_rate=1.000");
-    expect(report).toContain('mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.20 fits=0.00');
+    expect(report).toContain('mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null none_p=0.20');
   });
 
   test("request は先頭 60 文字に切り詰める", () => {
@@ -91,8 +88,7 @@ describe("buildReport", () => {
         expected: "mgzl:commiting-to-git",
         winner: null,
         event: "UserPromptSubmit",
-        gateMean: 0.2,
-        maxFits: 0,
+        noneProbability: 0.2,
       },
     ]);
     expect(report).toContain(`mismatch event=UserPromptSubmit request="${"あ".repeat(60)}"`);
@@ -106,15 +102,16 @@ describe("buildReport", () => {
         expected: null,
         winner: null,
         event: "UserPromptSubmit",
-        gateMean: 0,
-        maxFits: 0,
-        error: "Jev did not answer the 'which' choice question (call 1)",
+        noneProbability: 0,
+        error: "Jev did not answer the 'which' choice question",
       },
     ]);
     expect(report).toContain("errors=1");
     expect(report).toContain("unneeded_suggestion_rate=0.000");
+    // error の行は帯の分母にも入れない
+    expect(report).not.toContain("band=");
     expect(report).toContain(
-      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=null gate=0.00 fits=0.00 error="Jev did not answer the \'which\' choice question (call 1)"',
+      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=null none_p=0.00 error="Jev did not answer the \'which\' choice question"',
     );
   });
 
@@ -125,8 +122,7 @@ describe("buildReport", () => {
         expected: "mgzl:commiting-to-git",
         winner: null,
         event: "UserPromptSubmit",
-        gateMean: 0,
-        maxFits: 0,
+        noneProbability: 0,
         error: "roster is empty",
       },
     ]);
@@ -138,7 +134,7 @@ describe("buildReport", () => {
       .filter((line) => line.startsWith("mismatch")).length;
     expect(mismatchCount).toBe(1);
     expect(report).toContain(
-      'mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.00 fits=0.00 error="roster is empty"',
+      'mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null none_p=0.00 error="roster is empty"',
     );
   });
 
@@ -151,16 +147,14 @@ describe("buildReport", () => {
         expected: "mgzl:commiting-to-git",
         winner: "mgzl:commiting-to-git",
         event: "PreToolUse",
-        gateMean: 0.95,
-        maxFits: 0.88,
+        noneProbability: 0.03,
       },
       {
         request: "The assistant is about to perform this action:\nList files\nls typesafe/hooks",
         expected: null,
         winner: "mgzl:investigate-budgeted",
         event: "PreToolUse",
-        gateMean: 0.4,
-        maxFits: 0.35,
+        noneProbability: 0.35,
       },
     ]);
     expect(report).toContain(

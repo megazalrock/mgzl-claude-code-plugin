@@ -16,10 +16,8 @@ export type EvalRow = {
   expected: string | null;
   winner: string | null;
   event: HookEvent;
-  /** gate の平均 */
-  gateMean: number;
-  /** ショートリスト内の fits の最大値。提案なしのときは 0 */
-  maxFits: number;
+  /** none に割り当てられた確率 */
+  noneProbability: number;
   /** suggest が例外を投げたケースのメッセージ。正常終了時は undefined */
   error?: string;
 };
@@ -55,8 +53,8 @@ function isCorrect(row: EvalRow): boolean {
   return row.error === undefined && row.winner === row.expected;
 }
 
-function bandIndex(fits: number): number {
-  return Math.min(Math.floor(fits * BAND_COUNT), BAND_COUNT - 1);
+function bandIndex(probability: number): number {
+  return Math.min(Math.floor(probability * BAND_COUNT), BAND_COUNT - 1);
 }
 
 function bandLabel(index: number): string {
@@ -97,14 +95,15 @@ export function buildReport(rows: readonly EvalRow[]): string {
     lines.push(`event=${event} ${counts(inEvent)}`);
   }
 
-  // error があった行は fits を持たないため帯の分母から除外する
-  const suggested = rows.filter((row) => row.winner !== null && row.error === undefined);
+  // error があった行は noneProbability を持たないため帯の分母から除外する
+  const answered = rows.filter((row) => row.error === undefined);
   for (let index = 0; index < BAND_COUNT; index++) {
-    const inBand = suggested.filter((row) => bandIndex(row.maxFits) === index);
+    const inBand = answered.filter((row) => bandIndex(row.noneProbability) === index);
     if (inBand.length === 0) continue;
+    const suggested = inBand.filter((row) => row.winner !== null);
     const correct = inBand.filter(isCorrect);
     lines.push(
-      `band=${bandLabel(index)} count=${inBand.length} accuracy=${rate(correct.length, inBand.length)}`,
+      `band=${bandLabel(index)} count=${inBand.length} suggested=${suggested.length} accuracy=${rate(correct.length, inBand.length)}`,
     );
   }
 
@@ -112,7 +111,7 @@ export function buildReport(rows: readonly EvalRow[]): string {
     if (isCorrect(row)) continue;
     const errorSuffix = row.error === undefined ? "" : ` error="${row.error}"`;
     lines.push(
-      `mismatch event=${row.event} request="${row.request.slice(0, REQUEST_HEAD)}" expected=${row.expected ?? "null"} winner=${row.winner ?? "null"} gate=${row.gateMean.toFixed(2)} fits=${row.maxFits.toFixed(2)}${errorSuffix}`,
+      `mismatch event=${row.event} request="${row.request.slice(0, REQUEST_HEAD)}" expected=${row.expected ?? "null"} winner=${row.winner ?? "null"} none_p=${row.noneProbability.toFixed(2)}${errorSuffix}`,
     );
   }
 
@@ -183,19 +182,17 @@ async function runAll(
           expected: item.expected,
           winner: result.winner,
           event: item.event,
-          gateMean: result.gate.mean,
-          maxFits: result.shortlist.reduce((max, entry) => Math.max(max, entry.fits ?? 0), 0),
+          noneProbability: result.noneProbability,
         };
       } catch (error) {
-        // Jev が回答を欠いた・ショートリスト外を選んだ等で suggest が例外を投げても、
+        // Jev が回答を欠いた・roster 外を選んだ等で suggest が例外を投げても、
         // 1 件のケースの失敗として記録し、他のケースの評価は続行する
         rows[index] = {
           request: item.request,
           expected: item.expected,
           winner: null,
           event: item.event,
-          gateMean: 0,
-          maxFits: 0,
+          noneProbability: 0,
           error: error instanceof Error ? error.message : String(error),
         };
       }

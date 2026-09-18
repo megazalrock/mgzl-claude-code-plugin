@@ -1,9 +1,9 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { JevCall } from "./jev.ts";
-import type { GateScores, Outcome, ShortlistItem } from "./pipeline.ts";
+import type { Outcome, ShortlistItem } from "./pipeline.ts";
 
-/** pipeline の 3 経路に、入口で打ち切った skipped と失敗した error を足したもの */
+/** pipeline の 2 経路に、入口で打ち切った skipped と失敗した error を足したもの */
 export type LogOutcome = Outcome | "skipped" | "error";
 
 /** フックが発火したイベント。event を持たない既存レコードは UserPromptSubmit とみなす */
@@ -23,7 +23,8 @@ export type LogRecord = {
   prompt: string;
   outcome: LogOutcome;
   winner: string | null;
-  gate: GateScores | null;
+  /** none に割り当てられた確率。API を呼ばなかった skipped / error では null */
+  noneProbability: number | null;
   shortlist: ShortlistItem[];
   /** そのターンで実際に投げた API の往復。API を呼ばなかった経路では空配列 */
   calls: JevCall[];
@@ -32,7 +33,7 @@ export type LogRecord = {
   error?: string;
 };
 
-export const LOG_FILE_NAME = "suggestions-v2.jsonl";
+export const LOG_FILE_NAME = "suggestions-v3.jsonl";
 
 /**
  * 提案の記録を 1 行 1 JSON で追記する。dataDir 未指定なら何もしない。

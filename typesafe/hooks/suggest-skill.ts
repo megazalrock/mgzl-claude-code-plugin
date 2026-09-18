@@ -88,10 +88,7 @@ function additionalContext(result: SuggestResult): string | undefined {
     }
     return `<skill_relevance>${SUGGESTED_PREFIX}${result.winner}${SUGGESTED_SUFFIX}</skill_relevance>`;
   }
-  if (result.outcome === "gate_quiet" || result.outcome === "no_fit") {
-    return `<skill_relevance>${NO_SUGGESTION}</skill_relevance>`;
-  }
-  return undefined;
+  return `<skill_relevance>${NO_SUGGESTION}</skill_relevance>`;
 }
 
 /** PreToolUse では「該当なし」を出さない。Bash のたびに注入されるとノイズになるため */
@@ -117,7 +114,7 @@ function logSkipped(payload: Payload, rosterSize: number, prompt: string): void 
     prompt,
     outcome: "skipped",
     winner: null,
-    gate: null,
+    noneProbability: null,
     shortlist: [],
     calls: [],
     elapsedMs: 0,
@@ -171,7 +168,7 @@ async function runSuggestion(
     prompt: request,
     outcome: result.outcome,
     winner: result.winner,
-    gate: result.gate,
+    noneProbability: result.noneProbability,
     shortlist: result.shortlist,
     calls: currentCalls,
     elapsedMs: result.elapsedMs,
@@ -219,7 +216,7 @@ async function main(): Promise<void> {
       prompt: "",
       outcome: "error",
       winner: null,
-      gate: null,
+      noneProbability: null,
       shortlist: [],
       calls: [],
       elapsedMs: 0,
@@ -254,7 +251,7 @@ try {
     prompt: currentRequest,
     outcome: "error",
     winner: null,
-    gate: null,
+    noneProbability: null,
     shortlist: [],
     calls: currentCalls,
     elapsedMs: 0,

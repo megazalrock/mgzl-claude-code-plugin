@@ -74,55 +74,27 @@ function startFakeServer(responses: readonly unknown[]): FakeServer {
   };
 }
 
-const CALL1_SUGGESTED = {
+const SUGGESTED = {
   model: "test",
   answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
-    "gate::acts_on_user_system": { type: "noul", noul: 0.9 },
-    "gate::would_follow_documented_procedure": { type: "noul", noul: 0.9 },
-    "gate::prose_suffices": { type: "noul", noul: 0.1 },
+    which: {
+      type: "choice",
+      choice: "demo",
+      confidence: 0.9,
+      probabilities: { demo: 0.9, none: 0.1 },
+    },
   },
 };
 
-const CALL1_GATE_QUIET = {
+const NO_FIT = {
   model: "test",
   answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
-    "gate::acts_on_user_system": { type: "noul", noul: 0.1 },
-    "gate::would_follow_documented_procedure": { type: "noul", noul: 0.1 },
-    "gate::prose_suffices": { type: "noul", noul: 0.9 },
-  },
-};
-
-const CALL2_ANSWER = {
-  model: "test",
-  answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
-    "fits::demo": { type: "noul", noul: 0.9 },
-  },
-};
-
-const TOOL_CALL1_SUGGESTED = {
-  model: "test",
-  answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
-    "gate::routine_step": { type: "noul", noul: 0.05 },
-  },
-};
-
-const TOOL_CALL1_GATE_QUIET = {
-  model: "test",
-  answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
-    "gate::routine_step": { type: "noul", noul: 0.95 },
-  },
-};
-
-const TOOL_CALL2_NO_FIT = {
-  model: "test",
-  answers: {
-    which: { type: "choice", choice: "demo", confidence: 0.4, probabilities: { demo: 0.4 } },
-    "fits::demo": { type: "noul", noul: 0.05 },
+    which: {
+      type: "choice",
+      choice: "none",
+      confidence: 0.9,
+      probabilities: { demo: 0.1, none: 0.9 },
+    },
   },
 };
 
@@ -147,7 +119,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    expect(existsSync(join(dataDir, "suggestions-v2.jsonl"))).toBe(false);
+    expect(existsSync(join(dataDir, "suggestions-v3.jsonl"))).toBe(false);
   });
 
   test("prompt が / で始まるなら無出力で exit 0", async () => {
@@ -182,7 +154,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const lines = readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd().split("\n");
+    const lines = readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd().split("\n");
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "{}");
     expect(record.outcome).toBe("error");
@@ -201,7 +173,7 @@ describe("suggest-skill フック", () => {
     const result = await runHook("{ broken", { CLAUDE_PLUGIN_DATA: dataDir });
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    expect(existsSync(join(dataDir, "suggestions-v2.jsonl"))).toBe(false);
+    expect(existsSync(join(dataDir, "suggestions-v3.jsonl"))).toBe(false);
   });
 
   test("stdin が壊れた JSON でもキーが設定されていれば error として 1 行ログに残す", async () => {
@@ -212,7 +184,7 @@ describe("suggest-skill フック", () => {
     });
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const lines = readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd().split("\n");
+    const lines = readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd().split("\n");
     expect(lines).toHaveLength(1);
     const record = JSON.parse(lines[0] ?? "{}");
     expect(record.outcome).toBe("error");
@@ -221,7 +193,7 @@ describe("suggest-skill フック", () => {
 
   test("提案ありなら skill_relevance ブロックを出力する", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         { prompt: "demo スキルを使って", cwd: home, session_id: "s5" },
@@ -240,9 +212,9 @@ describe("suggest-skill フック", () => {
     }
   });
 
-  test("gate が静かなら提案なしブロックを出力し Call 2 を呼ばない", async () => {
+  test("none が選ばれたら提案なしブロックを出力する", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([CALL1_GATE_QUIET]);
+    const server = startFakeServer([NO_FIT]);
     try {
       const result = await runHook(
         { prompt: "今日の天気は？", cwd: home, session_id: "s6" },
@@ -265,7 +237,7 @@ describe("suggest-skill フック", () => {
   test("PreToolUse の Bash で 5 章の形の request を組み立てて送る", async () => {
     const home = createFixtureHome();
     const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-bash-"));
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         {
@@ -284,7 +256,7 @@ describe("suggest-skill フック", () => {
       );
       expect(result.exitCode).toBe(0);
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd(),
       );
       expect(record.event).toBe("PreToolUse");
       expect(record.tool_name).toBe("Bash");
@@ -299,7 +271,7 @@ describe("suggest-skill フック", () => {
   test("PreToolUse の Agent は prompt を本体に使う", async () => {
     const home = createFixtureHome();
     const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-agent-"));
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       await runHook(
         {
@@ -321,7 +293,7 @@ describe("suggest-skill フック", () => {
         },
       );
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd(),
       );
       expect(record.tool_name).toBe("Agent");
       expect(record.prompt).toBe(
@@ -334,7 +306,7 @@ describe("suggest-skill フック", () => {
 
   test("PreToolUse で提案ありなら PreToolUse の hookEventName で行為向けの文面を出す", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         {
@@ -359,9 +331,9 @@ describe("suggest-skill フック", () => {
     }
   });
 
-  test("PreToolUse で gate_quiet なら stdout に何も出さない", async () => {
+  test("PreToolUse で no_fit なら stdout に何も出さない", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([TOOL_CALL1_GATE_QUIET]);
+    const server = startFakeServer([NO_FIT]);
     try {
       const result = await runHook(
         {
@@ -376,28 +348,6 @@ describe("suggest-skill フック", () => {
       expect(result.stdout).toBe("");
       expect(result.exitCode).toBe(0);
       expect(server.requestCount()).toBe(1);
-    } finally {
-      server.stop();
-    }
-  });
-
-  test("PreToolUse で no_fit なら stdout に何も出さない", async () => {
-    const home = createFixtureHome();
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, TOOL_CALL2_NO_FIT]);
-    try {
-      const result = await runHook(
-        {
-          hook_event_name: "PreToolUse",
-          tool_name: "Bash",
-          tool_input: { description: "Post to Slack", command: "curl -X POST https://slack.example" },
-          cwd: home,
-          session_id: "t5",
-        },
-        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
-      );
-      expect(result.stdout).toBe("");
-      expect(result.exitCode).toBe(0);
-      expect(server.requestCount()).toBe(2);
     } finally {
       server.stop();
     }
@@ -418,14 +368,14 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
     expect(record.event).toBe("PreToolUse");
   });
 
   test("サブエージェント内で agent_type が general-purpose なら提案する", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         {
@@ -450,7 +400,7 @@ describe("suggest-skill フック", () => {
     const home = createAgentFixtureHome(
       "name: helper\ndescription: 手伝う\nmodel: sonnet\ntools: Read, Grep, Skill",
     );
-    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         {
@@ -491,7 +441,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
     expect(record.agent_type).toBe("reader");
   });
@@ -513,7 +463,7 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("skipped");
   });
 
@@ -532,16 +482,16 @@ describe("suggest-skill フック", () => {
     );
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(0);
-    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd());
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd());
     expect(record.outcome).toBe("error");
     expect(record.event).toBe("PreToolUse");
     expect(record.tool_name).toBe("Bash");
   });
 
-  test("提案ありなら 2 コール分の生の往復を calls に残す", async () => {
+  test("提案ありなら 1 コール分の生の往復と noneProbability を残す", async () => {
     const home = createFixtureHome();
     const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-calls-"));
-    const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       await runHook(
         { prompt: "demo スキルを使って", cwd: home, session_id: "c1" },
@@ -553,30 +503,31 @@ describe("suggest-skill フック", () => {
         },
       );
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd(),
       );
-      expect(record.calls).toHaveLength(2);
+      expect(record.calls).toHaveLength(1);
       expect(record.calls[0].url).toBe(`${server.url}/v1/systemone`);
       expect(record.calls[0].response.status).toBe(200);
-      expect(record.calls[0].response.body).toEqual(CALL1_SUGGESTED);
-      // Call 1 の質問には gate が、Call 2 には fits が載るので順序はこれで判別できる
-      expect(Object.keys(record.calls[0].request.questions)).toContain(
-        "gate::acts_on_user_system",
-      );
-      expect(record.calls[1].response.body).toEqual(CALL2_ANSWER);
-      expect(Object.keys(record.calls[1].request.questions)).toContain("fits::demo");
+      expect(record.calls[0].response.body).toEqual(SUGGESTED);
+      expect(Object.keys(record.calls[0].request.questions)).toEqual(["which"]);
+      expect(Object.keys(record.calls[0].request.questions["which"].criteria)).toEqual([
+        "demo",
+        "none",
+      ]);
+      expect(record.outcome).toBe("suggested");
+      expect(record.winner).toBe("demo");
+      expect(record.noneProbability).toBe(0.1);
+      expect(record.shortlist).toEqual([{ name: "demo", probability: 0.9 }]);
     } finally {
       server.stop();
     }
   });
 
-  test("Call 1 の応答が欠けて失敗しても、そこまでの calls は残る", async () => {
+  test("応答が欠けて失敗しても、そこまでの calls は残る", async () => {
     const home = createFixtureHome();
     const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-calls-error-"));
-    // which が無いので pipeline は Call 1 の直後に失敗する
-    const server = startFakeServer([
-      { model: "test", answers: { "gate::acts_on_user_system": { type: "noul", noul: 0.9 } } },
-    ]);
+    // which が無いので pipeline は応答の解釈で失敗する
+    const server = startFakeServer([{ model: "test", answers: {} }]);
     try {
       const result = await runHook(
         { prompt: "demo スキルを使って", cwd: home, session_id: "c2" },
@@ -589,7 +540,7 @@ describe("suggest-skill フック", () => {
       );
       expect(result.exitCode).toBe(0);
       const record = JSON.parse(
-        readFileSync(join(dataDir, "suggestions-v2.jsonl"), "utf8").trimEnd(),
+        readFileSync(join(dataDir, "suggestions-v3.jsonl"), "utf8").trimEnd(),
       );
       expect(record.outcome).toBe("error");
       expect(record.calls).toHaveLength(1);
@@ -601,7 +552,7 @@ describe("suggest-skill フック", () => {
 
   test("UserPromptSubmit の既存の挙動は変わらない（提案ありの文面と hookEventName）", async () => {
     const home = createFixtureHome();
-    const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);
+    const server = startFakeServer([SUGGESTED]);
     try {
       const result = await runHook(
         {

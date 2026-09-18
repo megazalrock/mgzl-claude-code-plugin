@@ -14,15 +14,8 @@ const BASE: Omit<LogRecord, "ts"> = {
   prompt: "この変更をコミットして",
   outcome: "suggested",
   winner: "mgzl:commiting-to-git",
-  gate: {
-    scores: {
-      "gate::acts_on_user_system": 0.9,
-      "gate::would_follow_documented_procedure": 0.8,
-      "gate::prose_suffices": 0.1,
-    },
-    mean: 0.8666666666666667,
-  },
-  shortlist: [{ name: "mgzl:commiting-to-git", wideProbability: 0.7, rerankProbability: 0.9, fits: 0.95 }],
+  noneProbability: 0.05,
+  shortlist: [{ name: "mgzl:commiting-to-git", probability: 0.9 }],
   calls: [
     {
       url: "https://api.typesafe.ai/v1/systemone",
@@ -44,7 +37,7 @@ describe("append", () => {
   test("存在しないディレクトリを作って 1 行 1 JSON で追記する", () => {
     const dataDir = join(root, "fresh", "nested");
     append(BASE, dataDir);
-    append({ ...BASE, outcome: "gate_quiet", winner: null }, dataDir);
+    append({ ...BASE, outcome: "no_fit", winner: null, noneProbability: 0.81 }, dataDir);
 
     const lines = readFileSync(join(dataDir, LOG_FILE_NAME), "utf8").trimEnd().split("\n");
     expect(lines).toHaveLength(2);
@@ -54,12 +47,16 @@ describe("append", () => {
     expect(first.prompt).toBe("この変更をコミットして");
     expect(first.outcome).toBe("suggested");
     expect(first.winner).toBe("mgzl:commiting-to-git");
+    expect(first.noneProbability).toBe(0.05);
+    expect(first.shortlist).toEqual([{ name: "mgzl:commiting-to-git", probability: 0.9 }]);
     expect(first.rosterSize).toBe(48);
-    expect(JSON.parse(lines[1] ?? "{}").outcome).toBe("gate_quiet");
+    const second = JSON.parse(lines[1] ?? "{}");
+    expect(second.outcome).toBe("no_fit");
+    expect(second.noneProbability).toBe(0.81);
   });
 
-  test("ファイル名は suggestions-v2.jsonl", () => {
-    expect(LOG_FILE_NAME).toBe("suggestions-v2.jsonl");
+  test("ファイル名は suggestions-v3.jsonl", () => {
+    expect(LOG_FILE_NAME).toBe("suggestions-v3.jsonl");
   });
 
   test("calls に API の生の往復をそのまま載せる", () => {
@@ -106,7 +103,7 @@ describe("append", () => {
         ...BASE,
         outcome: "error",
         winner: null,
-        gate: null,
+        noneProbability: null,
         shortlist: [],
         calls: [],
         error: "TypeSafe System One returned 500",
@@ -135,7 +132,6 @@ describe("append", () => {
         agent_type: "mgzl:budgeted-investigator",
         prompt:
           'The assistant is about to perform this action:\nCommit the staged changes\ngit commit -m "fix: x"',
-        gate: { scores: { "gate::routine_step": 0.05 }, mean: 0.95 },
       },
       dataDir,
     );
@@ -143,7 +139,6 @@ describe("append", () => {
     expect(record.event).toBe("PreToolUse");
     expect(record.tool_name).toBe("Bash");
     expect(record.agent_type).toBe("mgzl:budgeted-investigator");
-    expect(record.gate).toEqual({ scores: { "gate::routine_step": 0.05 }, mean: 0.95 });
   });
 
   test("tool_name / agent_type を渡さなければキー自体が入らない", () => {
