@@ -63,16 +63,19 @@ export function buildReport(rows: readonly EvalRow[]): string {
   const withSkill = rows.filter((row) => row.expected !== null);
   const withoutSkill = rows.filter((row) => row.expected === null);
   const errored = rows.filter((row) => row.error !== undefined);
-  const wrong = withSkill.filter((row) => row.winner !== row.expected);
-  const unneeded = withoutSkill.filter((row) => row.winner !== null);
+  // 例外になった行は「合っていた/間違っていた」を判定できないため、両方の率の分母・分子から除外する
+  const withSkillNoError = withSkill.filter((row) => row.error === undefined);
+  const withoutSkillNoError = withoutSkill.filter((row) => row.error === undefined);
+  const wrong = withSkillNoError.filter((row) => row.winner !== row.expected);
+  const unneeded = withoutSkillNoError.filter((row) => row.winner !== null);
 
   const lines: string[] = [
     `total=${rows.length}`,
     `with_skill=${withSkill.length}`,
     `without_skill=${withoutSkill.length}`,
     `errors=${errored.length}`,
-    `wrong_suggestion_rate=${rate(wrong.length, withSkill.length)}`,
-    `unneeded_suggestion_rate=${rate(unneeded.length, withoutSkill.length)}`,
+    `wrong_suggestion_rate=${rate(wrong.length, withSkillNoError.length)}`,
+    `unneeded_suggestion_rate=${rate(unneeded.length, withoutSkillNoError.length)}`,
   ];
 
   // error があった行は fits を持たないため帯の分母から除外する
@@ -97,15 +100,21 @@ export function buildReport(rows: readonly EvalRow[]): string {
   return lines.join("\n");
 }
 
-function readGolden(parsed: unknown): GoldenCase[] {
+export function readGolden(parsed: unknown): GoldenCase[] {
   if (!Array.isArray(parsed)) throw new Error("golden must be an array");
-  return parsed.flatMap((item) => {
-    if (typeof item !== "object" || item === null) return [];
-    if (!("request" in item) || typeof item.request !== "string") return [];
-    if (!("expected" in item)) return [];
+  return parsed.map((item, index) => {
+    if (typeof item !== "object" || item === null) {
+      throw new Error(`golden.json entry ${index} is malformed`);
+    }
+    if (!("request" in item) || typeof item.request !== "string") {
+      throw new Error(`golden.json entry ${index} is malformed`);
+    }
+    if (!("expected" in item)) throw new Error(`golden.json entry ${index} is malformed`);
     const expected = item.expected;
-    if (typeof expected !== "string" && expected !== null) return [];
-    return [{ request: item.request, expected }];
+    if (typeof expected !== "string" && expected !== null) {
+      throw new Error(`golden.json entry ${index} is malformed`);
+    }
+    return { request: item.request, expected };
   });
 }
 

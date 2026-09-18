@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildReport, type EvalRow, type GoldenCase, parseArgs } from "./run.ts";
+import { buildReport, type EvalRow, type GoldenCase, parseArgs, readGolden } from "./run.ts";
 
 const ROWS: EvalRow[] = [
   {
@@ -84,7 +86,7 @@ describe("buildReport", () => {
     expect(report).not.toContain("あ".repeat(61));
   });
 
-  test("該当なしで例外になった場合は不一致に出るが unneeded_suggestion_rate には含めない", () => {
+  test("該当なしで例外になった場合は不一致に出るが unneeded_suggestion_rate の分母(without_skillのうち例外を除いたもの)には含めない", () => {
     const report = buildReport([
       {
         request: "Slack のチャンネルにこの結果を投稿して",
@@ -102,7 +104,7 @@ describe("buildReport", () => {
     );
   });
 
-  test("該当ありで例外になった場合は wrong_suggestion_rate に含まれ不一致に 1 回だけ出る", () => {
+  test("該当ありで例外になった場合は wrong_suggestion_rate の分母(with_skillのうち例外を除いたもの)から除外され、不一致に 1 回だけ出る", () => {
     const report = buildReport([
       {
         request: "今の変更をコミットして",
@@ -113,8 +115,9 @@ describe("buildReport", () => {
         error: "roster is empty",
       },
     ]);
+    expect(report).toContain("with_skill=1");
     expect(report).toContain("errors=1");
-    expect(report).toContain("wrong_suggestion_rate=1.000");
+    expect(report).toContain("wrong_suggestion_rate=0.000");
     const mismatchCount = report
       .split("\n")
       .filter((line) => line.startsWith("mismatch")).length;
@@ -147,6 +150,33 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--cwd", "/x", "--concurrency", "abc"])).toThrow(
       "--concurrency must be a number, got 'abc'",
     );
+  });
+});
+
+describe("readGolden", () => {
+  test("正常なエントリはそのまま読む", () => {
+    expect(readGolden([{ request: "a", expected: "x" }, { request: "b", expected: null }])).toEqual([
+      { request: "a", expected: "x" },
+      { request: "b", expected: null },
+    ]);
+  });
+
+  test("配列でなければ例外にする", () => {
+    expect(() => readGolden({})).toThrow("golden must be an array");
+  });
+
+  test("不正なエントリがあれば index 付きで例外にする", () => {
+    expect(() => readGolden([{ request: "a", expected: "x" }, { request: "b" }])).toThrow(
+      "golden.json entry 1 is malformed",
+    );
+  });
+
+  test("ファイルから読んでも不正なエントリで例外にする", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "typesafe-golden-"));
+    const path = join(dir, "bad.json");
+    writeFileSync(path, JSON.stringify([{ request: "a", expected: "x" }, { expected: "y" }]));
+    const parsed: unknown = JSON.parse(await Bun.file(path).text());
+    expect(() => readGolden(parsed)).toThrow("golden.json entry 1 is malformed");
   });
 });
 
