@@ -1,14 +1,22 @@
 import { join } from "node:path";
-import { suggest } from "../hooks/lib/pipeline.ts";
+import type { HookEvent } from "../hooks/lib/log.ts";
+import { PROMPT_FRAMING, suggest, TOOL_FRAMING } from "../hooks/lib/pipeline.ts";
+import { buildToolRequest } from "../hooks/lib/request.ts";
 import { discover } from "../hooks/lib/roster.ts";
 
-export type GoldenCase = { request: string; expected: string | null };
+export type GoldenCase = {
+  /** ツール向けケースでは buildToolRequest が組み立てた行為の記述が入る */
+  request: string;
+  expected: string | null;
+  event: HookEvent;
+};
 
 export type EvalRow = {
   request: string;
   expected: string | null;
   winner: string | null;
-  /** gate 3 問の平均 */
+  event: HookEvent;
+  /** gate の平均 */
   gateMean: number;
   /** ショートリスト内の fits の最大値。提案なしのときは 0 */
   maxFits: number;
@@ -20,6 +28,7 @@ export type Args = { cwd: string; golden: string; concurrency: number };
 
 const BAND_COUNT = 10;
 const REQUEST_HEAD = 60;
+const EVENTS: readonly HookEvent[] = ["UserPromptSubmit", "PreToolUse"];
 
 export function parseArgs(argv: readonly string[]): Args {
   let cwd: string | undefined;
@@ -58,8 +67,8 @@ function rate(hits: number, total: number): string {
   return total === 0 ? "0.000" : (hits / total).toFixed(3);
 }
 
-/** 集計結果を key=value の簡素形式で組み立てる */
-export function buildReport(rows: readonly EvalRow[]): string {
+/** 件数と 2 つの誤り率をまとめた key=value 断片。全体にも event 別にも使う */
+function counts(rows: readonly EvalRow[]): string {
   const withSkill = rows.filter((row) => row.expected !== null);
   const withoutSkill = rows.filter((row) => row.expected === null);
   const errored = rows.filter((row) => row.error !== undefined);
@@ -68,15 +77,25 @@ export function buildReport(rows: readonly EvalRow[]): string {
   const withoutSkillNoError = withoutSkill.filter((row) => row.error === undefined);
   const wrong = withSkillNoError.filter((row) => row.winner !== row.expected);
   const unneeded = withoutSkillNoError.filter((row) => row.winner !== null);
-
-  const lines: string[] = [
+  return [
     `total=${rows.length}`,
     `with_skill=${withSkill.length}`,
     `without_skill=${withoutSkill.length}`,
     `errors=${errored.length}`,
     `wrong_suggestion_rate=${rate(wrong.length, withSkillNoError.length)}`,
     `unneeded_suggestion_rate=${rate(unneeded.length, withoutSkillNoError.length)}`,
-  ];
+  ].join(" ");
+}
+
+/** 集計結果を key=value の簡素形式で組み立てる */
+export function buildReport(rows: readonly EvalRow[]): string {
+  const lines: string[] = counts(rows).split(" ");
+
+  for (const event of EVENTS) {
+    const inEvent = rows.filter((row) => row.event === event);
+    if (inEvent.length === 0) continue;
+    lines.push(`event=${event} ${counts(inEvent)}`);
+  }
 
   // error があった行は fits を持たないため帯の分母から除外する
   const suggested = rows.filter((row) => row.winner !== null && row.error === undefined);
@@ -93,28 +112,44 @@ export function buildReport(rows: readonly EvalRow[]): string {
     if (isCorrect(row)) continue;
     const errorSuffix = row.error === undefined ? "" : ` error="${row.error}"`;
     lines.push(
-      `mismatch request="${row.request.slice(0, REQUEST_HEAD)}" expected=${row.expected ?? "null"} winner=${row.winner ?? "null"} gate=${row.gateMean.toFixed(2)} fits=${row.maxFits.toFixed(2)}${errorSuffix}`,
+      `mismatch event=${row.event} request="${row.request.slice(0, REQUEST_HEAD)}" expected=${row.expected ?? "null"} winner=${row.winner ?? "null"} gate=${row.gateMean.toFixed(2)} fits=${row.maxFits.toFixed(2)}${errorSuffix}`,
     );
   }
 
   return lines.join("\n");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readExpected(item: Record<string, unknown>): string | null | undefined {
+  if (!("expected" in item)) return undefined;
+  const expected = item["expected"];
+  if (typeof expected === "string" || expected === null) return expected;
+  return undefined;
+}
+
 export function readGolden(parsed: unknown): GoldenCase[] {
   if (!Array.isArray(parsed)) throw new Error("golden must be an array");
   return parsed.map((item, index) => {
-    if (typeof item !== "object" || item === null) {
-      throw new Error(`golden.json entry ${index} is malformed`);
+    const malformed = new Error(`golden.json entry ${index} is malformed`);
+    if (!isRecord(item)) throw malformed;
+    const expected = readExpected(item);
+    if (expected === undefined) throw malformed;
+
+    const toolName = item["tool_name"];
+    if (typeof toolName === "string") {
+      const toolInput = item["tool_input"];
+      if (!isRecord(toolInput)) throw malformed;
+      const request = buildToolRequest({ toolName, toolInput });
+      if (request === undefined) throw malformed;
+      return { request, expected, event: "PreToolUse" };
     }
-    if (!("request" in item) || typeof item.request !== "string") {
-      throw new Error(`golden.json entry ${index} is malformed`);
-    }
-    if (!("expected" in item)) throw new Error(`golden.json entry ${index} is malformed`);
-    const expected = item.expected;
-    if (typeof expected !== "string" && expected !== null) {
-      throw new Error(`golden.json entry ${index} is malformed`);
-    }
-    return { request: item.request, expected };
+
+    const request = item["request"];
+    if (typeof request !== "string") throw malformed;
+    return { request, expected, event: "UserPromptSubmit" };
   });
 }
 
@@ -135,12 +170,14 @@ async function runAll(
       const index = next++;
       const item = cases[index];
       if (item === undefined) return;
+      const framing = item.event === "PreToolUse" ? TOOL_FRAMING : PROMPT_FRAMING;
       try {
-        const result = await suggest(item.request, roster, { apiKey });
+        const result = await suggest(item.request, roster, { apiKey }, framing);
         rows[index] = {
           request: item.request,
           expected: item.expected,
           winner: result.winner,
+          event: item.event,
           gateMean: result.gate.mean,
           maxFits: result.shortlist.reduce((max, entry) => Math.max(max, entry.fits ?? 0), 0),
         };
@@ -151,6 +188,7 @@ async function runAll(
           request: item.request,
           expected: item.expected,
           winner: null,
+          event: item.event,
           gateMean: 0,
           maxFits: 0,
           error: error instanceof Error ? error.message : String(error),

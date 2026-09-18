@@ -2,13 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildReport, type EvalRow, type GoldenCase, parseArgs, readGolden } from "./run.ts";
+import { buildReport, type EvalRow, parseArgs, readGolden } from "./run.ts";
 
 const ROWS: EvalRow[] = [
   {
     request: "今の変更をコミットして",
     expected: "mgzl:commiting-to-git",
     winner: "mgzl:commiting-to-git",
+    event: "UserPromptSubmit",
     gateMean: 0.82,
     maxFits: 0.91,
   },
@@ -16,6 +17,7 @@ const ROWS: EvalRow[] = [
     request: "このプロジェクトの AutoMemory を棚卸しして",
     expected: "mgzl:audit-memory",
     winner: "fading-memory:maintain",
+    event: "UserPromptSubmit",
     gateMean: 0.71,
     maxFits: 0.55,
   },
@@ -23,6 +25,7 @@ const ROWS: EvalRow[] = [
     request: "モナドとは何ですか",
     expected: null,
     winner: null,
+    event: "UserPromptSubmit",
     gateMean: 0.12,
     maxFits: 0,
   },
@@ -30,6 +33,7 @@ const ROWS: EvalRow[] = [
     request: "Slack のチャンネルにこの結果を投稿して",
     expected: null,
     winner: "mgzl:create-issue",
+    event: "UserPromptSubmit",
     gateMean: 0.64,
     maxFits: 0.41,
   },
@@ -56,10 +60,10 @@ describe("buildReport", () => {
   test("不一致ケースを一覧で出す", () => {
     const report = buildReport(ROWS);
     expect(report).toContain(
-      'mismatch request="このプロジェクトの AutoMemory を棚卸しして" expected=mgzl:audit-memory winner=fading-memory:maintain gate=0.71 fits=0.55',
+      'mismatch event=UserPromptSubmit request="このプロジェクトの AutoMemory を棚卸しして" expected=mgzl:audit-memory winner=fading-memory:maintain gate=0.71 fits=0.55',
     );
     expect(report).toContain(
-      'mismatch request="Slack のチャンネルにこの結果を投稿して" expected=null winner=mgzl:create-issue gate=0.64 fits=0.41',
+      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=mgzl:create-issue gate=0.64 fits=0.41',
     );
   });
 
@@ -69,20 +73,28 @@ describe("buildReport", () => {
         request: "今の変更をコミットして",
         expected: "mgzl:commiting-to-git",
         winner: null,
+        event: "UserPromptSubmit",
         gateMean: 0.2,
         maxFits: 0,
       },
     ]);
     expect(report).toContain("wrong_suggestion_rate=1.000");
-    expect(report).toContain('mismatch request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.20 fits=0.00');
+    expect(report).toContain('mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.20 fits=0.00');
   });
 
   test("request は先頭 60 文字に切り詰める", () => {
     const long = "あ".repeat(80);
     const report = buildReport([
-      { request: long, expected: "mgzl:commiting-to-git", winner: null, gateMean: 0.2, maxFits: 0 },
+      {
+        request: long,
+        expected: "mgzl:commiting-to-git",
+        winner: null,
+        event: "UserPromptSubmit",
+        gateMean: 0.2,
+        maxFits: 0,
+      },
     ]);
-    expect(report).toContain(`mismatch request="${"あ".repeat(60)}"`);
+    expect(report).toContain(`mismatch event=UserPromptSubmit request="${"あ".repeat(60)}"`);
     expect(report).not.toContain("あ".repeat(61));
   });
 
@@ -92,6 +104,7 @@ describe("buildReport", () => {
         request: "Slack のチャンネルにこの結果を投稿して",
         expected: null,
         winner: null,
+        event: "UserPromptSubmit",
         gateMean: 0,
         maxFits: 0,
         error: "Jev did not answer the 'which' choice question (call 1)",
@@ -100,7 +113,7 @@ describe("buildReport", () => {
     expect(report).toContain("errors=1");
     expect(report).toContain("unneeded_suggestion_rate=0.000");
     expect(report).toContain(
-      'mismatch request="Slack のチャンネルにこの結果を投稿して" expected=null winner=null gate=0.00 fits=0.00 error="Jev did not answer the \'which\' choice question (call 1)"',
+      'mismatch event=UserPromptSubmit request="Slack のチャンネルにこの結果を投稿して" expected=null winner=null gate=0.00 fits=0.00 error="Jev did not answer the \'which\' choice question (call 1)"',
     );
   });
 
@@ -110,6 +123,7 @@ describe("buildReport", () => {
         request: "今の変更をコミットして",
         expected: "mgzl:commiting-to-git",
         winner: null,
+        event: "UserPromptSubmit",
         gateMean: 0,
         maxFits: 0,
         error: "roster is empty",
@@ -123,7 +137,36 @@ describe("buildReport", () => {
       .filter((line) => line.startsWith("mismatch")).length;
     expect(mismatchCount).toBe(1);
     expect(report).toContain(
-      'mismatch request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.00 fits=0.00 error="roster is empty"',
+      'mismatch event=UserPromptSubmit request="今の変更をコミットして" expected=mgzl:commiting-to-git winner=null gate=0.00 fits=0.00 error="roster is empty"',
+    );
+  });
+
+  test("event 別の内訳を出す", () => {
+    const report = buildReport([
+      ...ROWS,
+      {
+        request:
+          'The assistant is about to perform this action:\nCommit the staged changes\ngit commit -m "fix: x"',
+        expected: "mgzl:commiting-to-git",
+        winner: "mgzl:commiting-to-git",
+        event: "PreToolUse",
+        gateMean: 0.95,
+        maxFits: 0.88,
+      },
+      {
+        request: "The assistant is about to perform this action:\nList files\nls typesafe/hooks",
+        expected: null,
+        winner: "mgzl:investigate-budgeted",
+        event: "PreToolUse",
+        gateMean: 0.4,
+        maxFits: 0.35,
+      },
+    ]);
+    expect(report).toContain(
+      "event=UserPromptSubmit total=4 with_skill=2 without_skill=2 errors=0 wrong_suggestion_rate=0.500 unneeded_suggestion_rate=0.500",
+    );
+    expect(report).toContain(
+      "event=PreToolUse total=2 with_skill=1 without_skill=1 errors=0 wrong_suggestion_rate=0.000 unneeded_suggestion_rate=1.000",
     );
   });
 });
@@ -154,10 +197,29 @@ describe("parseArgs", () => {
 });
 
 describe("readGolden", () => {
-  test("正常なエントリはそのまま読む", () => {
+  test("プロンプト向けのエントリはそのまま読む", () => {
     expect(readGolden([{ request: "a", expected: "x" }, { request: "b", expected: null }])).toEqual([
-      { request: "a", expected: "x" },
-      { request: "b", expected: null },
+      { request: "a", expected: "x", event: "UserPromptSubmit" },
+      { request: "b", expected: null, event: "UserPromptSubmit" },
+    ]);
+  });
+
+  test("tool_name 付きのエントリは request を組み立てて PreToolUse にする", () => {
+    expect(
+      readGolden([
+        {
+          tool_name: "Bash",
+          tool_input: { description: "Commit the staged changes", command: 'git commit -m "fix: x"' },
+          expected: "mgzl:commiting-to-git",
+        },
+      ]),
+    ).toEqual([
+      {
+        request:
+          'The assistant is about to perform this action:\nCommit the staged changes\ngit commit -m "fix: x"',
+        expected: "mgzl:commiting-to-git",
+        event: "PreToolUse",
+      },
     ]);
   });
 
@@ -165,10 +227,16 @@ describe("readGolden", () => {
     expect(() => readGolden({})).toThrow("golden must be an array");
   });
 
-  test("不正なエントリがあれば index 付きで例外にする", () => {
-    expect(() => readGolden([{ request: "a", expected: "x" }, { request: "b" }])).toThrow(
+  test("request も tool_name も無ければ index 付きで例外にする", () => {
+    expect(() => readGolden([{ request: "a", expected: "x" }, { expected: null }])).toThrow(
       "golden.json entry 1 is malformed",
     );
+  });
+
+  test("tool_input から request を組み立てられなければ index 付きで例外にする", () => {
+    expect(() =>
+      readGolden([{ tool_name: "Bash", tool_input: { description: "x" }, expected: null }]),
+    ).toThrow("golden.json entry 0 is malformed");
   });
 
   test("ファイルから読んでも不正なエントリで例外にする", async () => {
@@ -181,25 +249,30 @@ describe("readGolden", () => {
 });
 
 describe("golden.json", () => {
-  test("30 件で、該当あり 20 件・該当なし 10 件", async () => {
+  test("40 件で、プロンプト向け 30 件（20/10）とツール向け 10 件（5/5）", async () => {
     const parsed: unknown = JSON.parse(
       await Bun.file(join(import.meta.dir, "golden.json")).text(),
     );
-    expect(Array.isArray(parsed)).toBe(true);
-    const cases: GoldenCase[] = Array.isArray(parsed)
-      ? parsed.flatMap((item) =>
-          typeof item === "object" &&
-          item !== null &&
-          "request" in item &&
-          typeof item.request === "string" &&
-          "expected" in item &&
-          (typeof item.expected === "string" || item.expected === null)
-            ? [{ request: item.request, expected: item.expected }]
-            : [],
-        )
-      : [];
-    expect(cases).toHaveLength(30);
-    expect(cases.filter((c) => c.expected !== null)).toHaveLength(20);
-    expect(cases.filter((c) => c.expected === null)).toHaveLength(10);
+    const cases = readGolden(parsed);
+    expect(cases).toHaveLength(40);
+
+    const prompts = cases.filter((c) => c.event === "UserPromptSubmit");
+    expect(prompts).toHaveLength(30);
+    expect(prompts.filter((c) => c.expected !== null)).toHaveLength(20);
+    expect(prompts.filter((c) => c.expected === null)).toHaveLength(10);
+
+    const tools = cases.filter((c) => c.event === "PreToolUse");
+    expect(tools).toHaveLength(10);
+    expect(tools.filter((c) => c.expected !== null)).toHaveLength(5);
+    expect(tools.filter((c) => c.expected === null)).toHaveLength(5);
+  });
+
+  test("ツール向けケースの request は行為向けの前置きで始まる", async () => {
+    const parsed: unknown = JSON.parse(
+      await Bun.file(join(import.meta.dir, "golden.json")).text(),
+    );
+    for (const item of readGolden(parsed).filter((c) => c.event === "PreToolUse")) {
+      expect(item.request.startsWith("The assistant is about to perform this action:\n")).toBe(true);
+    }
   });
 });
