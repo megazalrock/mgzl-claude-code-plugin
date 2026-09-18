@@ -54,7 +54,10 @@ const GATE_PROSE =
 
 function noulOf(answers: Record<string, Answer>, key: string): number {
   const answer = answers[key];
-  return answer !== undefined && answer.type === "noul" ? answer.noul : 0;
+  if (answer === undefined || answer.type !== "noul") {
+    throw new Error(`Jev did not answer the noul question '${key}'`);
+  }
+  return answer.noul;
 }
 
 function choiceOf(answers: Record<string, Answer>, key: string): ChoiceAnswer | undefined {
@@ -105,7 +108,7 @@ export async function suggest(
   const wide = await askSystemOne(state, wideQuestions(roster), options);
   const wideWhich = choiceOf(wide.answers, "which");
   if (wideWhich === undefined) {
-    throw new Error("Jev did not answer the 'which' choice question");
+    throw new Error("Jev did not answer the 'which' choice question (call 1)");
   }
 
   const acts = noulOf(wide.answers, "gate::acts_on_user_system");
@@ -142,6 +145,10 @@ export async function suggest(
     };
   }
 
+  if (candidates.length === 0) {
+    throw new Error("Jev ranked no roster entry in call 1");
+  }
+
   const rerank = await askSystemOne(
     state,
     rerankQuestions(candidates.map((candidate) => candidate.entry)),
@@ -149,17 +156,23 @@ export async function suggest(
   );
   const rerankWhich = choiceOf(rerank.answers, "which");
   if (rerankWhich === undefined) {
-    throw new Error("Jev did not answer the 'which' choice question");
+    throw new Error("Jev did not answer the 'which' choice question (call 2)");
+  }
+  const candidateNames = new Set(candidates.map((candidate) => candidate.entry.name));
+  if (!candidateNames.has(rerankWhich.choice)) {
+    throw new Error(`Jev chose '${rerankWhich.choice}' which is not in the shortlist`);
   }
 
-  const shortlist: ShortlistItem[] = candidates.map(({ entry, probability }) => ({
+  // fits は noulOf 内で必ず数値が返るか例外になるため、この時点では number 確定
+  const rankedShortlist = candidates.map(({ entry, probability }) => ({
     name: entry.name,
     wideProbability: probability,
     rerankProbability: rerankWhich.probabilities[entry.name],
     fits: noulOf(rerank.answers, `fits::${entry.name}`),
   }));
+  const shortlist: ShortlistItem[] = rankedShortlist;
 
-  const maxFits = shortlist.reduce((max, item) => Math.max(max, item.fits ?? 0), 0);
+  const maxFits = rankedShortlist.reduce((max, item) => Math.max(max, item.fits), 0);
   const elapsedMs = Date.now() - startedAt;
   if (maxFits < FITS_THRESHOLD) {
     return { outcome: "no_fit", winner: null, gate, shortlist, elapsedMs };

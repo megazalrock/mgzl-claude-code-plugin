@@ -105,6 +105,16 @@ describe("suggest", () => {
         "superpowers:writing-plans": "仕様から実装計画を書く",
       },
     });
+    expect(body?.questions["gate::acts_on_user_system"]).toEqual({
+      type: "noul",
+      instructions:
+        "Is the assistant being asked to act on the user's files, accounts, devices, or online services, rather than only to explain or advise?",
+    });
+    expect(body?.questions["gate::would_follow_documented_procedure"]).toEqual({
+      type: "noul",
+      instructions:
+        "Would a careful expert answering this consult a specific documented procedure or set of commands, rather than answering from general understanding?",
+    });
     expect(body?.questions["gate::prose_suffices"]).toEqual({
       type: "noul",
       instructions:
@@ -234,7 +244,71 @@ describe("suggest", () => {
       },
     ]);
     await expect(suggest("x", ROSTER, { ...OPTIONS, fetchImpl })).rejects.toThrow(
-      "Jev did not answer the 'which' choice question",
+      "Jev did not answer the 'which' choice question (call 1)",
     );
+  });
+
+  test("gate の Noul 回答が欠けていたら例外にし Call 2 は呼ばない", async () => {
+    const { fetchImpl, bodies } = queuedFetch([
+      {
+        model: "jev-latest",
+        answers: {
+          which: {
+            type: "choice",
+            choice: "mgzl:commiting-to-git",
+            confidence: 0.6,
+            probabilities: { "mgzl:commiting-to-git": 0.4 },
+          },
+          "gate::acts_on_user_system": { type: "noul", noul: 0.9 },
+          "gate::would_follow_documented_procedure": { type: "noul", noul: 0.9 },
+          // gate::prose_suffices が欠落
+        },
+      },
+    ]);
+    await expect(suggest("x", ROSTER, { ...OPTIONS, fetchImpl })).rejects.toThrow(
+      "Jev did not answer the noul question 'gate::prose_suffices'",
+    );
+    expect(bodies).toHaveLength(1);
+  });
+
+  test("Call 2 の choice がショートリスト外なら例外にする", async () => {
+    const { fetchImpl } = queuedFetch([
+      call1(
+        [0.9, 0.8, 0.1],
+        {
+          "mgzl:commiting-to-git": 0.5,
+          "reviewview:reviewview-prepare": 0.3,
+          "fading-memory:remember": 0.2,
+        },
+        "mgzl:commiting-to-git",
+      ),
+      {
+        model: "jev-latest",
+        answers: {
+          which: {
+            type: "choice",
+            choice: "superpowers:writing-plans", // ショートリストに入っていない候補
+            confidence: 0.5,
+            probabilities: { "superpowers:writing-plans": 0.5 },
+          },
+          "fits::mgzl:commiting-to-git": { type: "noul", noul: 0.9 },
+          "fits::reviewview:reviewview-prepare": { type: "noul", noul: 0.1 },
+          "fits::fading-memory:remember": { type: "noul", noul: 0.05 },
+        },
+      },
+    ]);
+    await expect(suggest("x", ROSTER, { ...OPTIONS, fetchImpl })).rejects.toThrow(
+      "Jev chose 'superpowers:writing-plans' which is not in the shortlist",
+    );
+  });
+
+  test("Call 1 の probabilities が roster に無い名前しか含まなければ例外にし Call 2 は呼ばない", async () => {
+    const { fetchImpl, bodies } = queuedFetch([
+      call1([0.9, 0.9, 0.1], { "unknown:skill": 0.9 }, "unknown:skill"),
+    ]);
+    await expect(suggest("x", ROSTER, { ...OPTIONS, fetchImpl })).rejects.toThrow(
+      "Jev ranked no roster entry in call 1",
+    );
+    expect(bodies).toHaveLength(1);
   });
 });
