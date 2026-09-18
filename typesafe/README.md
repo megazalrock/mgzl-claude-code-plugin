@@ -1,8 +1,13 @@
 # typesafe
 
-`UserPromptSubmit` フックで TypeSafe の System One モデル Jev にスキル選択を問い合わせ、そのターンに関係するスキル 1 件を提案として注入するプラグインである。
+TypeSafe の System One モデル Jev にスキル選択を問い合わせ、関係するスキル 1 件を提案として注入するプラグインである。発火点は 2 つある。
 
-## 何をするか
+- `UserPromptSubmit`（ユーザーのプロンプト送信時）: 依頼文を材料に、そのターンの進め方を決めるスキルを提案する
+- `PreToolUse`（matcher `Bash|Agent`、ツール呼び出しの直前）: これから取る行為を材料に、その行為を手順化したスキルを提案する
+
+スキルの支援が本当に要るのは作業の途中である。「バグを直して」と依頼された後、調査が進んでコミットが必要になった瞬間にはプロンプト時点の提案は届いていない。`PreToolUse` はその穴を埋める。対象を Bash と Agent に絞るのは、git 操作・テスト実行・gh 操作・サブエージェント起動が「スキルが手順を持っていそうな行為」でありながら、実装中でもターンあたり数回に収まるためである。Edit / Write は実装中に連発するので対象外にしてある。`PreToolUse` の command hook はタイムアウトしてもツール呼び出しをブロックしない。
+
+## 何をするか（UserPromptSubmit）
 
 ユーザーが 1 ターン送るたびに、次の 2 リクエストを Jev に投げる。
 
@@ -25,9 +30,46 @@
 
 提案は「合わなければ無視してよい」文面に留めてある。強く押すと誤った提案にも従ってしまい、誤った提案は提案なしより悪いためである。提案が無いターンでも「該当なし」の 1 文を送る。何も送らないと、スキル一覧側の「迷ったら読み込め」という指示が野放しになる。
 
+## 何をするか（PreToolUse）
+
+Bash または Agent を呼ぶ直前に、これから取る行為を次の形の request 文にして Jev へ渡す。
+
+```
+The assistant is about to perform this action:
+<tool_input.description>
+<Bash は tool_input.command / Agent は tool_input.prompt>
+```
+
+本体は 2000 文字（`TOOL_INPUT_CHARS`）で切り詰める。`description` が無ければその行を省く。本体も取れない場合は request を組み立てられないので `skipped` として終わる。
+
+判定の枠組み（framing）はプロンプト向けと別である。Call 1 の gate は 1 問だけで、`gate::routine_step`「これは ls / cat / git status のような、手順書を引くまでもない定型の確認作業か」を問い、`invert: true` で反転してから平均に入れる。プロンプト向けの gate 3 問（ファイル操作か・手順書を引くか・文章で足りるか）は Bash 実行直前には自明に同じ答えになり判別力が無いため使わない。閾値 `GATE_THRESHOLD = 0.30` / `FITS_THRESHOLD = 0.30` はプロンプト向けと共通である。
+
+**`PreToolUse` では「該当なし」を注入しない。** `outcome` が `suggested` のときだけ出力する。Bash を呼ぶたびに「該当なし」の 1 文が入るのはノイズにしかならないためである。
+
+提案あり:
+
+```
+<skill_relevance>Relevant to the action you are about to take: mgzl:commiting-to-git. If it fits, invoke it with the Skill tool instead of proceeding ad hoc. Ignore this if it does not fit what you are actually doing.</skill_relevance>
+```
+
+### サブエージェント内での発火
+
+hook の stdin にはサブエージェントのツール一覧が渡らない。`agent_id` があり（= サブエージェント内で発火した）、かつ次の推定で Skill ツールを持たないと判断した場合は、API を呼ばずに `skipped` で終える。
+
+1. `agent_type` が `general-purpose` → Skill あり（全ツールを持つことが実証済み）
+2. `agent_type` に対応する定義ファイルが見つかる → フロントマターの `tools:` を読む
+   - `tools:` が無い、または `tools: *` → Skill あり
+   - `tools:` に `Skill` が含まれる → Skill あり
+   - それ以外 → Skill なし（`tools:` の許可リストは列挙外のツールを完全に剥奪する）
+3. それ以外（`Explore` / `Plan` / `claude-code-guide` 等の組み込み、定義が見つからないもの） → Skill なし
+
+定義ファイルの探索先は roster と同じ 3 系統で、有効プラグインの `installPath/agents/*.md`、`~/.claude/agents/*.md`、`<cwd>/.claude/agents/*.md` である。`<agent_type>.md` を先に見て、無ければディレクトリ内の `*.md` からフロントマターの `name` が一致するものを探す。`agent_type` にプラグイン接頭辞（`mgzl:` など）が付く場合はそのプラグインだけを見る。
+
+**組み込みエージェントのうち Skill あり扱いは `general-purpose` のみ**で、`Explore` / `Plan` などの内部では提案されない。
+
 ## 環境変数
 
-- `TYPESAFE_API_KEY`（必須）: 未設定ならフックは何も出力せず終了する。機能を無効化したいときはこれを設定しない。未設定時は System One への送信も行わず、ログにも何も記録しない
+- `TYPESAFE_API_KEY`（必須）: 未設定ならフックは何も出力せず終了する。機能を無効化したいときはこれを設定しない。未設定時は System One への送信も行わず、ログにも何も記録しない。`PreToolUse` が有効なときは依頼文だけでなく実行しようとしているコマンド文字列や Agent の prompt も送られるため、機密性の高いプロジェクトではこの変数を設定しないことで両方の発火点をまとめて無効化する
 - `TYPESAFE_BASE_URL`（任意、既定 `https://api.typesafe.ai`）
 - `TYPESAFE_SKILL_MODEL`（任意、既定 `jev-latest`）
 - `CLAUDE_PLUGIN_DATA`（任意）: 提案ログの出力先。未設定ならログを書かない
@@ -50,6 +92,11 @@
 - `enabledPlugins` と `installed_plugins.json` の解決は Claude Code の内部仕様の再現であり、仕様変更で発見漏れが起きうる
 - 依頼文はターンごとに TypeSafe の API に送信される。機密性の高いプロジェクトでは `TYPESAFE_API_KEY` を設定しないことで無効化できる
 - Jev は指示を字義通りに読み、state 内の敵対的な文に引きずられうる。提案は「無視してよい」文面に留め、自動実行には使わない
+- `tool_input`（Bash のコマンド文字列、Agent の prompt）が TypeSafe の API へ送られる。依頼文だけでなく実行しようとしているコマンドそのものが外に出るため、機密性の高いプロジェクトでは `TYPESAFE_API_KEY` を設定しないことで無効化する
+- 同じ提案がセッション内で繰り返される（git status → diff → add → commit で 4 回など）。文面が「合わなければ無視」なので害は注入文字数だけである。重複の抑制はログの重複率を見てから判断する
+- `agent_type` の表記が Claude Code の内部仕様で変わると推定が外れ、サブエージェント内で一律 `skipped` になる。フェイルオープンなので作業は止まらないが提案は消える
+- Bash の `description` は Claude が書く任意の文で、省略されることがある。その場合は `command` だけが材料になり精度が落ちる
+- ツール向けの閾値は eval のツール向けケースで調整するが、ケースは手書きで件数が少ない。運用ログを見て追加する
 
 ## フェイルオープンと性能
 
@@ -57,7 +104,9 @@
 
 ## ログ
 
-`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`prompt`（全文）、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
+`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`event`（`UserPromptSubmit` / `PreToolUse`）、`tool_name`（`PreToolUse` のときのみ。`Bash` / `Agent`）、`agent_type`（サブエージェント内で発火したときのみ）、`prompt`、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
+
+`prompt` には `UserPromptSubmit` なら依頼文の全文が、`PreToolUse` なら組み立て後の request 文が入る。`gate` は `{ scores: { <質問キー>: <反転前の noul> }, mean: <反転適用後の平均> }` の形で、`scores` のキーは framing ごとに変わる（プロンプト向けは 3 キー、ツール向けは `gate::routine_step` の 1 キー）。`event` を持たない古いレコードは `UserPromptSubmit` とみなして集計する。
 
 `outcome` が `gate_quiet`（gate の平均が閾値未満で Call 2 を呼ばなかった場合）でも、`shortlist` には Call 1 の上位候補が残る。ただしこのとき各要素が持つのは `wideProbability` だけで、Call 2 を経ていないため `rerankProbability` / `fits` は付かない。
 
@@ -72,12 +121,22 @@ bun run typesafe/eval/run.ts --cwd <project> [--golden <path>] [--concurrency 4]
 フックと同じ `roster.discover` と `pipeline.suggest` を使う。`--concurrency` には数値以外を渡すと例外になる。出力は key=value の簡素形式で、次を出す。
 
 - `total` / `with_skill` / `without_skill` / `errors`（`suggest` が例外を投げたケースの件数）
+- `event=<イベント名> total=… with_skill=… without_skill=… errors=… wrong_suggestion_rate=… unneeded_suggestion_rate=…`: 発火イベント別の内訳
 - `wrong_suggestion_rate`: 該当ありで例外にならなかったもののうち `winner !== expected` の割合（`winner === null` も誤り）
 - `unneeded_suggestion_rate`: 該当なしで例外にならなかったもののうち `winner !== null` の割合
 - `band=<下限>-<上限> count=<件数> accuracy=<正解率>`: 勝者の `fits` を 0.1 刻みにした帯ごとの件数と正解率（`errors` になったケースは帯の分母から除外する）
-- `mismatch request="<先頭 60 文字>" expected=… winner=… gate=… fits=…`: 不一致ケースの一覧。`errors` になったケースは必ずここに列挙され、末尾に `error="..."` が付く
+- `mismatch event=<イベント名> request="<先頭 60 文字>" expected=… winner=… gate=… fits=…`: 不一致ケースの一覧。`errors` になったケースは必ずここに列挙され、末尾に `error="..."` が付く
 
 `golden.json` は該当あり 20 件・該当なし 10 件の手書き 30 件から始める。該当なしには「日常的な依頼」「技術的だがスキル不要な質問」「roster に無い対象の名指し」を必ず含める。後者は当てずっぽうを罰するために重要である。
+
+ツール向けケースは `request` の代わりに `tool_name` と `tool_input` を持つ。`run.ts` はフックと同じ `buildToolRequest` で request 文を組み立て、`TOOL_FRAMING` で `suggest` を呼ぶ。
+
+```json
+{ "tool_name": "Bash", "tool_input": { "description": "Commit the staged changes", "command": "git commit -m \"fix: ...\"" }, "expected": "mgzl:commiting-to-git" },
+{ "tool_name": "Bash", "tool_input": { "description": "List files in the hooks directory", "command": "ls typesafe/hooks" }, "expected": null }
+```
+
+該当ありは git commit / gh issue 作成 / worktree 作成 / サブエージェント起動など、該当なしは ls / cat / grep / git status といった定型の確認作業と、roster に無い対象の名指し（Slack への curl など）を中心にする。現状は 10 件（該当あり 5 / 該当なし 5）で、プロンプト向け 30 件と合わせて 40 件である。
 
 ### 閾値を調整する手順
 
