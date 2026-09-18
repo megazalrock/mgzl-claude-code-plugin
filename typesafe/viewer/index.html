@@ -23,7 +23,8 @@
   .group span { color: var(--muted); }
   .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; background: var(--bg); color: var(--muted); user-select: none; }
   .chip.on { border-color: var(--accent); color: var(--accent); }
-  #stats { margin-left: auto; color: var(--muted); }
+  #follow-group { margin-left: auto; }
+  #stats { color: var(--muted); }
   #banner { display: none; padding: 6px 16px; background: var(--err); }
   main { display: grid; grid-template-columns: minmax(320px, 40%) 1fr; height: calc(100vh - 48px); }
   #list { overflow: auto; border-right: 1px solid var(--line); }
@@ -61,7 +62,7 @@
     <div class="group" data-key="event"><span>event</span></div>
     <div class="group" data-key="outcome"><span>outcome</span></div>
   </div>
-  <label class="group"><input type="checkbox" id="follow" checked> 最新に追従</label>
+  <label class="group" id="follow-group"><input type="checkbox" id="follow" checked> 最新に追従</label>
   <div id="stats"></div>
 </header>
 <div id="banner"></div>
@@ -136,7 +137,11 @@
     return el;
   }
 
+  // renderDetail の再描画をスキップすべきか判定するために、直近に描画した ts を憶えておく
+  let detailShownTs;
+
   function renderList() {
+    const scrollTop = listEl.scrollTop;
     const visible = visibleRecords();
     listEl.replaceChildren();
     if (visible.length === 0) {
@@ -165,11 +170,12 @@
       row.append(head, ex);
       row.addEventListener("click", () => {
         state.selectedTs = record.ts;
-        render();
+        render({ forceDetail: true });
       });
       listEl.appendChild(row);
     }
     statsEl.textContent = `表示 ${visible.length} / 全体 ${state.records.length} / 捨てた行 ${state.droppedLines}`;
+    listEl.scrollTop = scrollTop;
   }
 
   function dl(pairs) {
@@ -185,7 +191,11 @@
     return el;
   }
 
-  function renderDetail() {
+  function renderDetail(force) {
+    // 選択中の record が変わっていなければ、スクロール位置を崩すだけの再描画をスキップする
+    if (!force && state.selectedTs === detailShownTs) return;
+    detailShownTs = state.selectedTs;
+    const scrollTop = detailEl.scrollTop;
     const record = state.records.find((r) => r.ts === state.selectedTs);
     detailEl.replaceChildren();
     if (record === undefined) {
@@ -193,6 +203,7 @@
       empty.className = "empty";
       empty.textContent = "左の一覧から選んでくださいまし";
       detailEl.appendChild(empty);
+      detailEl.scrollTop = scrollTop;
       return;
     }
     detailEl.appendChild(dl([
@@ -226,6 +237,7 @@
       empty.className = "empty";
       empty.textContent = "API を呼んでいない";
       detailEl.appendChild(empty);
+      detailEl.scrollTop = scrollTop;
       return;
     }
     const table = document.createElement("table");
@@ -249,11 +261,12 @@
       table.appendChild(tr);
     }
     detailEl.appendChild(table);
+    detailEl.scrollTop = scrollTop;
   }
 
-  function render() {
+  function render(options) {
     renderList();
-    renderDetail();
+    renderDetail(options !== undefined && options.forceDetail === true);
   }
 
   function showBanner(text) {
@@ -292,6 +305,7 @@
       state.records = [];
       state.droppedLines = 0;
       state.selectedTs = null;
+      detailShownTs = undefined;
       loadAll();
     });
     source.onerror = () => { showBanner("サーバーとの接続が切れました。再接続を待っています"); };
