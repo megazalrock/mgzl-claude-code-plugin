@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -108,7 +108,8 @@ export function startViewer(options: ViewerOptions): Viewer {
     fetch(req) {
       const { pathname } = new URL(req.url);
       if (pathname === "/") {
-        return new Response(Bun.file(HTML_PATH), {
+        // Bun.file() のゼロコピー送出は Bash サンドボックスが sendfile を拒否するため使わない。毎回読むので index.html の編集は再起動なしで反映される
+        return new Response(readFileSync(HTML_PATH, "utf8"), {
           headers: { "content-type": "text/html; charset=utf-8" },
         });
       }
