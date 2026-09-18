@@ -94,7 +94,8 @@ SSE の接続は `Set<ReadableStreamDefaultController>` で保持し、切断時
 - 壊れた行は捨てて `droppedLines` に数えるだけ。サーバーは止めない
 - `--port` が bind できなければ `error=` 1 行を stderr に出して exit 1
 - `--file` に指定されたパスが無くても起動し、生成を待つ
-- ブラウザ側で `/api/records` の取得に失敗したら画面上部に赤い帯で `records の取得に失敗` と出し、SSE の再接続に伴う再取得で消す
+- 接続状態は header 右端の固定サイズの丸いインジケーターで示す（緑=接続中、黄=再接続中、赤=`/api/records` の取得失敗）。文言は `title` 属性にだけ入れ、画面上に文字を出さない。要素の大きさが変わらないので layout shift は起きない。SSE の再接続に伴う再取得が成功したら緑に戻す
+- `Bun.serve` の `idleTimeout` は ping 間隔の 2 倍（30 秒）にする。既定の 10 秒は ping 間隔より短く、SSE が毎回アイドル判定で切断される。0（無効）にはせず、ping すら書けない死んだ接続を回収する安全網として残す
 
 ## テスト
 

@@ -274,8 +274,8 @@
   }
 
   /** 接続状態は文字ではなく色の点で示す。帯だと出入りで一覧が上下にずれるため */
-  function setConn(state, text) {
-    connEl.className = state === "ok" ? "conn" : `conn ${state}`;
+  function setConn(connState, text) {
+    connEl.className = connState === "ok" ? "conn" : `conn ${connState}`;
     connEl.title = text;
   }
 
