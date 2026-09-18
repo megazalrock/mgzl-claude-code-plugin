@@ -36,7 +36,11 @@ function parsePayload(raw: string): Payload | undefined {
 }
 
 function additionalContext(result: SuggestResult): string | undefined {
-  if (result.outcome === "suggested" && result.winner !== null) {
+  if (result.outcome === "suggested") {
+    if (result.winner === null) {
+      // pipeline.ts の型上は string | null だが、"suggested" は常に choice の結果を積む契約
+      throw new Error("suggest returned outcome 'suggested' without a winner");
+    }
     return `<skill_relevance>${SUGGESTED_PREFIX}${result.winner}${SUGGESTED_SUFFIX}</skill_relevance>`;
   }
   if (result.outcome === "gate_quiet" || result.outcome === "no_fit") {
@@ -70,8 +74,23 @@ function logSkipped(payload: Payload | undefined, rosterSize: number): void {
 async function main(): Promise<void> {
   const payload = parsePayload(await Bun.stdin.text());
   const apiKey = process.env["TYPESAFE_API_KEY"] ?? "";
+  if (payload === undefined) {
+    // stdin が壊れていて payload が組み立てられない場合も、記録だけは残す
+    append({
+      session_id: "",
+      cwd: "",
+      prompt: "",
+      outcome: "error",
+      winner: null,
+      gate: null,
+      shortlist: [],
+      elapsedMs: 0,
+      rosterSize: 0,
+      error: "malformed stdin payload",
+    });
+    return;
+  }
   // 明示的なスキル呼び出し（/ 始まり）には提案が不要で、キー未設定なら機能そのものが無効
-  if (payload === undefined) return;
   if (payload.prompt === "" || payload.prompt.startsWith("/") || apiKey === "") {
     logSkipped(payload, 0);
     return;
