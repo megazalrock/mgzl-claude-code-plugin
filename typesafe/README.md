@@ -91,4 +91,4 @@ bun run typesafe/eval/run.ts --cwd <project> [--golden <path>] [--concurrency 4]
 
 Run: `bun test --cwd typesafe`
 
-`hooks/suggest-skill.test.ts` 内の 2 件（API 到達不可のフェイルオープン確認、提案ありブロックの出力確認）はローカルの `Bun.serve` でポートを 1 つ立ち上げる。Claude Code の Bash サンドボックス内ではポートを bind できず `EADDRINUSE` で失敗するが、通常のシェルでは通る。サンドボックス内での失敗はテストの不備ではない。
+`hooks/suggest-skill.test.ts` 内の 2 件（「提案ありなら skill_relevance ブロックを出力する」「gate が静かなら提案なしブロックを出力し Call 2 を呼ばない」）は `startFakeServer` でローカルの `Bun.serve` を立ち上げる。Claude Code の Bash サンドボックス内ではポートを bind できず `EADDRINUSE` で失敗するが、通常のシェルでは通る。サンドボックス内での失敗はテストの不備ではない。なお「API に到達できなくても無出力で exit 0（フェイルオープン）」は存在しないポートを指すだけで `Bun.serve` を使わないため、サンドボックス内でも通る。
