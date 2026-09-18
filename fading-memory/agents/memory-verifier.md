@@ -32,6 +32,7 @@ created / updated: <ISO 8601>
 lastReferenced: <ISO 8601 or null>
 score: <number>
 permanent: <true|false>
+origin: <auto|manual>
 related: [<slug>, ...]
 ---
 

@@ -9,13 +9,14 @@ fading-memory の記憶データを score の降順で一覧表示する。score
 
 1. 記憶の一覧を取得する:
    `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}"`
-   - 1行目は `total=<件数>`。以降は1件1行の key=value 形式（score / slug / remaining / lastReferenced / permanent / title）で score の降順に並ぶ
-   - `remaining` は有効期限までの残り日数。`infinite` は permanent（期限なし）、負値は既に期限切れで次回のセッション開始時に trash へ移る記憶を意味する
+   - 1行目は `total=<件数>`。以降は1件1行の key=value 形式（score / slug / remaining / lastReferenced / permanent / origin / title）で score の降順に並ぶ
+   - `remaining` は有効期限までの残り日数。`infinite` は permanent（期限なし）、負値は既に退色して index.md に載っていない記憶を意味する（ファイルは残っており、更新または加点されれば復帰する）
+   - `origin` は記憶の出自。`auto` は SessionEnd の自動抽出、`manual` は remember スキルによる保存
    - `lastReferenced=null` は一度も「役立った」と判定されていない記憶を意味する
    - `malformed=` の行があれば件数とファイル名だけを報告する（修復・削除はしない）
 2. ユーザーに報告する。スクリプトの出力はそのまま貼らず、次の構成にまとめる:
    - 冒頭1行に、総件数と score の分布（最高 score と score>0 の件数）
    - 続けて score の降順に1件1行のリスト。各行には score・残り日数・title を必ず含め、slug は title の後に括弧書きで添える
-   - リストの後に1行、忘却の見通しを添える。`remaining` が 7 以下の記憶があればその slug を挙げて「まもなく忘却される」と伝え、1件も無ければ該当が無い旨を伝える
+   - リストの後に1行、退色の見通しを添える。`remaining` が 7 以下の記憶があればその slug を挙げて「まもなく index.md から外れる」と伝え、1件も無ければ該当が無い旨を伝える
    - 記憶が0件なら、その旨だけを伝える
    - Markdown のテーブルは使わずリストで書く

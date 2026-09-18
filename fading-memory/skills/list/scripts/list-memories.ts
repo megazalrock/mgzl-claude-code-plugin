@@ -20,7 +20,7 @@ for (const m of sortByScore(memories)) {
   const lastReferenced =
     m.meta.lastReferenced === null ? "null" : m.meta.lastReferenced.slice(0, 10);
   console.log(
-    `score=${m.meta.score} slug=${m.slug} remaining=${remaining} lastReferenced=${lastReferenced} permanent=${m.meta.permanent} title=${m.meta.title}`,
+    `score=${m.meta.score} slug=${m.slug} remaining=${remaining} lastReferenced=${lastReferenced} permanent=${m.meta.permanent} origin=${m.meta.origin} title=${m.meta.title}`,
   );
 }
 for (const name of malformed) {
