@@ -47,6 +47,13 @@ describe("expiresAt", () => {
   test("permanent は Infinity", () => {
     expect(expiresAt(meta({ permanent: true }))).toBe(Infinity);
   });
+
+  test("manual と lastReferenced は直交して効く", () => {
+    const lastRef = new Date(createdMs + 100 * DAY).toISOString();
+    expect(expiresAt(meta({ origin: "manual", score: 1, lastReferenced: lastRef }))).toBe(
+      createdMs + (100 + 30 + 7) * DAY,
+    );
+  });
 });
 
 describe("remainingDays", () => {

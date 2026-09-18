@@ -80,7 +80,7 @@ Evidence requirements:
 
 - Every 根拠 must name what you checked (`path:line`, or the Grep pattern and where you ran it) and what you found there.
 - Never write 「可能性がある」 or 「かもしれない」 as the basis for 偽 or 部分的に正. If you cannot establish the contradiction, the verdict is 検証不能.
-- The bar for 偽 is deliberately high: a wrong deletion loses knowledge permanently, while a stale memory left in place expires on its own. When you are torn between 偽 and 検証不能, choose 検証不能.
+- The bar for 偽 is deliberately high: a wrong deletion loses knowledge permanently, while a stale memory left in place fades out of the index on its own. When you are torn between 偽 and 検証不能, choose 検証不能.
 
 ## Report format
 

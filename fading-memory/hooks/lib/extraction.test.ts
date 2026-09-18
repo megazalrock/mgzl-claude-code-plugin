@@ -273,5 +273,7 @@ describe("applyExtraction", () => {
     const updated = parseMemory(readFileSync(join(paths.memoriesDir, "foo.md"), "utf8"));
     expect(updated?.body).toBe("rewritten");
     expect(updated?.meta.origin).toBe("auto");
+    expect(updated?.meta.lastReferenced).toBe(NOW_ISO);
+    expect(updated?.meta.score).toBe(0);
   });
 });

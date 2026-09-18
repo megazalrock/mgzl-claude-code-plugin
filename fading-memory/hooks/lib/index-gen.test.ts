@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryMeta } from "./frontmatter.ts";
-import { renderIndex, sortForIndex } from "./index-gen.ts";
+import { renderIndex, sortForIndex, visibleMemories } from "./index-gen.ts";
 import type { LoadedMemory } from "./maintenance.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -48,5 +48,14 @@ describe("renderIndex", () => {
   test("期限ちょうどの記憶は載せない", () => {
     const now = CREATED_MS + 15 * DAY;
     expect(renderIndex([mem("edge", {})], now)).not.toContain("edge");
+  });
+});
+
+describe("visibleMemories", () => {
+  test("有効期限内の記憶だけを返し、入力配列を破壊しない", () => {
+    const now = CREATED_MS + 400 * DAY;
+    const list = [mem("faded", {}), mem("keep", { permanent: true })];
+    expect(visibleMemories(list, now).map((m) => m.slug)).toEqual(["keep"]);
+    expect(list.map((m) => m.slug)).toEqual(["faded", "keep"]);
   });
 });

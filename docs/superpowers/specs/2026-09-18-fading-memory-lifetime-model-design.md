@@ -63,6 +63,7 @@ applyExtraction(paths, result, nowIso, origin: MemoryOrigin)
 - `hooks/session-end-worker.ts` は `"auto"` を渡す
 - 新規作成（`newMemories`）のみ `origin` を書き込む
 - 更新（`updatedMemories`）では既存ファイルの `origin` を維持する。`remember` で自動抽出の記憶を上書きしても `manual` には昇格しない
+- 更新では `lastReferenced` を保存時刻へ前進させる（更新はその知識にセッションが再び関与した事実であるため）。`score` は変えない。これにより §6 の「更新で index.md に復帰する」が成立する
 
 ### 4. 定数（`hooks/lib/config.ts`）
 

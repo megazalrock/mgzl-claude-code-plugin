@@ -1,5 +1,5 @@
 import { writeFileSync } from "node:fs";
-import { renderIndex } from "./lib/index-gen.ts";
+import { renderIndex, visibleMemories } from "./lib/index-gen.ts";
 import { appendError } from "./lib/log.ts";
 import { ensureDirs, loadMemories, purgeTrash } from "./lib/maintenance.ts";
 import { dataPaths, type DataPaths } from "./lib/paths.ts";
@@ -35,6 +35,7 @@ async function main(): Promise<void> {
 
     const index = renderIndex(memories, now);
     writeFileSync(paths.indexFile, index);
+    const visible = visibleMemories(memories, now);
 
     // 記憶が 0 件でもコンテキストを出す。スキルの description だけでは自発的な remember の
     // 発動が安定しないため、その指示を必ずセッションへ届ける必要がある
@@ -42,9 +43,10 @@ async function main(): Promise<void> {
       "# fading-memory（プロジェクト記憶）",
       "過去のセッションから自動抽出された記憶の目次である。",
       `作業に関連しそうな項目があれば ${paths.memoriesDir}/<slug>.md を Read して活用すること。`,
+      "目次に載っていない記憶もファイルとして残っている。既存の記憶を更新したり、役立ったと判定されたりすると目次に戻る。",
       "セッション中に、ユーザーからの訂正・方針指示、調査で判明した非自明な原因や設計判断、環境固有の制約など、セッションを跨いで再利用できるナレッジが得られたら、依頼を待たず fading-memory:remember スキルを自発的に呼び出して保存すること。",
       "",
-      memories.length > 0 ? index : "（記憶はまだ無い）",
+      visible.length > 0 ? index : "（記憶はまだ無い）",
     ].join("\n");
     console.log(
       JSON.stringify({

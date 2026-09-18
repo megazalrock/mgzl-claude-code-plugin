@@ -202,9 +202,11 @@ export function applyExtraction(
       report.skipped.push(u.slug);
       continue;
     }
-    // 更新だけでは score / lastReferenced を変動させない（仕様）
+    // 更新はその知識にセッションが再び関与した事実なので起点（lastReferenced）だけ前進させる。
+    // score は「役立った」と判定された回数なので更新では増やさない
     doc.body = u.body;
     doc.meta.updated = nowIso;
+    doc.meta.lastReferenced = nowIso;
     if (u.related !== undefined) doc.meta.related = u.related;
     writeFileSync(file, serializeMemory(doc));
     report.updated.push(u.slug);
