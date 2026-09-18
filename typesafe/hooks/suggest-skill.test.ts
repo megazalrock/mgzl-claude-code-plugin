@@ -160,6 +160,29 @@ describe("suggest-skill フック", () => {
     expect(result.exitCode).toBe(0);
   });
 
+  test("stdin が壊れた JSON かつキー未設定なら、ログにも何も書かない", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-brokenstdin-nolog-"));
+    const result = await runHook("{ broken", { CLAUDE_PLUGIN_DATA: dataDir });
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(join(dataDir, "suggestions.jsonl"))).toBe(false);
+  });
+
+  test("stdin が壊れた JSON でもキーが設定されていれば error として 1 行ログに残す", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-brokenstdin-log-"));
+    const result = await runHook("{ broken", {
+      TYPESAFE_API_KEY: "sk-test",
+      CLAUDE_PLUGIN_DATA: dataDir,
+    });
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const lines = readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    const record = JSON.parse(lines[0] ?? "{}");
+    expect(record.outcome).toBe("error");
+    expect(record.error).toBe("malformed stdin payload");
+  });
+
   test("提案ありなら skill_relevance ブロックを出力する", async () => {
     const home = createFixtureHome();
     const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);

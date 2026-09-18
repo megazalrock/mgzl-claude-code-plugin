@@ -79,8 +79,10 @@ async function main(): Promise<void> {
   const payload = parsePayload(await Bun.stdin.text());
   currentPayload = payload;
   const apiKey = process.env["TYPESAFE_API_KEY"] ?? "";
+  // キー未設定は機能そのものが無効なので、stdin が壊れていても含めて記録すら残さない
+  if (apiKey === "") return;
   if (payload === undefined) {
-    // stdin が壊れていて payload が組み立てられない場合も、記録だけは残す
+    // stdin が壊れていて payload が組み立てられない場合も、記録だけは残す（キー設定時のみ）
     append({
       session_id: "",
       cwd: "",
@@ -95,8 +97,6 @@ async function main(): Promise<void> {
     });
     return;
   }
-  // キー未設定は機能そのものが無効なので、skipped の記録すら残さない
-  if (apiKey === "") return;
   // 明示的なスキル呼び出し（/ 始まり）には提案が不要
   if (payload.prompt === "" || payload.prompt.startsWith("/")) {
     logSkipped(payload, 0);
