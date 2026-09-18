@@ -192,6 +192,8 @@ function readSkill(skillsDir: string, dirName: string, prefix: string): RosterEn
   if (frontmatter.description === undefined || frontmatter.description === "") return undefined;
   if (frontmatter.disableModelInvocation) return undefined;
   const bare = frontmatter.name === undefined || frontmatter.name === "" ? dirName : frontmatter.name;
+  // name はそのまま <skill_relevance> ブロックに埋め込まれるため、タグの偽装や改行注入につながる文字を含む場合は除外する
+  if (/[<>\n]/.test(bare)) return undefined;
   return {
     name: `${prefix}${bare}`,
     description: frontmatter.description,
