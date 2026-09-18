@@ -13,7 +13,7 @@ typesafe プラグインが `${CLAUDE_PLUGIN_DATA}/suggestions-v3.jsonl` に追�
 - 実装は TypeScript + bun。npm 依存も build 工程も追加しない。ブラウザ側は素の JS 1 ファイル
 - ログは 1 行 1 JSON の追記専用でローテーションは無い。複数の hook プロセスが同時に追記するため、末尾行が書きかけの瞬間がある
 - 1 行は平均 20KB。`calls[0].request.questions.which.criteria` に全スキルの description が毎回埋め込まれているためで、表示には不要
-- レコードの型は `typesafe/hooks/lib/log.ts` の `LogRecord`。ビューワーはこの型と `LOG_FILE_NAME` を import して追従する
+- レコードの型は `typesafe/hooks/lib/log.ts` の `LogRecord`。ビューワーは `LOG_FILE_NAME` だけを import し、レコードは `LogRecord` 型に頼らず `unknown` を型ガードで掘る。旧版のフックが書いた形の違う行が混ざっても落とさず捨てるため
 - Claude Code の Bash サンドボックス内で `Bun.serve` を bind するには、`.claude/settings.local.json` の `sandbox.network` に `allowLocalBinding: true` と `allowedDomains` の localhost 系が必要（2026-09-19 に設定・実測済み）
 
 ## 構成
@@ -84,7 +84,7 @@ SSE の接続は `Set<ReadableStreamDefaultController>` で保持し、切断時
 
 - 上部: 絞り込み chip 2 群。`event`（UserPromptSubmit / PreToolUse:Bash / PreToolUse:Agent）と `outcome`（suggested / no_fit / skipped / error）。各群は複数選択で、群内は OR、群間は AND。初期状態は全選択。右端に「最新に追従」toggle（初期 on）と件数表示（表示中 / 全体 / 捨てた行数）
 - 左: 一覧。`ts` 降順。1 行に時刻（ローカル時刻、秒まで）、event の badge、outcome の badge、`winner`（無ければ `-`）、`prompt` の先頭行を 1 行に切り詰めたもの
-- 右: 選択中レコードの詳細。上から `ts` / `session_id` / `cwd` / `agent_type` / `elapsedMs` / `rosterSize` / `model` / `usage` / `confidence` / `error` の一覧、`prompt` の全文（`pre` で折り返し）、`ranking` の表。表の各行は名前・確率（小数 2 桁）・確率に比例した幅の bar。`winner` と一致する行を強調し、`none` の行は別色にする。`ranking` が空なら「API を呼んでいない」と表示
+- 右: 選択中レコードの詳細。上から `ts` / `event` / `outcome` / `winner` / `noneProbability` / `confidence` / `session_id` / `cwd` / `agent_type` / `elapsedMs` / `rosterSize` / `model` / `usage` / `error` の一覧（値が無い項目は省く）、`prompt` の全文（`pre` で折り返し）、`ranking` の表。表の各行は名前・確率（小数 2 桁）・確率の絶対値に比例した幅の bar（1.0 で全幅）。`winner` と一致する行を強調し、`none` の行は別色にする。`ranking` が空なら「API を呼んでいない」と表示
 - 新着: SSE で届いたレコードを配列に加えて一覧を再描画する。「最新に追従」が on なら新着を選択して詳細も切り替える。off なら選択を保持し、一覧の先頭に差し込むだけ
 - ログが空: 一覧に「まだ記録がありません」と出す。新着が届けば自然に消える
 - 外部 library も CSS framework も使わない。bar は `div` の幅で描く
