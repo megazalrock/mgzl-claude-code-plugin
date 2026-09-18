@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serializeMemory } from "./frontmatter.ts";
-import { ensureDirs, expireMemories, loadMemories, purgeTrash } from "./maintenance.ts";
+import { ensureDirs, loadMemories, purgeTrash } from "./maintenance.ts";
 import { dataPaths } from "./paths.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -16,7 +16,7 @@ function setup() {
   return paths;
 }
 
-function writeMemory(dir: string, slug: string, createdMs: number, permanent = false) {
+function writeMemory(dir: string, slug: string, createdMs: number) {
   const iso = new Date(createdMs).toISOString();
   writeFileSync(
     join(dir, `${slug}.md`),
@@ -27,7 +27,7 @@ function writeMemory(dir: string, slug: string, createdMs: number, permanent = f
         updated: iso,
         lastReferenced: null,
         score: 0,
-        permanent,
+        permanent: false,
         origin: "auto",
         related: [],
       },
@@ -44,18 +44,6 @@ describe("loadMemories", () => {
     const { memories, malformed } = loadMemories(paths);
     expect(memories.map((m) => m.slug)).toEqual(["good"]);
     expect(malformed).toEqual(["bad.md"]);
-  });
-});
-
-describe("expireMemories", () => {
-  test("期限切れだけを trash へ移動する", () => {
-    const paths = setup();
-    writeMemory(paths.memoriesDir, "old", NOW - 31 * DAY);
-    writeMemory(paths.memoriesDir, "fresh", NOW - 1 * DAY);
-    writeMemory(paths.memoriesDir, "keep", NOW - 400 * DAY, true);
-    expect(expireMemories(paths, NOW)).toEqual(["old"]);
-    expect(loadMemories(paths).memories.map((m) => m.slug).sort()).toEqual(["fresh", "keep"]);
-    expect(existsSync(join(paths.trashDir, `${NOW}__old.md`))).toBe(true);
   });
 });
 

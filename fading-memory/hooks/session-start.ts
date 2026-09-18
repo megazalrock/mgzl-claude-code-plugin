@@ -1,12 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { renderIndex } from "./lib/index-gen.ts";
 import { appendError } from "./lib/log.ts";
-import {
-  ensureDirs,
-  expireMemories,
-  loadMemories,
-  purgeTrash,
-} from "./lib/maintenance.ts";
+import { ensureDirs, loadMemories, purgeTrash } from "./lib/maintenance.ts";
 import { dataPaths, type DataPaths } from "./lib/paths.ts";
 
 function resolveProjectDir(input: unknown): string {
@@ -32,7 +27,6 @@ async function main(): Promise<void> {
     ensureDirs(paths);
     const now = Date.now();
     purgeTrash(paths, now);
-    expireMemories(paths, now);
 
     const { memories, malformed } = loadMemories(paths);
     if (malformed.length > 0) {

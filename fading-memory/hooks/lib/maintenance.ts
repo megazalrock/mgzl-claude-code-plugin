@@ -1,7 +1,6 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "./config.ts";
-import { expiresAt } from "./expiry.ts";
 import { parseMemory, type MemoryMeta } from "./frontmatter.ts";
 import type { DataPaths } from "./paths.ts";
 
@@ -43,17 +42,6 @@ export function loadMemories(paths: DataPaths): {
 /** trash 内のファイル名に移動時刻を埋め込み、保持期間の判定に使う */
 export function moveToTrash(paths: DataPaths, slug: string, now: number): void {
   renameSync(join(paths.memoriesDir, `${slug}.md`), join(paths.trashDir, `${now}__${slug}.md`));
-}
-
-export function expireMemories(paths: DataPaths, now: number): string[] {
-  const expired: string[] = [];
-  for (const mem of loadMemories(paths).memories) {
-    if (expiresAt(mem.meta) <= now) {
-      moveToTrash(paths, mem.slug, now);
-      expired.push(mem.slug);
-    }
-  }
-  return expired;
 }
 
 /** 時刻プレフィックスの無いファイル（手動で置かれたもの）は削除対象にしない */
