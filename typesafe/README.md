@@ -116,6 +116,20 @@ hook の stdin にはサブエージェントのツール一覧が渡らない�
 
 `prompt` はそのまま `eval/golden.json` の `request` に転記できる。
 
+## ビューワー
+
+```
+bun run typesafe/viewer/server.ts [--file <path>] [--port <n>]
+```
+
+提案ログをブラウザで眺めるローカルサーバー。起動すると `url=http://127.0.0.1:<port>/` を出すので、それを開く。`--file` の既定は `~/.claude/plugins/data/typesafe-mgzl-marketplace/suggestions-v3.jsonl`、`--port` の既定は 47391。ブラウザは自動で開かない。
+
+左の一覧は新しい順で、`event`（`UserPromptSubmit` / `PreToolUse:Bash` / `PreToolUse:Agent`）と `outcome` の chip で絞り込める。行を選ぶと右に `prompt` の全文と、Jev が返した確率のうち 0 より大きい候補だけを降順に並べたランキングが出る。`none` も同列に載せ、`winner` と一致する行を強調する。`shortlist` はランキングの上位 3 件と同じ情報なので表示しない。
+
+ログは 1 秒間隔の size polling で差分読み取りし、新着は Server-Sent Events で一覧の先頭に流し込む。「最新に追従」が on なら詳細も新着に切り替わる。改行で終わっていない末尾行は書きかけとみなして次回に持ち越す。JSON として読めない行は捨てて件数だけ「捨てた行」に出す。ファイルが無くても起動し、生成されたら読み始める。
+
+`calls[].request.questions.which.criteria` は全スキルの description を毎回含むため 1 行が平均 20KB あるが、ブラウザにはこれを除いた軽い形（`ViewRecord`）だけを渡す。
+
 ## 評価
 
 ```
@@ -156,4 +170,4 @@ bun run typesafe/eval/run.ts --cwd <project> [--golden <path>] [--concurrency 4]
 
 Run: `bun test --cwd typesafe`
 
-`hooks/suggest-skill.test.ts` のうち偽の System One を要する数件は `startFakeServer` でローカルの `Bun.serve` を立ち上げる。Claude Code の Bash サンドボックス内ではポートを bind できず `EADDRINUSE` で失敗するが、通常のシェルでは通る。サンドボックス内での失敗はテストの不備ではない。なお「API に到達できなくても無出力で exit 0（フェイルオープン）」は存在しないポートを指すだけで `Bun.serve` を使わないため、サンドボックス内でも通る。
+`hooks/suggest-skill.test.ts` のうち偽の System One を要する数件と、`viewer/server.test.ts` は、ローカルの `Bun.serve` を立ち上げる。Claude Code の Bash サンドボックスは既定でポートの bind を拒否し `EADDRINUSE` で失敗するので、このリポジトリの `.claude/settings.local.json` には `sandbox.network.allowLocalBinding: true` と `allowedDomains: ["localhost", "127.0.0.1", "[::1]"]` を入れてある（前者が listen、後者が localhost への接続を許可する。設定ファイルは監視されているので再起動は要らない）。この設定が無い環境で `EADDRINUSE` になるのはテストの不備ではない。なお「API に到達できなくても無出力で exit 0（フェイルオープン）」は存在しないポートを指すだけで `Bun.serve` を使わないため、設定が無くても通る。
