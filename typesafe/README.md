@@ -6,7 +6,7 @@
 
 ユーザーが 1 ターン送るたびに、次の 2 リクエストを Jev に投げる。
 
-1. Call 1: roster 全件を description だけで浅く読む Choice 1 問と、「そもそもスキルが要るターンか」を測る Noul 3 問（`gate::acts_on_user_system` / `gate::would_follow_documented_procedure` / `gate::prose_suffices`）。3 問の平均が `0.30` 未満ならここで打ち切る。
+1. Call 1: roster 全件を description だけで浅く読む Choice 1 問と、「そもそもスキルが要るターンか」を測る Noul 3 問（`gate::acts_on_user_system` / `gate::would_follow_documented_procedure` / `gate::prose_suffices`）。`prose_suffices` は「文章で足りる」ほど提案が不要になるため、平均する前に `1 - noul` へ反転してから他の 2 問と平均する。その平均が `0.30` 未満ならここで打ち切る。
 2. Call 2: Call 1 の上位 3 件だけを、description 全文 + SKILL.md 冒頭 700 文字で深く読む Choice 1 問と、候補ごとの `fits::<name>` Noul。`fits` の最大値が `0.30` 未満なら提案しない。
 
 結果は `additionalContext` として 1 ブロックだけ注入する。roster 本文には手を加えない。
@@ -27,7 +27,7 @@
 
 ## 環境変数
 
-- `TYPESAFE_API_KEY`（必須）: 未設定ならフックは何も出力せず終了する。機能を無効化したいときはこれを設定しない
+- `TYPESAFE_API_KEY`（必須）: 未設定ならフックは何も出力せず終了する。機能を無効化したいときはこれを設定しない。未設定時は System One への送信も行わず、ログにも何も記録しない
 - `TYPESAFE_BASE_URL`（任意、既定 `https://api.typesafe.ai`）
 - `TYPESAFE_SKILL_MODEL`（任意、既定 `jev-latest`）
 - `CLAUDE_PLUGIN_DATA`（任意）: 提案ログの出力先。未設定ならログを書かない
@@ -57,7 +57,7 @@
 
 ## ログ
 
-`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`prompt`（全文）、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。
+`CLAUDE_PLUGIN_DATA` が設定されていれば `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl` に 1 行 1 JSON で追記する。未設定なら何も書かない。`TYPESAFE_API_KEY` が未設定のときも機能そのものが無効なので、`skipped` を含めて一切記録しない。フィールドは `ts`（ISO 8601）、`session_id`、`cwd`、`prompt`（全文）、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみ）。書き込み失敗は握りつぶす。ログは追記専用でローテーションは無い。
 
 `outcome` が `gate_quiet`（gate の平均が閾値未満で Call 2 を呼ばなかった場合）でも、`shortlist` には Call 1 の上位候補が残る。ただしこのとき各要素が持つのは `wideProbability` だけで、Call 2 を経ていないため `rerankProbability` / `fits` は付かない。
 
@@ -72,8 +72,8 @@ bun run typesafe/eval/run.ts --cwd <project> [--golden <path>] [--concurrency 4]
 フックと同じ `roster.discover` と `pipeline.suggest` を使う。`--concurrency` には数値以外を渡すと例外になる。出力は key=value の簡素形式で、次を出す。
 
 - `total` / `with_skill` / `without_skill` / `errors`（`suggest` が例外を投げたケースの件数）
-- `wrong_suggestion_rate`: 該当ありのうち `winner !== expected` の割合（`winner === null` も誤り）
-- `unneeded_suggestion_rate`: 該当なしのうち `winner !== null` の割合
+- `wrong_suggestion_rate`: 該当ありで例外にならなかったもののうち `winner !== expected` の割合（`winner === null` も誤り）
+- `unneeded_suggestion_rate`: 該当なしで例外にならなかったもののうち `winner !== null` の割合
 - `band=<下限>-<上限> count=<件数> accuracy=<正解率>`: 勝者の `fits` を 0.1 刻みにした帯ごとの件数と正解率（`errors` になったケースは帯の分母から除外する）
 - `mismatch request="<先頭 60 文字>" expected=… winner=… gate=… fits=…`: 不一致ケースの一覧。`errors` になったケースは必ずここに列挙され、末尾に `error="..."` が付く
 

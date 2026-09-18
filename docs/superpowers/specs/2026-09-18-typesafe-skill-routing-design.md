@@ -200,6 +200,7 @@ type SuggestResult = {
 - 出力先: `${CLAUDE_PLUGIN_DATA}/suggestions.jsonl`。`CLAUDE_PLUGIN_DATA` 未設定なら何もしない。ディレクトリが無ければ作る。
 - 1 行 1 JSON。フィールド: `ts`（ISO 8601）、`session_id`、`cwd`、`prompt`（全文）、`outcome`（`suggested` / `gate_quiet` / `no_fit` / `skipped` / `error`）、`winner`、`gate`、`shortlist`、`rerankConfidence`、`elapsedMs`、`rosterSize`、`error`（`error` のときのみメッセージ）。
 - 書き込み失敗は握りつぶす（フックの成否に影響させない）。
+- キー未設定時は何も記録しない。
 
 ## 10. 評価 `eval/`
 
@@ -223,8 +224,8 @@ bun run typesafe/eval/run.ts --cwd <project> [--golden <path>] [--concurrency 4]
 - `roster.discover(cwd)` と `pipeline.suggest` をフックと同じコードで実行する。
 - 出力（key=value の簡素形式）:
   - `total`, `with_skill`, `without_skill`
-  - `wrong_suggestion_rate`: 該当ありのうち `winner !== expected` の割合（`winner === null` も誤り）
-  - `unneeded_suggestion_rate`: 該当なしのうち `winner !== null` の割合
+  - `wrong_suggestion_rate`: 該当ありで例外にならなかったもののうち `winner !== expected` の割合（`winner === null` も誤り）
+  - `unneeded_suggestion_rate`: 該当なしで例外にならなかったもののうち `winner !== null` の割合
   - 確率帯（勝者の `fits` を 0.1 刻み）ごとの件数と正解率
   - 不一致ケースの一覧（request 先頭 60 文字、expected、winner、gate.mean、max fits）
 - 帯ごとに正解率が変わらなければ閾値運用は成立しないと判断し、その旨を README に記す。
