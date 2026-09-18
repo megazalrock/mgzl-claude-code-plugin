@@ -4,19 +4,15 @@ import type { MemoryMeta } from "./frontmatter.ts";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * 記憶データの有効期限（epoch ミリ秒）。
- * スコア線形延長（上限付き）と「直近参照 + 基本TTL」下限の max を取る B' 式。
+ * 記憶データの有効期限（epoch ミリ秒）。index.md に載せる順位の基準でもある。
+ * 起点は直近参照（無ければ作成）の 1 つだけで、そこから出自別の基本TTL + score 線形延長ぶん先を返す。
  * 期限はファイルに保存せず、常にここで計算する（二重管理の防止）。
  */
 export function expiresAt(meta: MemoryMeta, cfg: FadingMemoryConfig = config): number {
   if (meta.permanent) return Infinity;
-  const created = Date.parse(meta.created);
-  const lastRef = meta.lastReferenced === null ? created : Date.parse(meta.lastReferenced);
-  const extensionDays = Math.min(
-    cfg.baseTtlDays + meta.score * cfg.perScoreDays,
-    cfg.maxExtensionDays,
-  );
-  return Math.max(created + extensionDays * DAY_MS, lastRef + cfg.baseTtlDays * DAY_MS);
+  const anchor = Date.parse(meta.lastReferenced ?? meta.created);
+  const ttlDays = cfg.baseTtlDays[meta.origin] + meta.score * cfg.perScoreDays;
+  return anchor + ttlDays * DAY_MS;
 }
 
 /**

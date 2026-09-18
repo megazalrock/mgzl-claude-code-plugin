@@ -1,8 +1,8 @@
 /** fading-memory の動作定数。寿命計算・trash 保持・headless モデルをここに集約する */
 export const config = {
-  baseTtlDays: 30,
+  // 明示的に remember された記憶は自動抽出より長く index に残す
+  baseTtlDays: { auto: 15, manual: 30 },
   perScoreDays: 7,
-  maxExtensionDays: 120,
   trashRetentionDays: 30,
   headlessModel: "sonnet",
   // 抽出プロンプトへ埋め込む会話本文の上限。トランスクリプト全文（数 MB）を子に読ませると

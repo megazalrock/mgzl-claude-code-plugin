@@ -21,22 +21,26 @@ function meta(over: Partial<MemoryMeta>): MemoryMeta {
 }
 
 describe("expiresAt", () => {
-  test("score 0 は created + 基本TTL 30日", () => {
-    expect(expiresAt(meta({}))).toBe(createdMs + 30 * DAY);
+  test("auto の score 0 は created + 15日", () => {
+    expect(expiresAt(meta({}))).toBe(createdMs + 15 * DAY);
+  });
+
+  test("manual の score 0 は created + 30日", () => {
+    expect(expiresAt(meta({ origin: "manual" }))).toBe(createdMs + 30 * DAY);
   });
 
   test("score 1 につき 7 日延長される", () => {
-    expect(expiresAt(meta({ score: 3 }))).toBe(createdMs + (30 + 21) * DAY);
+    expect(expiresAt(meta({ score: 3 }))).toBe(createdMs + (15 + 21) * DAY);
   });
 
-  test("延長は上限 120 日で頭打ちになる", () => {
-    expect(expiresAt(meta({ score: 100 }))).toBe(createdMs + 120 * DAY);
+  test("延長に上限は無い", () => {
+    expect(expiresAt(meta({ score: 100 }))).toBe(createdMs + (15 + 700) * DAY);
   });
 
-  test("最終参照日 + 基本TTL が下限として効く", () => {
+  test("lastReferenced があればそれを起点にし、created は使わない", () => {
     const lastRef = new Date(createdMs + 200 * DAY).toISOString();
-    expect(expiresAt(meta({ score: 100, lastReferenced: lastRef }))).toBe(
-      createdMs + (200 + 30) * DAY,
+    expect(expiresAt(meta({ score: 2, lastReferenced: lastRef }))).toBe(
+      createdMs + (200 + 15 + 14) * DAY,
     );
   });
 
@@ -51,18 +55,18 @@ describe("remainingDays", () => {
   });
 
   test("期限ちょうどの時刻では 0", () => {
-    expect(remainingDays(meta({}), createdMs + 30 * DAY)).toBe(0);
+    expect(remainingDays(meta({}), createdMs + 15 * DAY)).toBe(0);
   });
 
   test("期限を過ぎていれば負値になる", () => {
-    expect(remainingDays(meta({}), createdMs + 33 * DAY)).toBe(-3);
+    expect(remainingDays(meta({}), createdMs + 18 * DAY)).toBe(-3);
   });
 
   test("端数は切り上げる", () => {
-    expect(remainingDays(meta({}), createdMs + 29.5 * DAY)).toBe(1);
+    expect(remainingDays(meta({}), createdMs + 14.5 * DAY)).toBe(1);
   });
 
   test("score による延長が残り日数に反映される", () => {
-    expect(remainingDays(meta({ score: 3 }), createdMs)).toBe(51);
+    expect(remainingDays(meta({ score: 3 }), createdMs)).toBe(36);
   });
 });
