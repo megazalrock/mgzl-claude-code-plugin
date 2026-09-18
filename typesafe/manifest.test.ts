@@ -34,6 +34,26 @@ describe("typesafe のマニフェスト", () => {
     });
   });
 
+  test("hooks.json は PreToolUse に matcher Bash|Agent で suggest-skill.ts を登録する", async () => {
+    const hooks = await readJson(join(PLUGIN_ROOT, "hooks", "hooks.json"));
+    expect(hooks).toMatchObject({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: "Bash|Agent",
+            hooks: [
+              {
+                type: "command",
+                command: 'bun run "${CLAUDE_PLUGIN_ROOT}/hooks/suggest-skill.ts"',
+                timeout: 10,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
   test("marketplace.json の plugins に typesafe が含まれる", async () => {
     const marketplace = await readJson(join(REPO_ROOT, ".claude-plugin", "marketplace.json"));
     expect(marketplace).toMatchObject({

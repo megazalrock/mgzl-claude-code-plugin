@@ -1,14 +1,27 @@
-import { append } from "./lib/log.ts";
-import { type SuggestResult, suggest } from "./lib/pipeline.ts";
-import { discover } from "./lib/roster.ts";
+import { append, type HookEvent } from "./lib/log.ts";
+import { type SuggestResult, suggest, TOOL_FRAMING } from "./lib/pipeline.ts";
+import { buildToolRequest } from "./lib/request.ts";
+import { agentHasSkillTool, discover } from "./lib/roster.ts";
 
 const SUGGESTED_PREFIX = "Relevant to the current request: ";
 const SUGGESTED_SUFFIX =
   ". Invoke it with the Skill tool if it fits. Ignore this if it does not fit what the user actually asked for.";
 const NO_SUGGESTION =
   "No skill in the roster appears specifically relevant to this request. Load one only if the request clearly calls for it.";
+const TOOL_SUGGESTED_PREFIX = "Relevant to the action you are about to take: ";
+const TOOL_SUGGESTED_SUFFIX =
+  ". If it fits, invoke it with the Skill tool instead of proceeding ad hoc. Ignore this if it does not fit what you are actually doing.";
 
-type Payload = { prompt: string; cwd: string; sessionId: string };
+type Payload = {
+  event: HookEvent;
+  prompt: string;
+  cwd: string;
+  sessionId: string;
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  agentId: string;
+  agentType: string;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -28,10 +41,35 @@ function parsePayload(raw: string): Payload | undefined {
   }
   if (!isRecord(parsed)) return undefined;
   const cwd = readString(parsed, "cwd");
+  const toolInput = parsed["tool_input"];
   return {
+    // 既知の値以外は既存の挙動に倒す
+    event:
+      readString(parsed, "hook_event_name") === "PreToolUse" ? "PreToolUse" : "UserPromptSubmit",
     prompt: readString(parsed, "prompt"),
     cwd: cwd === "" ? process.cwd() : cwd,
     sessionId: readString(parsed, "session_id"),
+    toolName: readString(parsed, "tool_name"),
+    toolInput: isRecord(toolInput) ? toolInput : {},
+    agentId: readString(parsed, "agent_id"),
+    agentType: readString(parsed, "agent_type"),
+  };
+}
+
+/** ログの共通部分。PreToolUse のときだけ tool_name / agent_type を載せる */
+function recordBase(payload: Payload): {
+  session_id: string;
+  cwd: string;
+  event: HookEvent;
+  tool_name?: string;
+  agent_type?: string;
+} {
+  return {
+    session_id: payload.sessionId,
+    cwd: payload.cwd,
+    event: payload.event,
+    tool_name: payload.event === "PreToolUse" ? payload.toolName : undefined,
+    agent_type: payload.agentType === "" ? undefined : payload.agentType,
   };
 }
 
@@ -49,19 +87,27 @@ function additionalContext(result: SuggestResult): string | undefined {
   return undefined;
 }
 
-function emit(context: string): void {
+/** PreToolUse では「該当なし」を出さない。Bash のたびに注入されるとノイズになるため */
+function toolAdditionalContext(result: SuggestResult): string | undefined {
+  if (result.outcome !== "suggested") return undefined;
+  if (result.winner === null) {
+    throw new Error("suggest returned outcome 'suggested' without a winner");
+  }
+  return `<skill_relevance>${TOOL_SUGGESTED_PREFIX}${result.winner}${TOOL_SUGGESTED_SUFFIX}</skill_relevance>`;
+}
+
+function emit(event: HookEvent, context: string): void {
   console.log(
     JSON.stringify({
-      hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context },
+      hookSpecificOutput: { hookEventName: event, additionalContext: context },
     }),
   );
 }
 
-function logSkipped(payload: Payload | undefined, rosterSize: number): void {
+function logSkipped(payload: Payload, rosterSize: number, prompt: string): void {
   append({
-    session_id: payload?.sessionId ?? "",
-    cwd: payload?.cwd ?? "",
-    prompt: payload?.prompt ?? "",
+    ...recordBase(payload),
+    prompt,
     outcome: "skipped",
     winner: null,
     gate: null,
@@ -71,9 +117,80 @@ function logSkipped(payload: Payload | undefined, rosterSize: number): void {
   });
 }
 
-// main の進行に応じて更新し、途中で失敗しても catch 側でエラーログに payload / rosterSize を残せるようにする
+// main の進行に応じて更新し、途中で失敗しても catch 側でエラーログに payload / rosterSize / request を残せるようにする
 let currentPayload: Payload | undefined;
 let currentRosterSize = 0;
+let currentRequest = "";
+
+async function runUserPromptSubmit(payload: Payload, apiKey: string): Promise<void> {
+  // 明示的なスキル呼び出し（/ 始まり）には提案が不要
+  if (payload.prompt === "" || payload.prompt.startsWith("/")) {
+    logSkipped(payload, 0, payload.prompt);
+    return;
+  }
+  currentRequest = payload.prompt;
+
+  const roster = discover(payload.cwd);
+  currentRosterSize = roster.length;
+  if (roster.length === 0) {
+    logSkipped(payload, 0, payload.prompt);
+    return;
+  }
+
+  const result = await suggest(payload.prompt, roster, { apiKey });
+  const context = additionalContext(result);
+  if (context !== undefined) emit(payload.event, context);
+
+  append({
+    ...recordBase(payload),
+    prompt: payload.prompt,
+    outcome: result.outcome,
+    winner: result.winner,
+    gate: result.gate,
+    shortlist: result.shortlist,
+    rerankConfidence: result.rerankConfidence,
+    elapsedMs: result.elapsedMs,
+    rosterSize: roster.length,
+  });
+}
+
+async function runPreToolUse(payload: Payload, apiKey: string): Promise<void> {
+  // サブエージェント内での発火は、Skill ツールを持たないと推定したら API を呼ばずに終わる
+  if (payload.agentId !== "" && !agentHasSkillTool(payload.agentType, payload.cwd)) {
+    logSkipped(payload, 0, "");
+    return;
+  }
+
+  const request = buildToolRequest({ toolName: payload.toolName, toolInput: payload.toolInput });
+  if (request === undefined) {
+    logSkipped(payload, 0, "");
+    return;
+  }
+  currentRequest = request;
+
+  const roster = discover(payload.cwd);
+  currentRosterSize = roster.length;
+  if (roster.length === 0) {
+    logSkipped(payload, 0, request);
+    return;
+  }
+
+  const result = await suggest(request, roster, { apiKey }, TOOL_FRAMING);
+  const context = toolAdditionalContext(result);
+  if (context !== undefined) emit(payload.event, context);
+
+  append({
+    ...recordBase(payload),
+    prompt: request,
+    outcome: result.outcome,
+    winner: result.winner,
+    gate: result.gate,
+    shortlist: result.shortlist,
+    rerankConfidence: result.rerankConfidence,
+    elapsedMs: result.elapsedMs,
+    rosterSize: roster.length,
+  });
+}
 
 async function main(): Promise<void> {
   const payload = parsePayload(await Bun.stdin.text());
@@ -86,6 +203,7 @@ async function main(): Promise<void> {
     append({
       session_id: "",
       cwd: "",
+      event: "UserPromptSubmit",
       prompt: "",
       outcome: "error",
       winner: null,
@@ -97,35 +215,12 @@ async function main(): Promise<void> {
     });
     return;
   }
-  // 明示的なスキル呼び出し（/ 始まり）には提案が不要
-  if (payload.prompt === "" || payload.prompt.startsWith("/")) {
-    logSkipped(payload, 0);
+
+  if (payload.event === "PreToolUse") {
+    await runPreToolUse(payload, apiKey);
     return;
   }
-
-  const roster = discover(payload.cwd);
-  currentRosterSize = roster.length;
-  if (roster.length === 0) {
-    logSkipped(payload, 0);
-    return;
-  }
-
-  const result = await suggest(payload.prompt, roster, { apiKey });
-  const context = additionalContext(result);
-  if (context !== undefined) emit(context);
-
-  append({
-    session_id: payload.sessionId,
-    cwd: payload.cwd,
-    prompt: payload.prompt,
-    outcome: result.outcome,
-    winner: result.winner,
-    gate: result.gate,
-    shortlist: result.shortlist,
-    rerankConfidence: result.rerankConfidence,
-    elapsedMs: result.elapsedMs,
-    rosterSize: roster.length,
-  });
+  await runUserPromptSubmit(payload, apiKey);
 }
 
 try {
@@ -137,7 +232,13 @@ try {
   append({
     session_id: currentPayload?.sessionId ?? "",
     cwd: currentPayload?.cwd ?? process.cwd(),
-    prompt: currentPayload?.prompt ?? "",
+    event: currentPayload?.event ?? "UserPromptSubmit",
+    tool_name: currentPayload?.event === "PreToolUse" ? currentPayload.toolName : undefined,
+    agent_type:
+      currentPayload === undefined || currentPayload.agentType === ""
+        ? undefined
+        : currentPayload.agentType,
+    prompt: currentRequest,
     outcome: "error",
     winner: null,
     gate: null,

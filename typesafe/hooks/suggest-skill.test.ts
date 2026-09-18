@@ -102,6 +102,42 @@ const CALL2_ANSWER = {
   },
 };
 
+const TOOL_CALL1_SUGGESTED = {
+  model: "test",
+  answers: {
+    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
+    "gate::routine_step": { type: "noul", noul: 0.05 },
+  },
+};
+
+const TOOL_CALL1_GATE_QUIET = {
+  model: "test",
+  answers: {
+    which: { type: "choice", choice: "demo", confidence: 0.9, probabilities: { demo: 0.9 } },
+    "gate::routine_step": { type: "noul", noul: 0.95 },
+  },
+};
+
+const TOOL_CALL2_NO_FIT = {
+  model: "test",
+  answers: {
+    which: { type: "choice", choice: "demo", confidence: 0.4, probabilities: { demo: 0.4 } },
+    "fits::demo": { type: "noul", noul: 0.05 },
+  },
+};
+
+/** roster に demo スキル 1 件と、agents/ にエージェント定義を持つ偽の HOME を作る */
+function createAgentFixtureHome(agentFrontmatter: string, fileName = "helper"): string {
+  const home = createFixtureHome();
+  const agentsDir = join(home, ".claude", "agents");
+  mkdirSync(agentsDir, { recursive: true });
+  writeFileSync(
+    join(agentsDir, `${fileName}.md`),
+    ["---", agentFrontmatter, "---", "", "エージェント本文。"].join("\n"),
+  );
+  return home;
+}
+
 describe("suggest-skill フック", () => {
   test("TYPESAFE_API_KEY 未設定なら無出力で exit 0 で、ログにも何も書かない", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-nolog-"));
@@ -221,6 +257,307 @@ describe("suggest-skill フック", () => {
         },
       });
       expect(server.requestCount()).toBe(1);
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse の Bash で 5 章の形の request を組み立てて送る", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-bash-"));
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "Commit the staged changes", command: 'git commit -m "fix: x"' },
+          cwd: home,
+          session_id: "t1",
+        },
+        {
+          TYPESAFE_API_KEY: "sk-test",
+          TYPESAFE_BASE_URL: server.url,
+          HOME: home,
+          CLAUDE_PLUGIN_DATA: dataDir,
+        },
+      );
+      expect(result.exitCode).toBe(0);
+      const record = JSON.parse(
+        readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd(),
+      );
+      expect(record.event).toBe("PreToolUse");
+      expect(record.tool_name).toBe("Bash");
+      expect(record.prompt).toBe(
+        'The assistant is about to perform this action:\nCommit the staged changes\ngit commit -m "fix: x"',
+      );
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse の Agent は prompt を本体に使う", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-agent-"));
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Agent",
+          tool_input: {
+            description: "Write the plan",
+            prompt: "設計書から実装計画を書いてください",
+            subagent_type: "general-purpose",
+          },
+          cwd: home,
+          session_id: "t2",
+        },
+        {
+          TYPESAFE_API_KEY: "sk-test",
+          TYPESAFE_BASE_URL: server.url,
+          HOME: home,
+          CLAUDE_PLUGIN_DATA: dataDir,
+        },
+      );
+      const record = JSON.parse(
+        readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd(),
+      );
+      expect(record.tool_name).toBe("Agent");
+      expect(record.prompt).toBe(
+        "The assistant is about to perform this action:\nWrite the plan\n設計書から実装計画を書いてください",
+      );
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse で提案ありなら PreToolUse の hookEventName で行為向けの文面を出す", async () => {
+    const home = createFixtureHome();
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "Commit the staged changes", command: "git commit" },
+          cwd: home,
+          session_id: "t3",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          additionalContext:
+            "<skill_relevance>Relevant to the action you are about to take: demo. If it fits, invoke it with the Skill tool instead of proceeding ad hoc. Ignore this if it does not fit what you are actually doing.</skill_relevance>",
+        },
+      });
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse で gate_quiet なら stdout に何も出さない", async () => {
+    const home = createFixtureHome();
+    const server = startFakeServer([TOOL_CALL1_GATE_QUIET]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "List files", command: "ls typesafe/hooks" },
+          cwd: home,
+          session_id: "t4",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(result.stdout).toBe("");
+      expect(result.exitCode).toBe(0);
+      expect(server.requestCount()).toBe(1);
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse で no_fit なら stdout に何も出さない", async () => {
+    const home = createFixtureHome();
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, TOOL_CALL2_NO_FIT]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "Post to Slack", command: "curl -X POST https://slack.example" },
+          cwd: home,
+          session_id: "t5",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(result.stdout).toBe("");
+      expect(result.exitCode).toBe(0);
+      expect(server.requestCount()).toBe(2);
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("PreToolUse で command が無ければ skipped で API を呼ばない", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-nobody-"));
+    const result = await runHook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { description: "何かする" },
+        cwd: home,
+        session_id: "t6",
+      },
+      { ...UNREACHABLE, HOME: home, CLAUDE_PLUGIN_DATA: dataDir },
+    );
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    expect(record.outcome).toBe("skipped");
+    expect(record.event).toBe("PreToolUse");
+  });
+
+  test("サブエージェント内で agent_type が general-purpose なら提案する", async () => {
+    const home = createFixtureHome();
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "Commit", command: "git commit" },
+          cwd: home,
+          session_id: "t7",
+          agent_id: "agent-1",
+          agent_type: "general-purpose",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Relevant to the action you are about to take: demo");
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("サブエージェントの tools に Skill があれば提案する", async () => {
+    const home = createAgentFixtureHome(
+      "name: helper\ndescription: 手伝う\nmodel: sonnet\ntools: Read, Grep, Skill",
+    );
+    const server = startFakeServer([TOOL_CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { description: "Commit", command: "git commit" },
+          cwd: home,
+          session_id: "t8",
+          agent_id: "agent-2",
+          agent_type: "helper",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Relevant to the action you are about to take: demo");
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("サブエージェントの tools に Skill が無ければ API を呼ばず skipped", async () => {
+    const home = createAgentFixtureHome(
+      "name: reader\ndescription: 読むだけ\nmodel: sonnet\ntools: Read, Grep",
+      "reader",
+    );
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-noskill-"));
+    const result = await runHook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { description: "Commit", command: "git commit" },
+        cwd: home,
+        session_id: "t9",
+        agent_id: "agent-3",
+        agent_type: "reader",
+      },
+      { ...UNREACHABLE, HOME: home, CLAUDE_PLUGIN_DATA: dataDir },
+    );
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    expect(record.outcome).toBe("skipped");
+    expect(record.agent_type).toBe("reader");
+  });
+
+  test("サブエージェントの定義が見つからなければ API を呼ばず skipped", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-nodef-"));
+    const result = await runHook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { description: "Commit", command: "git commit" },
+        cwd: home,
+        session_id: "t10",
+        agent_id: "agent-4",
+        agent_type: "Explore",
+      },
+      { ...UNREACHABLE, HOME: home, CLAUDE_PLUGIN_DATA: dataDir },
+    );
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    expect(record.outcome).toBe("skipped");
+  });
+
+  test("PreToolUse で API に到達できなくても無出力で exit 0、ログに event が残る", async () => {
+    const home = createFixtureHome();
+    const dataDir = mkdtempSync(join(tmpdir(), "suggest-skill-pretool-error-"));
+    const result = await runHook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { description: "Commit", command: "git commit" },
+        cwd: home,
+        session_id: "t11",
+      },
+      { ...UNREACHABLE, HOME: home, CLAUDE_PLUGIN_DATA: dataDir },
+    );
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+    const record = JSON.parse(readFileSync(join(dataDir, "suggestions.jsonl"), "utf8").trimEnd());
+    expect(record.outcome).toBe("error");
+    expect(record.event).toBe("PreToolUse");
+    expect(record.tool_name).toBe("Bash");
+  });
+
+  test("UserPromptSubmit の既存の挙動は変わらない（提案ありの文面と hookEventName）", async () => {
+    const home = createFixtureHome();
+    const server = startFakeServer([CALL1_SUGGESTED, CALL2_ANSWER]);
+    try {
+      const result = await runHook(
+        {
+          hook_event_name: "UserPromptSubmit",
+          prompt: "demo スキルを使って",
+          cwd: home,
+          session_id: "t12",
+        },
+        { TYPESAFE_API_KEY: "sk-test", TYPESAFE_BASE_URL: server.url, HOME: home },
+      );
+      expect(JSON.parse(result.stdout)).toEqual({
+        hookSpecificOutput: {
+          hookEventName: "UserPromptSubmit",
+          additionalContext:
+            "<skill_relevance>Relevant to the current request: demo. Invoke it with the Skill tool if it fits. Ignore this if it does not fit what the user actually asked for.</skill_relevance>",
+        },
+      });
     } finally {
       server.stop();
     }
