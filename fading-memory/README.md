@@ -39,6 +39,44 @@
 `FADING_MEMORY_DIR` で複数プロジェクトが同じ保存先を共有している場合、両方のログが同じファイルに混ざる。`projectDir` がそのエントリを書いたセッションの cwd なので、これで発信元を切り分ける。
 - `/fading-memory:maintain`: 記憶の再構成（手動）
 
+## サンドボックスの設定
+
+Bash のサンドボックスが有効な環境では、次の許可がないとプラグインの一部が動かない。
+
+### 記憶の保存先への書き込み（必須）
+
+保存先が書き込み許可に入っていないと、記憶の作成も trash の掃除も失敗する。`~/.claude/settings.json`:
+
+```json
+{
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": ["~/.claude/fading-memory"]
+    }
+  }
+}
+```
+
+`FADING_MEMORY_DIR` で保存先を変えた場合は、この値も変更後のパスに合わせる。
+
+### 重複判定の API への接続（任意）
+
+`TYPESAFE_API_KEY` を設定して重複判定を使う場合は、`api.typesafe.ai` への外向き接続を許可する。
+
+```json
+{
+  "sandbox": {
+    "network": {
+      "allowedDomains": ["api.typesafe.ai"]
+    }
+  }
+}
+```
+
+許可がないと接続が拒否され、`scripts/check-duplicates.ts` は `typesafe=unavailable reason=http-403` を返して正常終了する。判定が止まるだけで保存は止まらないため、重複判定を使わないならこの設定は要らない。
+
+`allowedDomains` はスコープを越えてマージされるので、user 設定とプロジェクト設定のどちらに書いても既存の許可は失われない。
+
 ## 保存先の変更
 
 環境変数 `FADING_MEMORY_DIR` を設定すると、記憶データの保存先を変更できる。指定した値がそのままデータのルートになり、プロジェクトスラッグのサブディレクトリは挟まれない。
