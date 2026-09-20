@@ -12,6 +12,11 @@
 
 ## 開発ルール
 
+### リポジトリ運用
+
+このプロジェクトでは自動的にcommitとpushして良い。
+また並列して作業する場合はgit worktreeを使用する。作業後はmainにローカルでマージしmainをpushする。
+
 ### スキル作成
 - `<plugin>/skills/<skill-name>/SKILL.md` にフロントマター (`name`, `description`) を必ず記載
 - SKILL.md は 500 行以内を目標とする
