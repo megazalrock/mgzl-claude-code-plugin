@@ -8,7 +8,7 @@ export const config = {
   // 抽出プロンプトへ埋め込む会話本文の上限。トランスクリプト全文（数 MB）を子に読ませると
   // 読み取りループだけでタイムアウトするため、ここで前処理側の予算を固定する
   transcriptMaxBytes: 200 * 1024,
-  // 重複記憶の判定閾値。issue #54 の評価実験（typesafe/eval/memory-dedup）の実測から導いた値で、
+  // 重複記憶の判定閾値。issue #54 の評価実験（typesafe/eval/memory-dedup。削除済みのため git 履歴を参照）の実測から導いた値で、
   // none 確率と confidence の分布を見て「迷いなく新規」「迷いなく重複」を切り出している
   dedup: {
     // none 確率がこれ以上なら新規

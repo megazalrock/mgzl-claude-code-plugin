@@ -14,7 +14,7 @@
 
 キーが無い、ネットワークやタイムアウトで失敗した、応答の形が想定外だった場合はスクリプトが `typesafe=unavailable reason=...` を 1 行返して正常終了し、Claude は従来どおり記憶一覧を目視して判断する。判定を止めても保存は止まらない。
 
-判定閾値（none 確率 0.45 以上で新規、0.30 以下かつ confidence 0.55 以上で重複、その間は曖昧）は issue #54 の評価実験 `typesafe/eval/memory-dedup` の実測から導いた値で、`hooks/lib/config.ts` の `config.dedup` に置いてある。criteria は 1 問 255 件が上限（[choice の仕様](https://docs.typesafe.ai/primitives/choice)）のため、記憶が 254 件を超えたら質問を塊に分け、塊ごとの none 確率の最小値で統合する。
+判定閾値（none 確率 0.45 以上で新規、0.30 以下かつ confidence 0.55 以上で重複、その間は曖昧）は issue #54 の評価実験 `typesafe/eval/memory-dedup` の実測から導いた値で、`hooks/lib/config.ts` の `config.dedup` に置いてある。この評価実験は typesafe プラグインごと削除されたため、実測の内容を追う場合は git 履歴を参照する。criteria は 1 問 255 件が上限（[choice の仕様](https://docs.typesafe.ai/primitives/choice)）のため、記憶が 254 件を超えたら質問を塊に分け、塊ごとの none 確率の最小値で統合する。
 - `~/.claude/fading-memory/<スラッグ>/session-end.log`: 抽出 1 回ごとの統計を追記する JSON Lines
 
 ## SessionEnd の抽出フロー

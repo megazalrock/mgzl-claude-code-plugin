@@ -1,7 +1,0 @@
-{
-  "name": "typesafe",
-  "description": "UserPromptSubmit フックで TypeSafe の Jev にスキル選択を問い合わせ、そのターンに関係するスキル 1 件を提案として注入する",
-  "author": {
-    "name": "otto"
-  }
-}

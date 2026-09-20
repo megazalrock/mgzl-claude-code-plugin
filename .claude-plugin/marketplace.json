@@ -23,11 +23,6 @@
       "name": "ja-lint",
       "source": "./ja-lint",
       "description": "Claude Code が書く日本語（コード内コメント・コミットメッセージ・PR のタイトルと本文）を textlint で検査し、違反を hook で差し戻す"
-    },
-    {
-      "name": "typesafe",
-      "source": "./typesafe",
-      "description": "UserPromptSubmit フックで TypeSafe の Jev にスキル選択を問い合わせ、そのターンに関係するスキル 1 件を提案として注入する"
     }
   ]
 }
