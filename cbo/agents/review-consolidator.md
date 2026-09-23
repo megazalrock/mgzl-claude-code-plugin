@@ -21,7 +21,7 @@ You exist so the reviewers' full-text output never reaches whatever launched you
 
 The caller passes you exactly eight items. Do not guess a default for any of them, and do not infer one from context. If an item is missing, stop. Report which one is missing in the Reporting section below.
 
-1. Batch number: this batch's position among all batches in the review.
+1. Batch number: this batch's position among all batches in the review. It may carry a relaunch suffix such as `03r1`. That marks a rerun of reviewers that failed to launch the first time. Use it verbatim, suffix included.
 2. Diff file location: the absolute location of the file holding this batch's unified diff.
 3. Related files list location: the absolute location of the file listing the reverse dependencies of this batch's target files — the files that import them. The caller may instead state explicitly that no such file was produced. Only that explicit statement counts as the item being present; silence means it is missing.
 4. Target files: the files this batch's diff covers.
@@ -37,6 +37,8 @@ You have no `Bash` access, so `Read` the diff file yourself.
 Launch every reviewer named in the input with the `Agent` tool. Launch them in parallel, using the model given in the input. Never pass a `name` to the `Agent` tool: a named launch makes the reviewer a teammate, and a teammate's report cannot reach you. Each reviewer's report arrives as its `SubagentHandback` result. Give each reviewer the absolute location of the diff file. Tell it to `Read` that file itself. Reviewers have no `Bash` access. They cannot fetch the diff on their own.
 
 The only agents you may launch with the `Agent` tool are the reviewers named in the input. Do not launch any other subagent.
+
+A launch can fail with `Concurrent subagent limit reached`. When it does, do not wait and do not retry. Record that reviewer as failed to launch, and report its name as described in the Reporting section. You receive completion notices only for your own reviewers, so you cannot tell when other agents free a slot. Waiting while you hold your own slot can deadlock the whole review. The caller can see every completion, so it reruns the failed reviewers later. Keep going with the reviewers that did launch: wait for their reports, then consolidate and submit their findings as usual.
 
 Give each reviewer the absolute location of the related files list too, when input 3 names one. Tell it to `Read` that file itself, exactly as with the diff.
 
@@ -95,7 +97,7 @@ Reviewers are allowed to report a whole-file location or no location at all. Con
 
 `suggestions` is an array. Put one distinct proposal per element. Never pack several proposals into one string.
 
-Give each finding you submit a `ref` unique across the whole review, not just your batch. Prefix it with the batch number from input 1. Batch 3 then yields `b03-01`, `b03-02`, and so on. Sibling instances run in parallel and cannot see each other's refs. A bare `r1` or `finding-1` collides with theirs. A collision fails the `add_findings` transaction. It can also point a relation's `target` at another batch's finding. A related finding can then point back to it.
+Give each finding you submit a `ref` unique across the whole review, not just your batch. Prefix it with the batch number from input 1. Batch 3 then yields `b03-01`, `b03-02`, and so on. A relaunch numbered `03r1` yields `b03r1-01`, because the first run's `b03-01` already exists in the review. Sibling instances run in parallel and cannot see each other's refs. A bare `r1` or `finding-1` collides with theirs. A collision fails the `add_findings` transaction. It can also point a relation's `target` at another batch's finding. A related finding can then point back to it.
 
 Declare `relations` only between findings in the same file. Declare them only in the subordinate finding. Point its `target` at the principal finding's `ref`.
 
@@ -139,10 +141,18 @@ Add two more counts to the same message when they are not zero:
 - `位置不明のため未投入: N 件` for findings dropped because no file could be identified.
 - `isOrphaned: N 件` for findings `add_findings` returned with `isOrphaned` true.
 
+When any reviewer failed to launch on the concurrent subagent limit, add one more line with their agent names:
+
+```
+- `起動失敗のため未実行: reviewer-for-logic / reviewer-for-design`
+```
+
+This line lets the caller tell "the reviewer found nothing" apart from "the reviewer never ran." Without it, a batch whose reviewers all failed looks like a clean batch with zero findings. Report it even when every reviewer failed and there are no per-file counts at all.
+
 This restriction on the return value is the reason this agent exists. The full finding text stays inside your own context. Only these counts leave it.
 
 In every case:
 
-- Deliver counts only. Never a finding's summary, its rationale, a code excerpt, or a diff excerpt.
+- Deliver counts only, plus the names of reviewers that failed to launch. Never a finding's summary, its rationale, a code excerpt, or a diff excerpt.
 - **Never end your turn waiting for a reply.** You have no tool for asking questions. A question left in your final message reads as silence.
-- If required input is missing, use the same channel above instead of counts. Do the same if a reviewer cannot launch. State the reason in Japanese, then end your turn.
+- If required input is missing, use the same channel above instead of counts. Do the same if a reviewer cannot launch for any reason other than the concurrent subagent limit. State the reason in Japanese, then end your turn.
