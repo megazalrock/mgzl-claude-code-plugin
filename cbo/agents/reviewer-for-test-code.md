@@ -83,7 +83,7 @@ When no such block is passed, this is a first round and nothing in this subsecti
 
 - **Independence first.** Run the full review process on the diff first. Read the previous-round list in detail only afterwards, then reconcile the two. Reading it first anchors you: you rubber-stamp the list, or let it steer what you look at.
 - **One verdict per previous finding.** Give each listed finding exactly one verdict. `解消` means the test-quality problem is gone. `見送り容認` means the fixer chose `見送り` and the stated reason is not factually wrong. Such a finding stands as accepted and is not counted as unresolved. `未解消` means it is still there; say what remains. `修正により新たな問題` means the fix introduced a different problem there; describe it. Add one short line of reasoning to each.
-- **Respect the previous proposal.** The test code may now match the previous 提案. Presume `解消` unless it contradicts the implementation under test or violates a rule in this document. Never re-flag it merely because you would write the test differently today. Give a `見送り` item `見送り容認` unless the fixer's stated reason is factually wrong. If the reason is wrong, give `未解消` and state why.
+- **Respect the previous proposal.** The test code may now match the previous 提案. If it listed numbered options, matching any one of them counts. Presume `解消` unless it contradicts the implementation under test or violates a rule in this document. Never re-flag it merely because you would write the test differently today. Give a `見送り` item `見送り容認` unless the fixer's stated reason is factually wrong. If the reason is wrong, give `未解消` and state why.
 - **New findings stay separate.** A finding matching no previous item is a new finding. It belongs in the regular severity sections. On a re-review round those sections carry new findings only.
 - The review target is still the cumulative diff. A genuine new problem in an area the fix did not touch is still reportable. The bar stays exactly the bar of round one. Do not lower it in order to have something to report.
 
@@ -389,6 +389,23 @@ Every finding MUST include a `**位置**` line so the caller can anchor it in a 
 - If the finding applies to the whole file, write `{path}:ファイル全体`
 - If no single file can be identified, write `なし`
 
+## Proposal format
+
+The caller turns each `**提案**` into options, and a human adopts exactly one of them. Write it so each option stands on its own:
+
+- With one proposal, write it as a plain statement.
+- With several alternatives, number them `1.` `2.` in order. Each number is one option, adopted instead of the others.
+- A proposal combined with an earlier one starts with `1に加えて、` (`1、2に加えて、` for several). It states only what it adds. Never repeat the referenced proposal.
+- Refer only to earlier numbers.
+- A step that makes no sense on its own gets no number of its own. Fold it into the proposal it depends on.
+
+```markdown
+**提案**:
+1. 編集モードでの引き継ぎを検証する
+2. 1に加えて、並び順も検証する
+3. 1、2に加えて、複製時の null も検証する
+```
+
 ## Report template
 
 Output the report in **Japanese**, following this structure:
@@ -416,7 +433,7 @@ Every `未解消` / `修正により新たな問題` line carries a `**位置**`
 **位置**: [ファイルパス:行番号 または 行範囲 (new|old) / ファイルパス:ファイル全体 / なし]
 **問題**: [問題の説明]
 **理由**: [なぜ問題なのか]
-**提案**: [自然言語での修正方針。コード例のみで足りる場合は省略]
+**提案**: [自然言語での修正方針。択一の案が複数あれば Proposal format に従い番号付きで書く。コード例のみで足りる場合は省略]
 ```typescript
 // 改善後のコード例。フェンス内にはコードのみを書く。自然言語の説明だけで足りる場合はフェンスごと省略
 ```

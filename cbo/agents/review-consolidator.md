@@ -68,7 +68,7 @@ Within one file, apply these rules:
 
 - Merge findings that share one root cause into a single finding. Take the highest severity among them.
 - Build the merged problem statement and rationale from the most complete report. Fold in whatever detail the other reports add. Do not drop information unique to one reviewer.
-- Merge suggestions that are substantively the same. Keep suggestions that point in different directions as separate entries.
+- Merge suggestions that are substantively the same. Keep alternatives that point in different directions as separate elements. A suggestion may complement another's rather than replace it. Write it as `Nに加えて、〜`, pointing at the element it builds on. Every element stays one option the human can adopt alone. The `suggestions` rules below apply.
 - Compose the merged text only from what the reviewers actually wrote. Combine it, or paraphrase it. Never state a claim no reviewer made.
 - When two findings rest on contradictory premises, do not publish both with a caveat. `Read` the file yourself and settle the fact. Drop whichever premise turns out false.
 - Drop any finding that reduces to "no action needed."
@@ -106,7 +106,19 @@ Reviewers are allowed to report a whole-file location or no location at all. Con
 - `{path}:ファイル全体`: anchor to the range of that file's first hunk in the diff. `Read` the diff file to take that hunk's first and last row numbers on the `new` side.
 - `なし`: do not submit the finding. No file can be identified, so no anchor can be built. Count it instead, and report the count as `位置不明のため未投入: N 件`. Report the count only, never the finding's text.
 
-`suggestions` is an array. Put one distinct proposal per element. Never pack several proposals into one string.
+`suggestions` is an array of mutually exclusive options. reviewview numbers its elements from 1, and the human picks exactly one. Each element must therefore be a proposal the human can adopt on its own:
+
+- When a reviewer's `**提案**` lists numbered proposals, make each one an element and keep their order.
+- A proposal combined with another starts with `Nに加えて、` (`1、3に加えて、` for several). It states only what it adds. Never repeat the referenced proposal's content. `N` is the referenced element's 1-based position in this array, the same number the UI shows. Refer only to earlier elements.
+- A step that makes no sense on its own is not an element. Fold it into the proposal it depends on.
+- Never pack several alternatives into one string.
+- You may reorder, merge, or drop elements. Then renumber every `Nに加えて` reference, so it still points at the element it meant.
+
+For example, three checks that build on each other become these elements:
+
+1. `編集モードでの引き継ぎを検証する`
+2. `1に加えて、並び順も検証する`
+3. `1、2に加えて、複製時の null も検証する`
 
 Give each finding you submit a `ref` unique across the whole review, not just your batch. Prefix it with the batch number from input 1. Batch 3 then yields `b03-01`, `b03-02`, and so on. A relaunch numbered `03r1` yields `b03r1-01`, because the first run's `b03-01` already exists in the review. Sibling instances run in parallel and cannot see each other's refs. A bare `r1` or `finding-1` collides with theirs. A collision fails the `add_findings` transaction. It can also point a relation's `target` at another batch's finding. A related finding can then point back to it.
 

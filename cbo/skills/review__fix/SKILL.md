@@ -46,7 +46,7 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
   ## 指摘内容
   - summary: {summary}
   - rationale: {rationale}
-  - suggestions: {suggestions}
+  - suggestions: {suggestions を 1 始まりの番号付きで列挙}
   - anchor: {anchor}
 
   ## 人間が検証してほしい観点（triageReason より）  <!-- triageReason が非 null の指摘に限り挿入 -->
@@ -66,9 +66,13 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
 5. 修正対象の指摘を把握し、並列に修正する
   - `triageReason` に技術的な理由で従えない指摘は修正せず、`report_fix` を `outcome: blocked` で呼ぶ。`message` に理由を書いて、この指摘を以降の対象から除く
   - `suggestions` が 2 件以上あり `triageReason` がない指摘は、`-y` の有無にかかわらず AskUserQuestion で採用する提案を確認する
-    - 選択肢には `suggestions` の各要素を提示する
+    - 選択肢には `suggestions` の各要素を、1 始まりの番号を付けて提示する
     - ユーザーが採用案を選ばなかった場合は、その指摘を「採用案未指定によりスキップ」として対象から外し、最終レポートに載せる
   - 選んだ提案は、以降その指摘の `triageReason` として扱う
+  - `triageReason` が「1に加えて、〜」のように `suggestions` の番号を参照している場合は、参照先の要素も実装対象に含める
+    - 番号は `suggestions` の 1 始まりの位置を指す。参照先がさらに別の要素を参照していれば、それもたどって含める
+    - 選んだ提案に限らず、人間が自由記述した `triageReason` の番号の参照も同様に扱う
+    - 展開した要素は、下記プロンプトの「参照している提案」に列挙する
   - **各指摘について、起動する実装エージェント種別を判定する**（起動するのは 1 指摘につき 1 種類、集合ではない）
     - **修正対象がテストコードの場合**: `@test-implementer`
     - **それ以外の場合**: `@code-implementer`
@@ -84,11 +88,14 @@ argument-hint: [f-xxxxxxxx ...] [-y で確認をスキップ]
   ## 指摘内容
   - summary: {summary}
   - rationale: {rationale}
-  - suggestions: {suggestions}
+  - suggestions: {suggestions を 1 始まりの番号付きで列挙}
   - anchor: {anchor}
 
   ## 人間からの対応方針（triageReason より）  <!-- triageReason が非 null の指摘に限り挿入 -->
   {triageReason の文字列をそのまま貼り付ける}。
+
+  参照している提案（この指示の一部として実装する）:  <!-- triageReason が suggestions の番号を参照している場合に限り挿入 -->
+  - {番号}. {参照先の suggestions 要素}
 
   この指示を最優先で解釈してください。`suggestions` の内容と食い違う場合は、こちらの指示を優先します。
 
