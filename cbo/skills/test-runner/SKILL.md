@@ -1,7 +1,7 @@
 ---
 name: test-runner
 description: テストを実行する場合に利用するスキルです。`vitest` を実行したいとき、コマンドの実行の代わりとしてこのスキルを利用します。`--coverage` でテスト対象を絞ったカバレッジ取得もできます。「テストを実行して」「<ファイル名>のテストを実行」「カバレッジを取得して」「カバレッジを計測」などの依頼時に使用する。
-argument-hint: [test path] [--coverage]
+argument-hint: [test path...] [--coverage]
 allowed-tools: Bash(bun run */scripts/run-test.ts *)
 model: sonnet
 ---
@@ -34,10 +34,10 @@ model: sonnet
 ## `run-test.ts` の実行方法
 
 ```bash
-bun run "${CLAUDE_SKILL_DIR}/scripts/run-test.ts" <テストパス> [--coverage]
+bun run "${CLAUDE_SKILL_DIR}/scripts/run-test.ts" <テストパス...> [--coverage]
 ```
 
-- `<テストパス>` (必須): テスト対象のファイルまたはディレクトリのパス
-- `--coverage` (任意): カバレッジを取得し、テキスト表として標準出力に出力します。ルート相当のパスを指定した場合はエラーになります
+- `<テストパス...>` (必須): テスト対象のファイルまたはディレクトリのパスを1つ以上。空白区切りで複数指定できます
+- `--coverage` (任意): カバレッジを取得し、テキスト表として標準出力に出力します。いずれかにルート相当のパスを指定した場合はエラーになります
 - テストパスを指定せずに実行するとエラーになります
 - 全テストの実行は非常に時間がかかるため、必ず対象を絞って実行してください

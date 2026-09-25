@@ -4,31 +4,45 @@ import { buildVitestArgs, isRootLikePath, parseArgs } from "./run-test";
 describe("parseArgs", () => {
   it("--coverage が先頭でもテストパスを取り出す", () => {
     expect(parseArgs(["--coverage", "pages/foo.test.ts"])).toStrictEqual({
-      testPath: "pages/foo.test.ts",
+      testPaths: ["pages/foo.test.ts"],
       coverage: true,
     });
   });
 
   it("--coverage が末尾でもテストパスを取り出す", () => {
     expect(parseArgs(["pages/foo.test.ts", "--coverage"])).toStrictEqual({
-      testPath: "pages/foo.test.ts",
+      testPaths: ["pages/foo.test.ts"],
       coverage: true,
     });
   });
 
   it("--coverage が無ければ coverage は false", () => {
     expect(parseArgs(["pages/foo.test.ts"])).toStrictEqual({
-      testPath: "pages/foo.test.ts",
+      testPaths: ["pages/foo.test.ts"],
       coverage: false,
     });
   });
 
-  it("引数が無ければ testPath は undefined", () => {
-    expect(parseArgs([])).toStrictEqual({ testPath: undefined, coverage: false });
+  it("複数のテストパスを指定順のまま全て取り出す", () => {
+    expect(parseArgs(["pages/foo.test.ts", "pages/bar/", "composables/baz.test.ts"])).toStrictEqual({
+      testPaths: ["pages/foo.test.ts", "pages/bar/", "composables/baz.test.ts"],
+      coverage: false,
+    });
   });
 
-  it("--coverage だけなら testPath は undefined", () => {
-    expect(parseArgs(["--coverage"])).toStrictEqual({ testPath: undefined, coverage: true });
+  it("--coverage がテストパスの間にあっても全てのテストパスを取り出す", () => {
+    expect(parseArgs(["pages/foo.test.ts", "--coverage", "pages/bar/"])).toStrictEqual({
+      testPaths: ["pages/foo.test.ts", "pages/bar/"],
+      coverage: true,
+    });
+  });
+
+  it("引数が無ければ testPaths は空", () => {
+    expect(parseArgs([])).toStrictEqual({ testPaths: [], coverage: false });
+  });
+
+  it("--coverage だけなら testPaths は空", () => {
+    expect(parseArgs(["--coverage"])).toStrictEqual({ testPaths: [], coverage: true });
   });
 });
 
@@ -53,7 +67,7 @@ describe("isRootLikePath", () => {
 
 describe("buildVitestArgs", () => {
   it("カバレッジ無しの引数を組み立てる", () => {
-    expect(buildVitestArgs("pages/foo.test.ts", false)).toStrictEqual([
+    expect(buildVitestArgs(["pages/foo.test.ts"], false)).toStrictEqual([
       "vitest",
       "run",
       "--reporter",
@@ -65,7 +79,7 @@ describe("buildVitestArgs", () => {
   });
 
   it("カバレッジ有りの引数を組み立てる", () => {
-    expect(buildVitestArgs("pages/foo.test.ts", true)).toStrictEqual([
+    expect(buildVitestArgs(["pages/foo.test.ts"], true)).toStrictEqual([
       "vitest",
       "run",
       "--reporter",
@@ -76,6 +90,22 @@ describe("buildVitestArgs", () => {
       "--coverage.reporter=text",
       "--coverage.clean=false",
       "pages/foo.test.ts",
+    ]);
+  });
+
+  it("複数のテストパスを全て末尾に並べる", () => {
+    expect(buildVitestArgs(["pages/foo.test.ts", "pages/bar/"], true)).toStrictEqual([
+      "vitest",
+      "run",
+      "--reporter",
+      "dot",
+      "--maxWorkers",
+      "6",
+      "--coverage",
+      "--coverage.reporter=text",
+      "--coverage.clean=false",
+      "pages/foo.test.ts",
+      "pages/bar/",
     ]);
   });
 });
