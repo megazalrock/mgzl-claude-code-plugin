@@ -1,7 +1,10 @@
 /** fading-memory の動作定数。寿命計算・trash 保持・headless モデルをここに集約する */
 export const config = {
   // 明示的に remember された記憶は自動抽出より長く index に残す
-  baseTtlDays: { auto: 15, manual: 30 },
+  // #63: 旧値(auto 15日)では busy なプロジェクト(arrangement-env/front)で index 常駐が約230件に膨張し、
+  // 大半が score 0 のままだった。score 1 化した記憶の実測では約87%が作成から10日以内に有効判定されており、
+  // auto 10日は有効になる記憶の取りこぼしを抑えつつ index を約6割に縮小できる。manual は auto の2倍を維持
+  baseTtlDays: { auto: 10, manual: 20 },
   perScoreDays: 7,
   trashRetentionDays: 30,
   headlessModel: "sonnet",

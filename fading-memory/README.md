@@ -5,7 +5,7 @@
 - 設計書: `docs/superpowers/specs/2026-08-26-fading-memory-design.md`
 - データ配置: `~/.claude/fading-memory/<プロジェクトスラッグ>/`（環境変数 `FADING_MEMORY_DIR` で変更可能）
 - SessionStart: trash の掃除 → 目次生成（有効期限内の記憶のみ）→ コンテキスト注入
-- 寿命: `expiresAt = (lastReferenced ?? created) + (baseTtlDays[origin] + score × 7日)`。基本 TTL は自動抽出 15 日・remember 30 日で、役立ったと判定されるたびに起点が前進し score が 1 増える。期限を過ぎた記憶は削除されず index.md に載らなくなるだけで、更新または加点で復帰する。`/fading-memory:remember-permanent`（人間が明示的に呼び出したときだけ動くスキル）で作成した記憶は permanent となり、有効期限を持たず index.md から外れず maintain でも削除されない
+- 寿命: `expiresAt = (lastReferenced ?? created) + (baseTtlDays[origin] + score × 7日)`。基本 TTL は自動抽出 10 日・remember 20 日で、役立ったと判定されるたびに起点が前進し score が 1 増える。期限を過ぎた記憶は削除されず index.md に載らなくなるだけで、更新または加点で復帰する。`/fading-memory:remember-permanent`（人間が明示的に呼び出したときだけ動くスキル）で作成した記憶は permanent となる。有効期限を持たず index.md から外れず、maintain でも削除されない
 - SessionEnd: 軽量モデルで記憶抽出 + 役立ち判定（バックグラウンド）
 
 ## remember の重複判定

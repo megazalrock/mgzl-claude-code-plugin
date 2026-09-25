@@ -1,22 +1,32 @@
 ---
 name: list
-description: fading-memory の記憶データを score（セッションで実際に役立ったと判定された累積回数）の降順で一覧表示する。各記憶の有効期限までの残り日数と最終参照日を添えて、どれが定着しどれが忘却されかけているかを示す。「記憶の一覧を見せて」「記憶をスコア順に」「どんな記憶がある？」「fading-memory の一覧」などの依頼時に使用する。
+description: fading-memory の記憶データを score（セッションで実際に役立ったと判定された累積回数）の降順で一覧表示する。既定では現在 index.md に載っている記憶だけを、`--all` 指定時は退色した記憶も含めた全件を対象にする。各記憶の有効期限までの残り日数と最終参照日を添えて、どれが定着しどれが忘却されかけているかを示す。「記憶の一覧を見せて」「記憶をスコア順に」「どんな記憶がある？」「fading-memory の一覧」「退色した記憶も含めて一覧を見せて」などの依頼時に使用する。
+argument-hint: "[--all]"
 ---
 
 fading-memory の記憶データを score の降順で一覧表示する。score は「セッションで実際に役立った」と判定された累積回数であり、高いほど定着している記憶を意味する。
 
+既定では index.md に載っている（有効期限内の）記憶だけを表示する。`--all` を指定すると、退色して index.md から外れた記憶も含めて全件を表示する。
+
 ## 手順
 
-1. 記憶の一覧を取得する:
-   `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}"`
-   - 1行目は `total=<件数>`。以降は1件1行の key=value 形式（score / slug / remaining / lastReferenced / permanent / origin / title）で score の降順に並ぶ
-   - `remaining` は有効期限までの残り日数。`infinite` は permanent（期限なし）、負値は既に退色して index.md に載っていない記憶を意味する（ファイルは残っており、更新または加点されれば復帰する）
+1. 表示モードを決める。次のどちらかに当てはまる場合だけ「全件モード」とし、それ以外はすべて「既定モード」とする
+   - `$ARGUMENTS` に `--all` という文字列が含まれている
+   - ユーザーが依頼文で、退色した記憶・期限切れの記憶・全件を含めるよう明示的に求めている
+2. 記憶の一覧を取得する。モードに応じて次のどちらか一方だけを実行する:
+   - 既定モード: `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}"`
+   - 全件モード: `bun run "${CLAUDE_SKILL_DIR}/scripts/list-memories.ts" "${CLAUDE_PROJECT_DIR}" --all`
+   - `$ARGUMENTS` のうち `--all` 以外の文字列はスクリプトに渡さない
+   - 1行目は `total=<件数>` で、以降に出力される記憶の件数（既定モードでは index.md に載っている件数、全件モードでは退色した記憶を含む全件数）
+   - 2行目以降は1件1行の key=value 形式で score の降順に並ぶ。キーは score / slug / remaining / lastReferenced / permanent / origin / title
+   - `remaining` は有効期限までの残り日数。`infinite` は permanent（期限なし）を意味する。0 以下の値は全件モードでのみ現れ、既に退色して index.md に載っていない記憶を意味する（ファイルは残っており、更新または加点されれば復帰する）
    - `origin` は記憶の出自。`auto` は SessionEnd の自動抽出、`manual` は remember スキルによる保存
    - `lastReferenced=null` は一度も「役立った」と判定されていない記憶を意味する
    - `malformed=` の行があれば件数とファイル名だけを報告する（修復・削除はしない）
-2. ユーザーに報告する。スクリプトの出力はそのまま貼らず、次の構成にまとめる:
-   - 冒頭1行に、総件数と score の分布（最高 score と score>0 の件数）
+3. ユーザーに報告する。スクリプトの出力はそのまま貼らず、次の構成にまとめる:
+   - 冒頭1行に、表示モード（既定モードなら「index.md に載っている記憶」、全件モードなら「退色した記憶を含む全件」）と、総件数と score の分布（最高 score と score>0 の件数）
    - 続けて score の降順に1件1行のリスト。各行には score・残り日数・title を必ず含め、slug は title の後に括弧書きで添える
-   - リストの後に1行、退色の見通しを添える。`remaining` が 7 以下の記憶があればその slug を挙げて「まもなく index.md から外れる」と伝え、1件も無ければ該当が無い旨を伝える
-   - 記憶が0件なら、その旨だけを伝える
+   - リストの後に1行、退色の見通しを添える。`remaining` が 1 以上 7 以下の記憶があればその slug を挙げて「まもなく index.md から外れる」と伝え、1件も無ければ該当が無い旨を伝える
+   - 全件モードで `remaining` が 0 以下の記憶があれば、既に index.md から外れている記憶としてその件数を添える
+   - 記憶が0件なら、その旨だけを伝える。既定モードで0件の場合は、`--all` を付ければ退色した記憶も確認できることを添える
    - Markdown のテーブルは使わずリストで書く

@@ -60,7 +60,7 @@ describe("renderIndex", () => {
   });
 
   test("期限ちょうどの記憶は載せない", () => {
-    const now = CREATED_MS + 15 * DAY;
+    const now = CREATED_MS + 10 * DAY;
     expect(renderIndex([mem("edge", {})], now)).not.toContain("edge");
   });
 });

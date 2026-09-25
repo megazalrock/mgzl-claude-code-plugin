@@ -1,9 +1,13 @@
 import { remainingDays } from "../../../hooks/lib/expiry.ts";
+import { visibleMemories } from "../../../hooks/lib/index-gen.ts";
 import { ensureDirs, loadMemories } from "../../../hooks/lib/maintenance.ts";
 import { dataPaths } from "../../../hooks/lib/paths.ts";
 import { sortByScore } from "../../../hooks/lib/ranking.ts";
 
-const projectDir = process.argv[2] ?? process.cwd();
+// SKILL.md は --all をパスの前後どちらに置いても渡しうるため、位置に依存せず取り出す
+const args = process.argv.slice(2);
+const showAll = args.includes("--all");
+const projectDir = args.find((a) => a !== "--all") ?? process.cwd();
 
 const paths = dataPaths(projectDir);
 ensureDirs(paths);
@@ -12,9 +16,12 @@ const { memories, malformed } = loadMemories(paths);
 // 全件で同一の基準時刻を使い、行ごとに残り日数がずれないようにする
 const now = Date.now();
 
-console.log(`total=${memories.length}`);
+// 既定では index.md に載っている記憶だけを出す。絞り込み条件は目次生成と共有し、一覧と目次の食い違いを防ぐ
+const targets = showAll ? memories : visibleMemories(memories, now);
+
+console.log(`total=${targets.length}`);
 // title は空白を含みうるため行末に置く
-for (const m of sortByScore(memories)) {
+for (const m of sortByScore(targets)) {
   const remain = remainingDays(m.meta, now);
   const remaining = remain === Infinity ? "infinite" : String(remain);
   const lastReferenced =
