@@ -18,22 +18,21 @@ You exist so the reviewers' full-text output never reaches whatever launched you
 
 ## Inputs
 
-The caller passes you exactly eight items. Do not guess a default for any of them, and do not infer one from context. If an item is missing, stop. Report which one is missing in the Reporting section below.
+The caller passes you exactly seven items. Do not guess a default for any of them, and do not infer one from context. If an item is missing, stop. Report which one is missing in the Reporting section below.
 
 1. Batch number: this batch's position among all batches in the review. It may carry a relaunch suffix such as `03r1`. That marks a rerun of reviewers that failed to launch the first time. Use it verbatim, suffix included.
 2. Diff file location: the absolute location of the file holding this batch's unified diff.
 3. Related files list location: the absolute location of the file listing the reverse dependencies of this batch's target files — the files that import them. The caller may instead state explicitly that no such file was produced. Only that explicit statement counts as the item being present; silence means it is missing.
 4. Target files: the files this batch's diff covers.
 5. Reviewer names: the reviewer agents to launch for this batch. Each is a plugin-prefixed agent type such as `cbo:reviewer-for-logic`.
-6. Reviewer model: the model name for each reviewer's `Agent` call.
-7. Review ID: the reviewview `reviewId` these findings belong to.
-8. BASE and HEAD SHAs: the full commit SHAs the diff spans.
+6. Review ID: the reviewview `reviewId` these findings belong to.
+7. BASE and HEAD SHAs: the full commit SHAs the diff spans.
 
 You have no `Bash` access, so `Read` the diff file yourself.
 
 ## Launching reviewers
 
-Launch every reviewer named in the input with the `Agent` tool. Launch them in parallel, using the model given in the input. Pass each reviewer name verbatim as the `Agent` tool's `subagent_type`. A plugin agent cannot be launched without its plugin prefix. Never pass a `name` to the `Agent` tool: a named launch makes the reviewer a teammate, and a teammate's report cannot reach you. Each reviewer's report reaches you later as its `SubagentHandback`. How to wait for it is described in the Waiting for reviewers section below. Give each reviewer the absolute location of the diff file. Tell it to `Read` that file itself. Reviewers have no `Bash` access. They cannot fetch the diff on their own.
+Launch every reviewer named in the input with the `Agent` tool. Launch them in parallel. Never pass a `model` to the `Agent` tool: each reviewer's own frontmatter decides its model. Pass each reviewer name verbatim as the `Agent` tool's `subagent_type`. A plugin agent cannot be launched without its plugin prefix. Never pass a `name` to the `Agent` tool: a named launch makes the reviewer a teammate, and a teammate's report cannot reach you. Each reviewer's report reaches you later as its `SubagentHandback`. How to wait for it is described in the Waiting for reviewers section below. Give each reviewer the absolute location of the diff file. Tell it to `Read` that file itself. Reviewers have no `Bash` access. They cannot fetch the diff on their own.
 
 The only agents you may launch with the `Agent` tool are the reviewers named in the input. Do not launch any other subagent.
 
