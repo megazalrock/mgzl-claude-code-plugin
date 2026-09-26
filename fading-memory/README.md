@@ -37,7 +37,7 @@
 `error.log` は `<ISO タイムスタンプ> [<projectDir>] <本文>` の 1 行 1 エントリ。
 
 `FADING_MEMORY_DIR` で複数プロジェクトが同じ保存先を共有している場合、両方のログが同じファイルに混ざる。`projectDir` がそのエントリを書いたセッションの cwd なので、これで発信元を切り分ける。
-- `/fading-memory:maintain`: 記憶の再構成（手動）
+- `/fading-memory:maintain`: 記憶の再構成（手動）。既定では index.md に載っている記憶だけを検証し、`--all` を付けると退色した記憶も含める
 
 ## サンドボックスの設定
 

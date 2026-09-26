@@ -3,7 +3,7 @@ import { renderIndex } from "../../../hooks/lib/index-gen.ts";
 import { ensureDirs, loadMemories } from "../../../hooks/lib/maintenance.ts";
 import { dataPaths } from "../../../hooks/lib/paths.ts";
 
-const paths = dataPaths(process.cwd());
+const paths = dataPaths(process.argv[2] ?? process.cwd());
 ensureDirs(paths);
 writeFileSync(paths.indexFile, renderIndex(loadMemories(paths).memories, Date.now()));
 

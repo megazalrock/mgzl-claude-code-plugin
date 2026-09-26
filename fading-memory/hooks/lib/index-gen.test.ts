@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MemoryMeta } from "./frontmatter.ts";
-import { renderIndex, sortForIndex, visibleMemories } from "./index-gen.ts";
+import { renderIndex, selectTargets, sortForIndex, visibleMemories } from "./index-gen.ts";
 import type { LoadedMemory } from "./maintenance.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -71,5 +71,37 @@ describe("visibleMemories", () => {
     const list = [mem("faded", {}), mem("keep", { permanent: true })];
     expect(visibleMemories(list, now).map((m) => m.slug)).toEqual(["keep"]);
     expect(list.map((m) => m.slug)).toEqual(["faded", "keep"]);
+  });
+});
+
+describe("selectTargets", () => {
+  const now = CREATED_MS + 400 * DAY;
+  const list = [
+    mem("faded", {}),
+    mem("fresh", { lastReferenced: new Date(now).toISOString() }),
+    mem("keep", { permanent: true }),
+  ];
+
+  test("既定では期限切れの記憶を除く", () => {
+    const slugs = selectTargets(list, now, { all: false }).map((m) => m.slug);
+    expect(slugs).toEqual(["fresh", "keep"]);
+  });
+
+  test("all のときは期限切れの記憶も含めて全件を返す", () => {
+    const slugs = selectTargets(list, now, { all: true }).map((m) => m.slug);
+    expect(slugs).toEqual(["faded", "fresh", "keep"]);
+  });
+
+  test("期限ちょうどの記憶は既定では除く", () => {
+    const edgeNow = CREATED_MS + 10 * DAY;
+    expect(selectTargets([mem("edge", {})], edgeNow, { all: false })).toEqual([]);
+  });
+
+  test("permanent は既定でも常に含む", () => {
+    const farFuture = CREATED_MS + 100_000 * DAY;
+    const slugs = selectTargets([mem("keep", { permanent: true })], farFuture, { all: false }).map(
+      (m) => m.slug,
+    );
+    expect(slugs).toEqual(["keep"]);
   });
 });

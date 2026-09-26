@@ -1,13 +1,11 @@
+import { parseTargetArgs } from "../../../hooks/lib/args.ts";
 import { remainingDays } from "../../../hooks/lib/expiry.ts";
-import { visibleMemories } from "../../../hooks/lib/index-gen.ts";
+import { selectTargets } from "../../../hooks/lib/index-gen.ts";
 import { ensureDirs, loadMemories } from "../../../hooks/lib/maintenance.ts";
 import { dataPaths } from "../../../hooks/lib/paths.ts";
 import { sortByScore } from "../../../hooks/lib/ranking.ts";
 
-// SKILL.md は --all をパスの前後どちらに置いても渡しうるため、位置に依存せず取り出す
-const args = process.argv.slice(2);
-const showAll = args.includes("--all");
-const projectDir = args.find((a) => a !== "--all") ?? process.cwd();
+const { projectDir, all } = parseTargetArgs(process.argv.slice(2));
 
 const paths = dataPaths(projectDir);
 ensureDirs(paths);
@@ -17,7 +15,7 @@ const { memories, malformed } = loadMemories(paths);
 const now = Date.now();
 
 // 既定では index.md に載っている記憶だけを出す。絞り込み条件は目次生成と共有し、一覧と目次の食い違いを防ぐ
-const targets = showAll ? memories : visibleMemories(memories, now);
+const targets = selectTargets(memories, now, { all });
 
 console.log(`total=${targets.length}`);
 // title は空白を含みうるため行末に置く

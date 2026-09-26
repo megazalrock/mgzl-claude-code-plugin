@@ -24,6 +24,18 @@ export function visibleMemories(memories: LoadedMemory[], now: number): LoadedMe
 }
 
 /**
+ * list / maintain スキルが扱う記憶。既定は目次と同じ有効期限内の記憶だけで、all のときだけ退色した記憶も含める。
+ * スキルごとに選別規則を書くと対象が食い違うため、ここに一本化する
+ */
+export function selectTargets(
+  memories: LoadedMemory[],
+  now: number,
+  options: { all: boolean },
+): LoadedMemory[] {
+  return options.all ? memories : visibleMemories(memories, now);
+}
+
+/**
  * 目次に載せるのは有効期限内の記憶だけ。退色した記憶はファイルとして残り、
  * 更新または加点で起点が前進すれば再び載る。絞り込みはここだけで行い、loadMemories は全件を返す
  */
