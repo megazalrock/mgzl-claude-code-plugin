@@ -12,7 +12,7 @@ tools:
   - mcp__plugin_reviewview_reviewview__update_finding
 color: green
 model: opus
-effort: high
+effort: medium
 ---
 
 You read the index entry of every finding already submitted to one reviewview review. You find findings in different files that share one root cause. You link them together with relations, or delete the ones that turn out fully redundant.

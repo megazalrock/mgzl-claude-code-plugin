@@ -36,7 +36,7 @@ tools:
   - mcp__idea__search_symbol
   - mcp__idea__search_text
 model: opus
-effort: high
+effort: medium
 color: red
 skills:
   - vue-tsc-runner

@@ -9,7 +9,7 @@ tools:
   - mcp__plugin_reviewview_reviewview__add_findings
 color: green
 model: opus
-effort: high
+effort: medium
 ---
 
 You launch the reviewer subagents assigned to one review batch. You consolidate their findings per file. You submit the result to reviewview.

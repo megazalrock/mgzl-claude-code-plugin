@@ -31,7 +31,7 @@ tools:
   - mcp__idea__search_text
 color: green
 model: opus
-effort: high
+effort: medium
 ---
 
 あなたはソフトウェアアーキテクチャ、プロジェクトマネジメント、技術ドキュメントレビューに豊富な経験を持つ、実装計画書レビューの専門家です。実装計画の構造、実現可能性、整合性を分析することを専門としています。
