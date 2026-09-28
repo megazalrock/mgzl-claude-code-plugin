@@ -1,5 +1,6 @@
 import { expiresAt } from "./expiry.ts";
 import type { LoadedMemory } from "./maintenance.ts";
+import { shortenTitle } from "./title-shorten.ts";
 
 /**
  * 目次の並び順: 有効期限の降順（= 重要度順）。permanent は Infinity なので自然に先頭に来る。
@@ -37,12 +38,12 @@ export function selectTargets(
 
 /**
  * 目次に載せるのは有効期限内の記憶だけ。退色した記憶はファイルとして残り、
- * 更新または加点で起点が前進すれば再び載る。絞り込みはここだけで行い、loadMemories は全件を返す
+ * 更新または加点で起点が前進すれば再び載る。絞り込みはここだけで行い、loadMemories は全件を返す。
+ * 各行は `- <slug>: <短縮タイトル>`。SessionStart の注入文が `<memoriesDir>/<slug>.md` を Read するよう
+ * 案内しているので、Markdown リンクは付けない（注入量の削減のため）
  */
 export function renderIndex(memories: LoadedMemory[], now: number): string {
   const visible = visibleMemories(memories, now);
-  const lines = sortForIndex(visible).map(
-    (m) => `- [${m.meta.title}](memories/${m.slug}.md)`,
-  );
+  const lines = sortForIndex(visible).map((m) => `- ${m.slug}: ${shortenTitle(m.meta.title)}`);
   return ["# fading-memory 目次", "", ...lines, ""].join("\n");
 }

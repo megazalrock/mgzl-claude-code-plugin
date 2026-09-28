@@ -47,15 +47,24 @@ describe("sortForIndex", () => {
 });
 
 describe("renderIndex", () => {
-  test("タイトルと相対パスのリストを出力する", () => {
+  test("slug とタイトルのリストを出力し、Markdown リンクは付けない", () => {
     const text = renderIndex([mem("a", {})], CREATED_MS);
-    expect(text).toContain("- [title of a](memories/a.md)");
+    expect(text).toContain("- a: title of a");
+    expect(text).not.toContain("](memories/");
+  });
+
+  test("タイトルは表示時に定型句を除いて短縮し、保存済みの title は変えない", () => {
+    const title = "git push が失敗したときに参照する挙動と対処";
+    const m = mem("push", { title });
+    const text = renderIndex([m], CREATED_MS);
+    expect(text).toContain("- push: git push が失敗した時の挙動と対処");
+    expect(m.meta.title).toBe(title);
   });
 
   test("有効期限を過ぎた記憶は載せず、permanent は常に載せる", () => {
     const now = CREATED_MS + 400 * DAY;
     const text = renderIndex([mem("faded", {}), mem("keep", { permanent: true })], now);
-    expect(text).toContain("- [title of keep](memories/keep.md)");
+    expect(text).toContain("- keep: title of keep");
     expect(text).not.toContain("faded");
   });
 
