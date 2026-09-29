@@ -262,7 +262,7 @@ export function buildExtractionPrompt(transcriptText: string, catalog: string): 
     "## 抽出ルール",
     "- セッションを跨いで再利用可能なナレッジのみを抽出する。一時的な作業情報（今回限りのエラーや途中経過）は含めない",
     "- 既存の記憶と同じ関心の内容は newMemories にせず、updatedMemories として既存 slug の内容を書き直す",
-    "- slug は内容を要約した英語の kebab-case（小文字英数字とハイフンのみ、`_` は使わない）にする",
+    "- slug は内容を要約した英語の kebab-case（小文字英数字とハイフンのみ、`_` は使わない）にする。識別子として使えれば十分で、説明は title が担うため英単語2〜4語・30文字以内に収める",
     "- title は「どのケースで役立つ何の情報か」を1行で書く",
     "- permanent の指定は行わない",
     "- usefulMemorySlugs には、このセッション中に実際に内容が読まれ、かつ作業の役に立った既存記憶の slug だけを入れる。読まれただけで役立っていないものは入れない",
