@@ -8,16 +8,6 @@
       ],
       "env": {}
     },
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@0.0.70",
-        "--extension"
-      ],
-      "env": {
-        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "U3UlNmkY-MLpoc_SZTV6TlHHyxBRA_qYf_TKgnMAOkc"
-      }
-    },
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest"]
