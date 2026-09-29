@@ -1,4 +1,4 @@
-/** fading-memory の動作定数。寿命計算・trash 保持・headless モデルをここに集約する */
+/** fading-memory の動作定数。寿命計算・trash 保持・headless モデル・slug の長さ上限をここに集約する */
 export const config = {
   // 明示的に remember された記憶は自動抽出より長く index に残す
   // #63: 旧値(auto 15日)では busy なプロジェクト(arrangement-env/front)で index 常駐が約230件に膨張し、
@@ -8,6 +8,20 @@ export const config = {
   perScoreDays: 7,
   trashRetentionDays: 30,
   headlessModel: "sonnet",
+  // slug の長さ上限（生成目標）。SessionStart で注入する目次の各行が `- <slug>: <title>` のため、slug の長さがそのまま注入量になる（#65）。
+  // 説明は title が担うので slug は識別子として足りる長さに抑える。
+  // remember / remember-permanent の SKILL.md、抽出プロンプトはこの生成目標を文章で書いているので、変える場合はそちらも揃えること
+  slug: {
+    minWords: 2,
+    maxWords: 4,
+    maxLength: 30,
+    // maintain がリネーム対象を選ぶ検出閾値（長さのみ）。生成目標と同じ30文字で検出すると、mgzl の既存記憶では58件中57件が該当してしまう。
+    // 語数も条件に加えると、"in" のような短い単語で語数だけ膨らむ slug まで対象になってしまう
+    // （実測(2026-09-29): 31文字・6語の slug を改名しても1文字しか縮まらない例があった）。
+    // 45文字超に絞ると、mgzl 26/57件・約636文字、front 56/120件・約1,236文字の削減。40文字超と比べて、改名件数は約6割で削減量の約7割が得られる。
+    // maintain の SKILL.md はこの数値を文章で書いているので、変える場合はそちらも揃えること
+    rename: { maxLength: 45 },
+  },
   // 抽出プロンプトへ埋め込む会話本文の上限。トランスクリプト全文（数 MB）を子に読ませると
   // 読み取りループだけでタイムアウトするため、ここで前処理側の予算を固定する
   transcriptMaxBytes: 200 * 1024,

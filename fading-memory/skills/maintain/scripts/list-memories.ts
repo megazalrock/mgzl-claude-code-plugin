@@ -3,6 +3,7 @@ import { expiresAt } from "../../../hooks/lib/expiry.ts";
 import { selectTargets, sortForIndex } from "../../../hooks/lib/index-gen.ts";
 import { ensureDirs, loadMemories } from "../../../hooks/lib/maintenance.ts";
 import { dataPaths } from "../../../hooks/lib/paths.ts";
+import { isSlugTooLong } from "../../../hooks/lib/slug.ts";
 
 const { projectDir, all } = parseTargetArgs(process.argv.slice(2));
 
@@ -18,7 +19,7 @@ for (const m of sortForIndex(selectTargets(memories, now, { all }))) {
   const exp = expiresAt(m.meta);
   const expires = exp === Infinity ? "never" : new Date(exp).toISOString();
   console.log(
-    `slug=${m.slug} permanent=${m.meta.permanent} expires=${expires} file=${m.file} title=${m.meta.title}`,
+    `slug=${m.slug} permanent=${m.meta.permanent} expires=${expires} slugTooLong=${isSlugTooLong(m.slug)} file=${m.file} title=${m.meta.title}`,
   );
 }
 for (const name of malformed) {
