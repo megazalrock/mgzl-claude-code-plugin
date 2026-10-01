@@ -1,6 +1,6 @@
 ---
 name: chrome-devtools
-description: chrome-devtools-mcp でブラウザを操作して動作確認・不具合再現を行うときの知見集。headed の chrome-devtools と headless の chrome-devtools-headless の使い分け（ログイン状態の引き継ぎ、`The browser is already running` への対処）、confirm / alert / beforeunload などの JavaScript dialog で操作が止まったとき（handle_dialog の使い方、HMR の full reload で出る beforeunload への対処）、take_snapshot の uid が見つからないとき、click / fill_form / evaluate_script / navigate_page の使い分けや、console・network の調査手順を状況別にまとめている。「ブラウザで動作確認して」「画面を開いて確認して」「chrome-devtoolsで再現して」「ダイアログで止まった」などの依頼時に使用する。
+description: chrome-devtools / chrome-devtools-headless MCP サーバーのツール（navigate_page, new_page, evaluate_script, click, fill_form, take_snapshot, handle_dialog, list_pages など）を初めて呼ぶ前に必ず読み込む知見集。ユーザーの明示的な依頼がなく、実装計画のステップや検証作業の流れでブラウザ確認を始める場合も対象。読まずに操作すると beforeunload / confirm の dialog で evaluate_script などが応答せずタイムアウトする。headed と headless の使い分け（ログイン状態、`The browser is already running` への対処）、dialog の handle_dialog での処理、HMR の full reload で出る beforeunload への対処、snapshot の uid の扱い、console・network の調査手順を状況別にまとめている。「ブラウザで動作確認して」「画面を開いて確認して」「chrome-devtoolsで再現して」「ダイアログで止まった」などの依頼時にも使用する。
 ---
 
 # chrome-devtools

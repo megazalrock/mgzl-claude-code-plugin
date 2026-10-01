@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__plugin_cbo_chrome-devtools(-headless)?__.+$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run \"${CLAUDE_PLUGIN_ROOT}/hooks/chrome-devtools-skill-reminder.ts\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
