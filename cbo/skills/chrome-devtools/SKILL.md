@@ -1,6 +1,6 @@
 ---
 name: chrome-devtools
-description: chrome-devtools-mcp でブラウザを操作して動作確認・不具合再現を行うときの知見集。confirm / alert / beforeunload などの JavaScript dialog で操作が止まったとき（handle_dialog の使い方、HMR の full reload で出る beforeunload への対処）、take_snapshot の uid が見つからないとき、click / fill_form / evaluate_script / navigate_page の使い分けや、console・network の調査手順を状況別にまとめている。「ブラウザで動作確認して」「画面を開いて確認して」「chrome-devtoolsで再現して」「ダイアログで止まった」などの依頼時に使用する。
+description: chrome-devtools-mcp でブラウザを操作して動作確認・不具合再現を行うときの知見集。headed の chrome-devtools と headless の chrome-devtools-headless の使い分け（ログイン状態の引き継ぎ、`The browser is already running` への対処）、confirm / alert / beforeunload などの JavaScript dialog で操作が止まったとき（handle_dialog の使い方、HMR の full reload で出る beforeunload への対処）、take_snapshot の uid が見つからないとき、click / fill_form / evaluate_script / navigate_page の使い分けや、console・network の調査手順を状況別にまとめている。「ブラウザで動作確認して」「画面を開いて確認して」「chrome-devtoolsで再現して」「ダイアログで止まった」などの依頼時に使用する。
 ---
 
 # chrome-devtools
@@ -12,6 +12,34 @@ chrome-devtools-mcp でブラウザを操作するときの「こういう時は
 - レスポンスに `# Open dialog` が含まれていたら、他の操作より先に `handle_dialog` を呼ぶ
 - uid は直近の `take_snapshot`（または `includeSnapshot: true` で得た snapshot）のものだけを使う。古い snapshot の uid は使い回さない
 - 画面の確認は `take_screenshot` より `take_snapshot` を優先する。見た目（レイアウト崩れ・色）を確認したいときだけ screenshot を使う
+
+## headed / headless の使い分け
+
+cbo プラグインは同じ chrome-devtools-mcp を 2 つの MCP サーバーとして登録している。ツールは同名なので、どちらのサーバーのツールを呼ぶかで使い分ける。
+
+- `chrome-devtools`（headed）: ウィンドウが表示される
+- `chrome-devtools-headless`（`--headless`）: ウィンドウを出さずに裏で動く
+
+### どちらを使うか
+
+- headed を使う
+  - ログインが必要で、まだログイン済みの状態がない。headless には画面がないので、ユーザーが手動でログインできない
+  - ユーザーに画面を見せながら確認したい、ユーザーに手で操作してもらう必要がある
+- headless を使う
+  - ログイン済みの状態があり、ユーザーの作業画面を邪魔せずに動作確認だけしたい
+  - 見た目の確認が必要なら headless でも `take_screenshot` は使える
+
+### ログイン状態を headless に引き継ぐ
+
+- 両サーバーとも `--isolated` や `--user-data-dir` を付けていない。そのため同じ既定プロファイル（`~/.cache/chrome-devtools-mcp/chrome-profile`）を使い、Cookie やログイン状態は共有される
+- 手順: headed でユーザーにログインしてもらう → headed のブラウザを閉じる → headless のツールを呼ぶ
+- ログイン済みの状態がない、またはセッションが切れていたら、headless で fill_form などでログインを試みず、headed に切り替えてユーザーにログインしてもらう
+
+### `The browser is already running for ... Use --isolated to run multiple browser instances.` で起動しない
+
+- 原因: 同じプロファイルを使うブラウザが既に起動している。headed と headless を同時に起動できない。別セッションで同じサーバーのブラウザが動いている場合も同じエラーになる
+- 対処: 起動中のブラウザを閉じてもらうようユーザーに依頼する。headed ならウィンドウを閉じてもらえばよい
+  - `--isolated` で回避しない。一時プロファイルになりログイン状態が失われる
 
 ## JavaScript dialog
 
