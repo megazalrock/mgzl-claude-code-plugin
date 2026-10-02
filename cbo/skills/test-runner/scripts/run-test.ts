@@ -46,7 +46,9 @@ export function buildVitestArgs(testPaths: string[], coverageDir: string | null)
           `--coverage.reportsDirectory=${coverageDir}`,
         ];
 
-  return ["vitest", "run", "--reporter", "dot", "--maxWorkers", "6", ...coverageArgs, ...testPaths];
+  // 出力は Claude が読み、カバレッジ表は coverage.txt にも保存するため、色付けの制御文字を出させない。
+  // --no-color は vitest 本体だけでなく istanbul の text レポーター（supports-color）も無色にする。
+  return ["vitest", "run", "--no-color", "--reporter", "dot", "--maxWorkers", "6", ...coverageArgs, ...testPaths];
 }
 
 /** カバレッジ出力先ディレクトリの mkdtemp 用プレフィックス。時刻入りにして実行順に並ぶようにする */
@@ -55,8 +57,6 @@ export function coverageDirPrefix(tmpRoot: string, now: Date): string {
 
   return path.join(tmpRoot, `test-runner-coverage-${timestamp}-`);
 }
-
-const ANSI_ESCAPE = /\u001b\[[0-9;]*[A-Za-z]/g;
 
 /** istanbul の text レポーターが表の上下と見出し下に出す区切り行（例: `-----|-----|...`） */
 const TABLE_SEPARATOR = /^-+(\|-+)+$/;
@@ -67,7 +67,7 @@ const TABLE_SEPARATOR = /^-+(\|-+)+$/;
  * 見出し行が無ければ null、表が途中で途切れていれば出力の末尾までを返す。
  */
 export function extractCoverageTable(output: string): string | null {
-  const lines = output.replace(ANSI_ESCAPE, "").split(/\r?\n/);
+  const lines = output.split(/\r?\n/);
   const start = lines.findIndex((line) => line.includes("Coverage report from "));
 
   if (start === -1) {

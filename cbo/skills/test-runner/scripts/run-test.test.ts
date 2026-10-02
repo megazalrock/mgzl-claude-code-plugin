@@ -70,6 +70,7 @@ describe("buildVitestArgs", () => {
     expect(buildVitestArgs(["pages/foo.test.ts"], null)).toStrictEqual([
       "vitest",
       "run",
+      "--no-color",
       "--reporter",
       "dot",
       "--maxWorkers",
@@ -82,6 +83,7 @@ describe("buildVitestArgs", () => {
     expect(buildVitestArgs(["pages/foo.test.ts"], "/tmp/cov")).toStrictEqual([
       "vitest",
       "run",
+      "--no-color",
       "--reporter",
       "dot",
       "--maxWorkers",
@@ -98,6 +100,7 @@ describe("buildVitestArgs", () => {
     expect(buildVitestArgs(["pages/foo.test.ts", "pages/bar/"], "/tmp/cov")).toStrictEqual([
       "vitest",
       "run",
+      "--no-color",
       "--reporter",
       "dot",
       "--maxWorkers",
@@ -135,12 +138,6 @@ describe("extractCoverageTable", () => {
     const output = [" Test Files  1 passed (1)", "", ...table, "ERROR: Coverage for lines (50%) does not meet threshold", ""].join("\n");
 
     expect(extractCoverageTable(output)).toBe(`${table.join("\n")}\n`);
-  });
-
-  it("ANSI エスケープを除去する", () => {
-    const colored = table.map((line, i) => (i === 0 ? "\u001b[34m % \u001b[39m\u001b[2mCoverage report from \u001b[22m\u001b[33mv8\u001b[39m" : `\u001b[32m${line}\u001b[39m`));
-
-    expect(extractCoverageTable(colored.join("\n"))).toBe(`${table.join("\n")}\n`);
   });
 
   it("CRLF 改行でも切り出せる", () => {
