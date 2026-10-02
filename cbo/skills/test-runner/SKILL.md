@@ -22,10 +22,10 @@ model: sonnet
 1. `run-test.ts` を実行しテスト結果を取得
 2. 全てのテストが成功した場合、テストファイル、テストケース、実行時間を出力して終了
 3. いずれかのテストが失敗した場合、失敗したテストのみを全て表示して終了
-4. `--coverage` が指定されている場合、テスト結果に続けて以下を出力します
-   - スクリプトが末尾に出力した保存先パス（`coverage.txt` と `coverage-summary.json`）
-   - `coverage-summary.json` を Read し、`total` 以外の各キー（ファイルのフルパス）ごとに `statements` / `branches` / `functions` / `lines` の `pct` をリストで全件出力する（例: `- /path/to/Foo.ts: Stmts 80% / Branches 50% / Funcs 100% / Lines 80%`）。要約・省略・フィルタは行わない
-   - 最後に `total` の4指標を出力する
+4. `--coverage` が指定されている場合、テスト結果に続けてスクリプトが末尾に出力した以下だけを出力します
+   - カバレッジ合計の行（`カバレッジ合計: Stmts ... / Branches ... / Funcs ... / Lines ...`）
+   - 保存先パス（`coverage.txt` と `coverage-summary.json`）
+   - ファイル別の内訳は出力しません。ユーザーに求められたときだけ `coverage-summary.json`（出力されたフルパス）を Read して答えます
 
 ## カバレッジ取得の禁止事項
 
@@ -42,7 +42,8 @@ bun run "${CLAUDE_SKILL_DIR}/scripts/run-test.ts" <テストパス...> [--covera
 
 - `<テストパス...>` (必須): テスト対象のファイルまたはディレクトリのパスを1つ以上。空白区切りで複数指定できます
 - `--coverage` (任意): カバレッジを取得します。いずれかにルート相当のパスを指定した場合はエラーになります
-  - 標準出力のテキスト表は非 TTY だと 80 列に詰められファイルパスが省略されるため、ファイルの特定には使わない
-  - 実行ごとに一時ディレクトリ（`$TMPDIR/test-runner-coverage-<時刻>-*/`）を作り、表を `coverage.txt`、フルパスをキーとする集計を `coverage-summary.json` として保存し、末尾にそのパスを出力します
+  - 標準出力にはカバレッジ表を除いたテスト結果と、`total` の4指標をまとめたカバレッジ合計の1行だけを出します
+  - 実行ごとに一時ディレクトリ（`$TMPDIR/test-runner-coverage-<時刻>-*/`）を作ります。表を `coverage.txt`、フルパスをキーとする集計を `coverage-summary.json` として保存し、末尾にそのパスを出力します
+  - `coverage.txt` の表は非 TTY だと 80 列に詰められファイルパスが省略されるため、ファイルの特定には `coverage-summary.json` を使います
 - テストパスを指定せずに実行するとエラーになります
 - 全テストの実行は非常に時間がかかるため、必ず対象を絞って実行してください

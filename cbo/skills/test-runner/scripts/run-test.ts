@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -62,16 +62,17 @@ export function coverageDirPrefix(tmpRoot: string, now: Date): string {
 const TABLE_SEPARATOR = /^-+(\|-+)+$/;
 
 /**
- * vitest の標準出力からカバレッジ表（`% Coverage report from ...` 行から表の末尾まで）を切り出す。
+ * vitest の標準出力をカバレッジ表（`% Coverage report from ...` 行から表の末尾まで）とそれ以外に分ける。
+ * 表は全ファイル分の行を含みセッションに流すと長大になるため、表はファイル保存用、rest は画面表示用に使う。
  * 表は区切り行・見出し・区切り行・各行・区切り行の順に出力されるので、3本目の区切り行を末尾とみなす。
- * 見出し行が無ければ null、表が途中で途切れていれば出力の末尾までを返す。
+ * 見出し行が無ければ table は null で rest は出力そのまま、表が途中で途切れていれば出力の末尾までを表とする。
  */
-export function extractCoverageTable(output: string): string | null {
+export function splitCoverageTable(output: string): { table: string | null; rest: string } {
   const lines = output.split(/\r?\n/);
   const start = lines.findIndex((line) => line.includes("Coverage report from "));
 
   if (start === -1) {
-    return null;
+    return { table: null, rest: output };
   }
 
   let separatorCount = 0;
@@ -95,20 +96,81 @@ export function extractCoverageTable(output: string): string | null {
     tableLines.pop();
   }
 
-  return `${tableLines.join("\n")}\n`;
+  return {
+    table: `${tableLines.join("\n")}\n`,
+    rest: [...lines.slice(0, start), ...lines.slice(end)].join("\n"),
+  };
 }
 
-/** vitest の標準出力をそのまま自分の標準出力へ流しつつ、全体を文字列として蓄積して返す */
-async function teeStdout(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let output = "";
+/** istanbul は計測対象が0件の指標の pct を数値ではなく "Unknown" にするため、文字列も受け付ける */
+type CoveragePct = number | string;
 
-  for await (const chunk of stream) {
-    process.stdout.write(chunk);
-    output += decoder.decode(chunk, { stream: true });
+type CoverageTotal = {
+  statements: CoveragePct;
+  branches: CoveragePct;
+  functions: CoveragePct;
+  lines: CoveragePct;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function pctOf(metric: unknown): CoveragePct | null {
+  if (!isRecord(metric)) {
+    return null;
   }
 
-  return output + decoder.decode();
+  const { pct } = metric;
+
+  return typeof pct === "number" || typeof pct === "string" ? pct : null;
+}
+
+/** coverage-summary.json（json-summary レポーター）の内容から total の4指標の pct を取り出す。形式が想定外なら null */
+export function parseCoverageTotal(summary: unknown): CoverageTotal | null {
+  if (!isRecord(summary) || !isRecord(summary.total)) {
+    return null;
+  }
+
+  const { total } = summary;
+  const statements = pctOf(total.statements);
+  const branches = pctOf(total.branches);
+  const functions = pctOf(total.functions);
+  const lines = pctOf(total.lines);
+
+  if (statements === null || branches === null || functions === null || lines === null) {
+    return null;
+  }
+
+  return { statements, branches, functions, lines };
+}
+
+function formatPct(pct: CoveragePct): string {
+  return typeof pct === "number" ? `${pct}%` : pct;
+}
+
+/** total の4指標を1行にまとめる */
+export function formatCoverageTotal(total: CoverageTotal): string {
+  return `カバレッジ合計: Stmts ${formatPct(total.statements)} / Branches ${formatPct(total.branches)} / Funcs ${formatPct(total.functions)} / Lines ${formatPct(total.lines)}`;
+}
+
+/** coverage-summary.json を読んで合計行を作る。ファイルの欠落・読み取り失敗・想定外の形式ではその旨の1行を返す */
+function readCoverageTotalLine(summaryPath: string): string {
+  if (!existsSync(summaryPath)) {
+    return "カバレッジ合計: （coverage-summary.json が生成されなかったため不明）";
+  }
+
+  let summary: unknown;
+
+  try {
+    summary = JSON.parse(readFileSync(summaryPath, "utf8"));
+  } catch {
+    return "カバレッジ合計: （coverage-summary.json を読み取れなかったため不明）";
+  }
+
+  const total = parseCoverageTotal(summary);
+
+  return total === null ? "カバレッジ合計: （coverage-summary.json に total が見つからなかったため不明）" : formatCoverageTotal(total);
 }
 
 if (import.meta.main) {
@@ -152,17 +214,20 @@ if (import.meta.main) {
     env: { ...process.env },
   });
 
-  const [output, exitCode] = await Promise.all([teeStdout(proc.stdout), proc.exited]);
-  const table = extractCoverageTable(output);
+  // 表を除いて出すため、ストリームで流さず終了まで蓄積する
+  const [output, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const { table, rest } = splitCoverageTable(output);
   const tablePath = path.join(coverageDir, "coverage.txt");
 
   if (table !== null) {
     writeFileSync(tablePath, table);
   }
 
+  process.stdout.write(rest);
   console.log("");
-  console.log(`カバレッジ表: ${table === null ? "（出力に表が見つからなかったため未保存）" : tablePath}`);
   const summaryPath = path.join(coverageDir, "coverage-summary.json");
+  console.log(readCoverageTotalLine(summaryPath));
+  console.log(`カバレッジ表: ${table === null ? "（出力に表が見つからなかったため未保存）" : tablePath}`);
   console.log(`カバレッジ JSON: ${existsSync(summaryPath) ? summaryPath : "（vitest が生成しなかったため無し）"}`);
 
   process.exit(exitCode);

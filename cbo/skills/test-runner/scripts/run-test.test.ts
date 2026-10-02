@@ -1,5 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import { buildVitestArgs, coverageDirPrefix, extractCoverageTable, isRootLikePath, parseArgs } from "./run-test";
+import {
+  buildVitestArgs,
+  coverageDirPrefix,
+  formatCoverageTotal,
+  isRootLikePath,
+  parseArgs,
+  parseCoverageTotal,
+  splitCoverageTable,
+} from "./run-test";
 
 describe("parseArgs", () => {
   it("--coverage が先頭でもテストパスを取り出す", () => {
@@ -123,7 +131,7 @@ describe("coverageDirPrefix", () => {
   });
 });
 
-describe("extractCoverageTable", () => {
+describe("splitCoverageTable", () => {
   const table = [
     " % Coverage report from v8",
     "----------|---------|----------|---------|---------|-------------------",
@@ -134,21 +142,93 @@ describe("extractCoverageTable", () => {
     "----------|---------|----------|---------|---------|-------------------",
   ];
 
-  it("前後の出力を除いてカバレッジ表だけを切り出す", () => {
+  it("カバレッジ表を切り出し、表を除いた前後の出力を rest として返す", () => {
     const output = [" Test Files  1 passed (1)", "", ...table, "ERROR: Coverage for lines (50%) does not meet threshold", ""].join("\n");
 
-    expect(extractCoverageTable(output)).toBe(`${table.join("\n")}\n`);
+    expect(splitCoverageTable(output)).toStrictEqual({
+      table: `${table.join("\n")}\n`,
+      rest: [" Test Files  1 passed (1)", "", "ERROR: Coverage for lines (50%) does not meet threshold", ""].join("\n"),
+    });
   });
 
   it("CRLF 改行でも切り出せる", () => {
-    expect(extractCoverageTable(table.join("\r\n"))).toBe(`${table.join("\n")}\n`);
+    expect(splitCoverageTable(["before", ...table, "after"].join("\r\n"))).toStrictEqual({
+      table: `${table.join("\n")}\n`,
+      rest: "before\nafter",
+    });
   });
 
-  it("表の見出し行が無ければ null", () => {
-    expect(extractCoverageTable(" Test Files  1 passed (1)\n")).toBeNull();
+  it("表の見出し行が無ければ table は null で、出力全体を rest として返す", () => {
+    expect(splitCoverageTable(" Test Files  1 passed (1)\n")).toStrictEqual({
+      table: null,
+      rest: " Test Files  1 passed (1)\n",
+    });
   });
 
-  it("表が途中で途切れていれば出力の末尾までを返す", () => {
-    expect(extractCoverageTable(table.slice(0, 5).join("\n"))).toBe(`${table.slice(0, 5).join("\n")}\n`);
+  it("表が途中で途切れていれば出力の末尾までを表とし、rest は表より前だけになる", () => {
+    expect(splitCoverageTable(["before", ...table.slice(0, 5), ""].join("\n"))).toStrictEqual({
+      table: `${table.slice(0, 5).join("\n")}\n`,
+      rest: "before",
+    });
+  });
+});
+
+describe("parseCoverageTotal", () => {
+  const metric = (pct: number | string) => ({ total: 10, covered: 5, skipped: 0, pct });
+  const total = {
+    statements: metric(27.86),
+    branches: metric(5.31),
+    functions: metric(8.85),
+    lines: metric(28.61),
+  };
+
+  it("json-summary の total から4指標の pct を取り出す", () => {
+    expect(parseCoverageTotal({ total, "/proj/foo.ts": total })).toStrictEqual({
+      statements: 27.86,
+      branches: 5.31,
+      functions: 8.85,
+      lines: 28.61,
+    });
+  });
+
+  it("計測対象が無いとき istanbul が出す文字列の pct（Unknown）もそのまま取り出す", () => {
+    expect(parseCoverageTotal({ total: { ...total, branches: metric("Unknown") } })).toStrictEqual({
+      statements: 27.86,
+      branches: "Unknown",
+      functions: 8.85,
+      lines: 28.61,
+    });
+  });
+
+  it("total が無ければ null", () => {
+    expect(parseCoverageTotal({ "/proj/foo.ts": total })).toBeNull();
+  });
+
+  it("指標が欠けていれば null", () => {
+    expect(parseCoverageTotal({ total: { statements: metric(1), branches: metric(1), functions: metric(1) } })).toBeNull();
+  });
+
+  it("pct が数値でも文字列でもなければ null", () => {
+    expect(parseCoverageTotal({ total: { ...total, lines: { pct: null } } })).toBeNull();
+  });
+
+  it("オブジェクトでなければ null", () => {
+    expect(parseCoverageTotal(null)).toBeNull();
+    expect(parseCoverageTotal([])).toBeNull();
+    expect(parseCoverageTotal("total")).toBeNull();
+  });
+});
+
+describe("formatCoverageTotal", () => {
+  it("4指標を1行にまとめる", () => {
+    expect(formatCoverageTotal({ statements: 27.86, branches: 5.31, functions: 8.85, lines: 28.61 })).toBe(
+      "カバレッジ合計: Stmts 27.86% / Branches 5.31% / Funcs 8.85% / Lines 28.61%",
+    );
+  });
+
+  it("文字列の pct には % を付けない", () => {
+    expect(formatCoverageTotal({ statements: 100, branches: "Unknown", functions: 0, lines: 100 })).toBe(
+      "カバレッジ合計: Stmts 100% / Branches Unknown / Funcs 0% / Lines 100%",
+    );
   });
 });
