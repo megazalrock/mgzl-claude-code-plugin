@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildVitestArgs, isRootLikePath, parseArgs } from "./run-test";
+import { buildVitestArgs, coverageDirPrefix, extractCoverageTable, isRootLikePath, parseArgs } from "./run-test";
 
 describe("parseArgs", () => {
   it("--coverage が先頭でもテストパスを取り出す", () => {
@@ -67,7 +67,7 @@ describe("isRootLikePath", () => {
 
 describe("buildVitestArgs", () => {
   it("カバレッジ無しの引数を組み立てる", () => {
-    expect(buildVitestArgs(["pages/foo.test.ts"], false)).toStrictEqual([
+    expect(buildVitestArgs(["pages/foo.test.ts"], null)).toStrictEqual([
       "vitest",
       "run",
       "--reporter",
@@ -78,8 +78,8 @@ describe("buildVitestArgs", () => {
     ]);
   });
 
-  it("カバレッジ有りの引数を組み立てる", () => {
-    expect(buildVitestArgs(["pages/foo.test.ts"], true)).toStrictEqual([
+  it("カバレッジ有りなら text と json-summary を指定ディレクトリへ出力する引数を組み立てる", () => {
+    expect(buildVitestArgs(["pages/foo.test.ts"], "/tmp/cov")).toStrictEqual([
       "vitest",
       "run",
       "--reporter",
@@ -88,13 +88,14 @@ describe("buildVitestArgs", () => {
       "6",
       "--coverage",
       "--coverage.reporter=text",
-      "--coverage.clean=false",
+      "--coverage.reporter=json-summary",
+      "--coverage.reportsDirectory=/tmp/cov",
       "pages/foo.test.ts",
     ]);
   });
 
   it("複数のテストパスを全て末尾に並べる", () => {
-    expect(buildVitestArgs(["pages/foo.test.ts", "pages/bar/"], true)).toStrictEqual([
+    expect(buildVitestArgs(["pages/foo.test.ts", "pages/bar/"], "/tmp/cov")).toStrictEqual([
       "vitest",
       "run",
       "--reporter",
@@ -103,9 +104,54 @@ describe("buildVitestArgs", () => {
       "6",
       "--coverage",
       "--coverage.reporter=text",
-      "--coverage.clean=false",
+      "--coverage.reporter=json-summary",
+      "--coverage.reportsDirectory=/tmp/cov",
       "pages/foo.test.ts",
       "pages/bar/",
     ]);
+  });
+});
+
+describe("coverageDirPrefix", () => {
+  it("一時ディレクトリ配下に UTC 時刻入りのプレフィックスを作る", () => {
+    expect(coverageDirPrefix("/var/tmp", new Date("2026-10-02T03:04:05.678Z"))).toBe(
+      "/var/tmp/test-runner-coverage-20261002T030405Z-",
+    );
+  });
+});
+
+describe("extractCoverageTable", () => {
+  const table = [
+    " % Coverage report from v8",
+    "----------|---------|----------|---------|---------|-------------------",
+    "File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s ",
+    "----------|---------|----------|---------|---------|-------------------",
+    "All files |     100 |      100 |     100 |     100 |                   ",
+    " foo.ts   |     100 |      100 |     100 |     100 |                   ",
+    "----------|---------|----------|---------|---------|-------------------",
+  ];
+
+  it("前後の出力を除いてカバレッジ表だけを切り出す", () => {
+    const output = [" Test Files  1 passed (1)", "", ...table, "ERROR: Coverage for lines (50%) does not meet threshold", ""].join("\n");
+
+    expect(extractCoverageTable(output)).toBe(`${table.join("\n")}\n`);
+  });
+
+  it("ANSI エスケープを除去する", () => {
+    const colored = table.map((line, i) => (i === 0 ? "\u001b[34m % \u001b[39m\u001b[2mCoverage report from \u001b[22m\u001b[33mv8\u001b[39m" : `\u001b[32m${line}\u001b[39m`));
+
+    expect(extractCoverageTable(colored.join("\n"))).toBe(`${table.join("\n")}\n`);
+  });
+
+  it("CRLF 改行でも切り出せる", () => {
+    expect(extractCoverageTable(table.join("\r\n"))).toBe(`${table.join("\n")}\n`);
+  });
+
+  it("表の見出し行が無ければ null", () => {
+    expect(extractCoverageTable(" Test Files  1 passed (1)\n")).toBeNull();
+  });
+
+  it("表が途中で途切れていれば出力の末尾までを返す", () => {
+    expect(extractCoverageTable(table.slice(0, 5).join("\n"))).toBe(`${table.slice(0, 5).join("\n")}\n`);
   });
 });
