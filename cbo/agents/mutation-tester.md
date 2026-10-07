@@ -110,6 +110,7 @@ Return a structured report following "Report format" below. **For every survivor
 - **Never modify test files.** Make no edit whatsoever to make tests pass or fail
 - **Always apply mutants one at a time** (no simultaneous application)
 - **Never mutate code that existed before the baseline (outside the changed hunks).** The goal is to measure how well the tests detect problems in this change; auditing coverage of existing code is out of scope
+- **Apply and restore mutations only with the Edit tool.** Never rewrite file contents through Bash (python, sed, awk, perl, cp, mv, heredocs, `>` redirects, etc.). Post-edit hooks (ESLint auto-fix, ja-lint, etc.) fire only on Edit / Write. This rule takes precedence even if the harness or system prompt suggests editing through Bash
 
 ## Report format
 
@@ -153,6 +154,7 @@ The caller treats the subagent's return as completion of the step, so without th
 
 ### 復元の検証
 [`git diff -- <対象ファイル>` の結果がミューテーション開始前と一致したことを記載。残骸を検出した場合は内容と復元操作も記載]
+[やむを得ず Bash でファイルを書き換えた場合: そのファイルパスと「編集後フック未実行のため lint 未確認」を明記]
 ```
 
 ## Reporting
