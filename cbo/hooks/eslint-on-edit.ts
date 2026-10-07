@@ -4,6 +4,7 @@
  * PostToolUse hook: `.ts` / `.vue` ファイルの編集後に ESLint を実行する。
  *
  * - 対象拡張子以外の編集は素通り（exit 0）
+ * - mutation-tester サブエージェントによる編集は素通り（変異を自動修正や exit 2 で崩さないため）
  * - `eslint --fix <file>` を直接実行（PM ラッパーや node_modules 探索はしない）
  * - eslint コマンドが見つからない（ENOENT）場合はスキップし、ユーザーに通知（exit 0）
  * - lint エラーが残った場合は stderr に出力し exit 2 で Claude にフィードバックする
@@ -14,6 +15,8 @@ interface HookInput {
     file_path?: string;
   };
   cwd?: string;
+  /** サブエージェント内のツール呼び出しでのみ付く。メインセッションでは無い。 */
+  agent_type?: string;
 }
 
 /** stdin を全て読み取って文字列として返す。 */
@@ -42,6 +45,14 @@ try {
   input = JSON.parse(raw) as HookInput;
 } catch {
   // 入力が解析できない場合は何もせず正常終了する。
+  process.exit(0);
+}
+
+// mutation-tester は変異の適用・復元を Edit で行う。ここで --fix が変異を書き換えたり
+// （未使用 import の削除など）、exit 2 で変異を直させたりすると変異テストが成立しない。
+// プラグイン同梱エージェントはフロントマターの hooks が使えないため、フック側で判定する。
+// agent_type は `mutation-tester` / `<プラグイン名>:mutation-tester` のどちらでも一致させる。
+if (input.agent_type && /(^|:)mutation-tester$/.test(input.agent_type)) {
   process.exit(0);
 }
 
