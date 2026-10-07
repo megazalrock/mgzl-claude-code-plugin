@@ -16,7 +16,6 @@ tools:
   - WebSearch
   - mcp__context7__query-docs
   - mcp__context7__resolve-library-id
-  - mcp__eslint__lint-files
   - mcp__ide__getDiagnostics
   - mcp__idea__find_files_by_glob
   - mcp__idea__find_files_by_name_keyword

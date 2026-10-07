@@ -19,7 +19,7 @@ tools:
   - ToolSearch
   - Write
   - mcp__context7__resolve-library-id
-  - mcp__eslint__lint-files
+  - mcp__plugin_cbo_eslint__lint-files
   - mcp__idea__find_files_by_glob
   - mcp__idea__find_files_by_name_keyword
   - mcp__idea__get_file_problems
@@ -70,7 +70,9 @@ skills:
    - 計画書ステップの場合、`完了条件` をすべて満たしたことを確認してから完了とする。満たせない条件が残ったときは、通すために条件側を読み替えたり範囲を狭めたりせず、報告して指示を仰ぐ
 
 3. **Lint と型チェック**
-   - eslint mcp を実行してESLintエラーがないことを確認する
+   - `mcp__plugin_cbo_eslint__lint-files` を実行して ESLint エラーがないことを確認する
+     - このツールが使えない・失敗する場合、Bash で eslint を実行して代替しない（`pnpm exec eslint` / `npx eslint` 等）。最終報告に「ESLint 未確認」と理由を明記する
+     - ツールが実際に実行されていない限り、ESLint を通過と報告しない
    - 型エラーが無いことを確認する
       - vue-tsc-runner エージェントスキルで型チェックを行い型エラーがなくなるまで修正する
 
@@ -253,6 +255,9 @@ git diff -U0 <path> | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) ' | grep -vE '^[
 
 ### コード解析結果
 [解析結果の要約]
+
+### Lint 結果
+[ESLint の実行結果。ツール未実行・失敗時は「ESLint 未確認」と理由を記載]
 
 ### テスト結果
 [既存テストの回帰チェック結果。新規テストは本エージェントの責務外のため「未追加（test-implementer へ委譲要）」等と明記する]
